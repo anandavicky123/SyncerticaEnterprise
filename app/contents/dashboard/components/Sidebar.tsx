@@ -27,7 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold">S</span>
               </div>
-              <span className="font-semibold">Syncertica</span>
+              <span className="font-semibold">Syncertica Enterprise</span>
             </div>
           )}
           <button onClick={onToggle} className="p-1 hover:bg-gray-700 rounded">

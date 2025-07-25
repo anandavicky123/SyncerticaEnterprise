@@ -1,5 +1,5 @@
-import SyncerticaEnterprise from "./contents/dashboard/components/SyncerticaEnterprise";
+import AppWrapper from "./contents/dashboard/components/AppWrapper";
 
 export default function Home() {
-  return <SyncerticaEnterprise />;
+  return <AppWrapper />;
 }
