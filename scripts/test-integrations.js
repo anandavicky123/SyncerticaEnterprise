@@ -14,12 +14,18 @@ console.log('🧪 Starting Real Integration Tests\n');
 async function testGitHubActions() {
   console.log('1️⃣ Testing GitHub Actions API...');
   
+  const githubToken = process.env.GITHUB_TOKEN_PERSONAL;
+  if (!githubToken) {
+    console.log('❌ GITHUB_TOKEN_PERSONAL environment variable not set');
+    return false;
+  }
+  
   return new Promise((resolve) => {
     const options = {
       hostname: 'api.github.com',
       path: '/repos/anandavicky123/syncerticaenterprise/actions/workflows',
       headers: {
-        'Authorization': 'token ***REMOVED***',
+        'Authorization': `token ${githubToken}`,
         'User-Agent': 'Syncertica-Enterprise-Test'
       }
     };
@@ -75,9 +81,10 @@ function testAWSCredentials() {
     console.log('   ✅ AWS CLI Available:', awsVersion.trim());
     
     // Test STS get-caller-identity with environment variables
-    process.env.AWS_ACCESS_KEY_ID = '***REMOVED***';
-    process.env.AWS_SECRET_ACCESS_KEY = '***REMOVED***';
-    process.env.AWS_DEFAULT_REGION = 'us-east-1';
+    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+      console.log('❌ AWS credentials not found in environment variables');
+      return false;
+    }
     
     const identity = execSync('aws sts get-caller-identity', { encoding: 'utf8', stdio: 'pipe' });
     const parsed = JSON.parse(identity);

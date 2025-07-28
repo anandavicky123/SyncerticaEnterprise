@@ -30,12 +30,23 @@ echo "📁 Repository: $REPO"
 echo ""
 echo "🔑 Setting up GitHub Actions secrets..."
 
+# Prompt user for secrets (never hardcode secrets in scripts)
+read -p "Enter your AWS_ACCESS_KEY_ID: " AWS_ACCESS_KEY_ID
+read -s -p "Enter your AWS_SECRET_ACCESS_KEY: " AWS_SECRET_ACCESS_KEY
+echo
+read -p "Enter your AWS_REGION: " AWS_REGION
+read -p "Enter your DOCKER_USERNAME: " DOCKER_USERNAME
+read -s -p "Enter your DOCKER_PASSWORD: " DOCKER_PASSWORD
+echo
+read -s -p "Enter your GITHUB_TOKEN_PERSONAL: " GITHUB_TOKEN_PERSONAL
+echo
+
 # AWS Secrets
 echo "Setting AWS_ACCESS_KEY_ID..."
-gh secret set AWS_ACCESS_KEY_ID --body "***REMOVED***"
+gh secret set AWS_ACCESS_KEY_ID --body "$AWS_ACCESS_KEY_ID"
 
 echo "Setting AWS_SECRET_ACCESS_KEY..."
-gh secret set AWS_SECRET_ACCESS_KEY --body "***REMOVED***"
+gh secret set AWS_SECRET_ACCESS_KEY --body "$AWS_SECRET_ACCESS_KEY"
 
 echo "Setting AWS_REGION..."
 gh secret set AWS_REGION --body "us-east-1"

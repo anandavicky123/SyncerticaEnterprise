@@ -4,7 +4,7 @@
 
 ### 🔑 **GitHub Token Configured Successfully**
 
-- ✅ **Token**: `***REMOVED***`
+- ✅ **Token**: `<your-github-personal-access-token>` (stored securely)
 - ✅ **Rate Limit**: Increased from 60/hour to **5,000/hour**
 - ✅ **Repository Access**: Full access to `anandavicky123/syncerticaenterprise`
 - ✅ **API Authentication**: Working perfectly
