@@ -8,21 +8,24 @@ Your Syncertica Enterprise project now has a **complete production-grade DevOps 
 
 ### ✅ **Real GitHub Actions Integration**
 
-- ✓ Live API connection using token: `***REMOVED***`
+✓ Live API connection using token: **Stored securely in GitHub Actions secrets**
+
 - ✓ Real-time workflow monitoring (5000 requests/hour rate limit)
 - ✓ Comprehensive CI/CD pipeline with 8 production jobs
 - ✓ Multi-environment deployment (staging/production)
 
 ### ✅ **Real AWS Infrastructure**
 
-- ✓ AWS credentials configured: `***REMOVED***`
+✓ AWS credentials configured: **Stored securely in GitHub Actions secrets**
+
 - ✓ Complete Terraform infrastructure (ECR, ECS, Aurora DSQL, ALB)
 - ✓ Production-ready container orchestration
 - ✓ Auto-scaling and load balancing
 
 ### ✅ **Real Docker Hub Integration**
 
-- ✓ Container registry access: `***REMOVED***`
+✓ Container registry access: **Stored securely in GitHub Actions secrets**
+
 - ✓ Automated image builds and pushes
 - ✓ Multi-stage production Docker builds
 - ✓ Security scanning and SBOM generation
@@ -95,16 +98,20 @@ Your application at `http://localhost:3000` shows **real GitHub Actions data**:
 
 ## 🔐 **Security Configuration**
 
-### **Repository Secrets** (Already Configured)
+### **Repository Secrets** (Best Practice)
 
-```
-AWS_ACCESS_KEY_ID = ***REMOVED***
-AWS_SECRET_ACCESS_KEY = ***REMOVED***
-AWS_REGION = us-east-1
-DOCKER_USERNAME = ***REMOVED***
-DOCKER_PASSWORD = ***REMOVED***
-GITHUB_TOKEN_PERSONAL = ***REMOVED***
-```
+**Never commit secrets or credentials to your repository.**
+
+All sensitive credentials must be stored securely using GitHub Actions secrets:
+
+| Secret Name             | Value                                 |
+| ----------------------- | ------------------------------------- |
+| `AWS_ACCESS_KEY_ID`     | `<your-aws-access-key-id>`            |
+| `AWS_SECRET_ACCESS_KEY` | `<your-aws-secret-access-key>`        |
+| `AWS_REGION`            | `<your-aws-region>`                   |
+| `DOCKER_USERNAME`       | `<your-docker-hub-username>`          |
+| `DOCKER_PASSWORD`       | `<your-docker-hub-password>`          |
+| `GITHUB_TOKEN_PERSONAL` | `<your-github-personal-access-token>` |
 
 ### **AWS IAM Permissions**
 

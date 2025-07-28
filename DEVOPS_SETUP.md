@@ -25,12 +25,22 @@ Your Syncertica Enterprise project now has a **fully functional, production-grad
 - **CloudWatch**: Monitoring and logging
 - **VPC**: Secure networking configuration
 
-### ✅ **Production Credentials Configured**
+### ✅ **Production Credentials Management (Best Practice)**
 
-- GitHub Token: `***REMOVED***` (5000 requests/hour)
-- AWS Access Key: `***REMOVED***`
-- AWS Secret Key: `***REMOVED***`
-- Docker Hub: `***REMOVED***` / `***REMOVED***`
+**Never commit secrets or credentials to your repository.**
+
+All sensitive credentials (GitHub Token, AWS Access Key, AWS Secret Key, Docker Hub credentials) must be stored securely using GitHub Actions secrets:
+
+- Go to your GitHub repository → Settings → Secrets and variables → Actions
+- Add the following secrets (replace values with your own):
+  - `AWS_ACCESS_KEY_ID`: `<your-aws-access-key-id>`
+  - `AWS_SECRET_ACCESS_KEY`: `<your-aws-secret-access-key>`
+  - `AWS_REGION`: `<your-aws-region>`
+  - `DOCKER_USERNAME`: `<your-docker-hub-username>`
+  - `DOCKER_PASSWORD`: `<your-docker-hub-password>`
+  - `GITHUB_TOKEN_PERSONAL`: `<your-github-personal-access-token>`
+
+**Do not store secrets in code, markdown, or environment files that are committed.**
 
 ## 🚀 How to Deploy
 
@@ -57,14 +67,14 @@ git push origin main
 1. Go to your GitHub repository → Settings → Secrets and variables → Actions
 2. Add these secrets:
 
-| Secret Name             | Value                                      |
-| ----------------------- | ------------------------------------------ |
-| `AWS_ACCESS_KEY_ID`     | `***REMOVED***`                     |
-| `AWS_SECRET_ACCESS_KEY` | `***REMOVED***` |
-| `AWS_REGION`            | `us-east-1`                                |
-| `DOCKER_USERNAME`       | `***REMOVED***`                                 |
-| `DOCKER_PASSWORD`       | `***REMOVED***`     |
-| `GITHUB_TOKEN_PERSONAL` | `***REMOVED***` |
+| Secret Name             | Value                                 |
+| ----------------------- | ------------------------------------- |
+| `AWS_ACCESS_KEY_ID`     | `<your-aws-access-key-id>`            |
+| `AWS_SECRET_ACCESS_KEY` | `<your-aws-secret-access-key>`        |
+| `AWS_REGION`            | `<your-aws-region>`                   |
+| `DOCKER_USERNAME`       | `<your-docker-hub-username>`          |
+| `DOCKER_PASSWORD`       | `<your-docker-hub-password>`          |
+| `GITHUB_TOKEN_PERSONAL` | `<your-github-personal-access-token>` |
 
 ### Method 3: Direct Push
 

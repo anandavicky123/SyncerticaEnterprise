@@ -49,17 +49,22 @@ function Set-GitHubSecret {
     }
 }
 
-# AWS Secrets
-Set-GitHubSecret "AWS_ACCESS_KEY_ID" "***REMOVED***"
-Set-GitHubSecret "AWS_SECRET_ACCESS_KEY" "***REMOVED***"
-Set-GitHubSecret "AWS_REGION" "us-east-1"
 
-# Docker Hub Secrets
-Set-GitHubSecret "DOCKER_USERNAME" "***REMOVED***"
-Set-GitHubSecret "DOCKER_PASSWORD" "***REMOVED***"
+# Prompt user for secrets (never hardcode secrets in scripts)
+$awsAccessKey = Read-Host "Enter your AWS_ACCESS_KEY_ID"
+$awsSecretKey = Read-Host "Enter your AWS_SECRET_ACCESS_KEY"
+$awsRegion = Read-Host "Enter your AWS_REGION"
+$dockerUsername = Read-Host "Enter your DOCKER_USERNAME"
+$dockerPassword = Read-Host "Enter your DOCKER_PASSWORD"
+$githubToken = Read-Host "Enter your GITHUB_TOKEN_PERSONAL"
 
-# GitHub Token (for API access)
-Set-GitHubSecret "GITHUB_TOKEN_PERSONAL" "***REMOVED***"
+# Set secrets securely
+Set-GitHubSecret "AWS_ACCESS_KEY_ID" $awsAccessKey
+Set-GitHubSecret "AWS_SECRET_ACCESS_KEY" $awsSecretKey
+Set-GitHubSecret "AWS_REGION" $awsRegion
+Set-GitHubSecret "DOCKER_USERNAME" $dockerUsername
+Set-GitHubSecret "DOCKER_PASSWORD" $dockerPassword
+Set-GitHubSecret "GITHUB_TOKEN_PERSONAL" $githubToken
 
 Write-Host ""
 Write-Host "Optional secrets (you can set these later):" -ForegroundColor Yellow

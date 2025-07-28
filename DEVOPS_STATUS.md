@@ -17,23 +17,26 @@ Your DevOps section is now **FULLY FUNCTIONAL** with real integrations - no mock
 
 ### ✅ **GitHub Actions Integration**
 
-- **API Status**: Connected and functional
-- **Token**: `***REMOVED***` (5000/hour rate limit)
+**API Status**: Connected and functional
+**Token**: **Stored securely in GitHub Actions secrets**
+
 - **Real-time Data**: Live workflow monitoring ✅
 - **Pipeline**: 8-stage production CI/CD workflow
 
 ### ✅ **AWS Infrastructure**
 
-- **Credentials**: Configured and validated
-- **Access Key**: `***REMOVED***` ✅
-- **Secret Key**: Active and authorized ✅
-- **Region**: us-east-1
+**Credentials**: Configured and validated (stored securely in GitHub Actions secrets)
+**Access Key**: `<your-aws-access-key-id>` ✅
+**Secret Key**: `<your-aws-secret-access-key>` ✅
+**Region**: `<your-aws-region>`
+
 - **Services**: ECR, ECS, Aurora DSQL, CloudWatch, Terraform
 
 ### ✅ **Docker Hub Integration**
 
-- **Registry**: ***REMOVED***/syncertica-enterprise
-- **Token**: `***REMOVED***` ✅
+**Registry**: `<your-docker-hub-username>`/syncertica-enterprise
+**Token**: `<your-docker-hub-password>` ✅
+
 - **Build**: Multi-stage production Dockerfile
 - **Security**: Container scanning enabled
 
@@ -136,7 +139,7 @@ This triggers the **full production pipeline**:
 
 ## 🔍 **VERIFICATION CHECKLIST**
 
-✅ **Environment Variables**: All credentials configured in .env.local  
+✅ **Environment Variables**: All credentials configured in .env.local (never committed; use .gitignore)  
 ✅ **GitHub Actions**: Real API integration working  
 ✅ **AWS Services**: Credentials validated and authorized  
 ✅ **Docker Hub**: Registry access confirmed  
