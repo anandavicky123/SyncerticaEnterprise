@@ -14,11 +14,20 @@ const Toolbar: React.FC<ToolbarProps> = ({ toolbarItems }) => {
         {toolbarItems.map((tool, index) => (
           <Tooltip
             key={index}
-            content={`${tool.name} - Click to ${tool.name.toLowerCase()}`}
+            content={
+              tool.disabled
+                ? `${tool.name} - Only available in Overview, Sales, and Workers sections`
+                : `${tool.name} - Click to ${tool.name.toLowerCase()}`
+            }
           >
             <button
-              onClick={tool.action}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              onClick={tool.disabled ? undefined : tool.action}
+              disabled={tool.disabled}
+              className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${
+                tool.disabled
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              }`}
             >
               <tool.icon className="w-4 h-4" />
               <span>{tool.name}</span>

@@ -15,7 +15,7 @@ import {
 import Sidebar from "./Sidebar";
 import SectionBar from "./SectionBar";
 import Toolbar from "./Toolbar";
-import DashboardBlock from "./DashboardBlock";
+import DashboardBlockComponent from "./DashboardBlock";
 import StickyNoteComponent from "./StickyNoteComponent";
 import AddNoteModal from "./AddNoteModal";
 import RealtimeNotifications from "./RealtimeNotifications";
@@ -27,6 +27,8 @@ import DevOpsPipeline from "./DevOpsPipeline";
 import InfrastructureAsCode from "./InfrastructureAsCode";
 import CallChatModal from "./CallChatModal";
 import ProfileDropdown from "./ProfileDropdown";
+import CalendarModal from "./CalendarModal";
+import AddBlockModal from "./AddBlockModal";
 
 // Hooks
 import { useStickyNotes } from "../hooks/useStickyNotes";
@@ -42,6 +44,7 @@ import {
   ToolbarItem,
   StickyNote as StickyNoteType,
   User,
+  DashboardBlock as DashboardBlockType,
 } from "../../../shared/types/dashboard";
 
 interface SyncerticaEnterpriseProps {
@@ -59,6 +62,9 @@ const SyncerticaEnterprise: React.FC<SyncerticaEnterpriseProps> = ({
   const [showAddNote, setShowAddNote] = useState(false);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [showCallChat, setShowCallChat] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [showAddBlock, setShowAddBlock] = useState(false);
+  const [customBlocks, setCustomBlocks] = useState<DashboardBlockType[]>([]);
 
   const {
     addStickyNote,
@@ -69,8 +75,15 @@ const SyncerticaEnterprise: React.FC<SyncerticaEnterpriseProps> = ({
 
   const { draggedNote, handleMouseDown } = useDragAndDrop(updateNotePosition);
 
+  const canAddBlocks = ["overview", "sales", "workers"].includes(activeSection);
+
   const toolbarItems: ToolbarItem[] = [
-    { name: "Add Block", icon: Plus, action: () => {} },
+    {
+      name: "Add Block",
+      icon: Plus,
+      action: canAddBlocks ? () => setShowAddBlock(true) : () => {},
+      disabled: !canAddBlocks,
+    },
     { name: "Add Note", icon: StickyNote, action: () => setShowAddNote(true) },
     {
       name: "Call/Chat",
@@ -78,7 +91,7 @@ const SyncerticaEnterprise: React.FC<SyncerticaEnterpriseProps> = ({
       action: () => setShowCallChat(true),
     },
     { name: "Analytics", icon: BarChart3, action: () => {} },
-    { name: "Calendar", icon: Calendar, action: () => {} },
+    { name: "Calendar", icon: Calendar, action: () => setShowCalendar(true) },
     { name: "Files", icon: File, action: () => {} },
     { name: "Automation", icon: Zap, action: () => {} },
   ];
@@ -86,6 +99,29 @@ const SyncerticaEnterprise: React.FC<SyncerticaEnterpriseProps> = ({
   const handleAddNote = (content: string, type: "text" | "checklist") => {
     addStickyNote(content, type);
     setShowAddNote(false);
+  };
+
+  const handleAddBlock = (block: DashboardBlockType) => {
+    setCustomBlocks((prev) => [...prev, block]);
+  };
+
+  const handleRemoveBlock = (blockId: string) => {
+    setCustomBlocks((prev) => prev.filter((block) => block.id !== blockId));
+  };
+
+  const handleMinimizeBlock = (blockId: string) => {
+    // You can implement minimize functionality here
+    console.log("Minimizing block:", blockId);
+  };
+
+  const getAllBlocks = (section: string) => {
+    const originalBlocks = dashboardBlocks[section] || [];
+    const sectionCustomBlocks = customBlocks.filter(
+      (block) =>
+        block.id.includes(section) ||
+        ["overview", "sales", "workers"].includes(section)
+    );
+    return [...originalBlocks, ...sectionCustomBlocks];
   };
 
   return (
@@ -131,8 +167,13 @@ const SyncerticaEnterprise: React.FC<SyncerticaEnterpriseProps> = ({
           ) : (
             /* Default dashboard blocks for other sections */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {dashboardBlocks[activeSection]?.map((block) => (
-                <DashboardBlock key={block.id} block={block} />
+              {getAllBlocks(activeSection).map((block) => (
+                <DashboardBlockComponent
+                  key={block.id}
+                  block={block}
+                  onRemove={handleRemoveBlock}
+                  onMinimize={handleMinimizeBlock}
+                />
               ))}
             </div>
           )}
@@ -169,6 +210,20 @@ const SyncerticaEnterprise: React.FC<SyncerticaEnterpriseProps> = ({
         isOpen={showCallChat}
         onClose={() => setShowCallChat(false)}
         currentUser={user}
+      />
+
+      {/* Calendar Modal */}
+      <CalendarModal
+        isOpen={showCalendar}
+        onClose={() => setShowCalendar(false)}
+      />
+
+      {/* Add Block Modal */}
+      <AddBlockModal
+        isOpen={showAddBlock}
+        onClose={() => setShowAddBlock(false)}
+        section={activeSection}
+        onAddBlock={handleAddBlock}
       />
     </div>
   );

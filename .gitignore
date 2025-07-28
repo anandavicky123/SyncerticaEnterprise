@@ -33,6 +33,32 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Docker
+docker-compose.override.yml
+
+# AWS
+.aws/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+*.lcov
+
 # vercel
 .vercel
 

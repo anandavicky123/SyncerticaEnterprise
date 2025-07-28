@@ -51,6 +51,12 @@ app/
 - **AWS X-Ray** - Application tracing
 - **Amazon Route 53** - DNS management
 
+### DevOps & Containerization
+
+- **Docker** - Application containerization
+- **GitHub Actions** - CI/CD automation and workflows
+- **PostgreSQL** - Production database deployment
+
 ## 📂 Detailed Folder Structure
 
 ### `/app/assets/`

@@ -38,16 +38,35 @@ This is a **portfolio dummy project** designed to showcase enterprise-grade deve
 ### AWS Always Free Tier Services Used:
 
 - **AWS Lambda**: Serverless function execution
-- **AWS DynamoDB**: NoSQL database
+- **AWS DynamoDB**: NoSQL database for caching/sessions
+- **AWS Aurora DSQL**: PostgreSQL-compatible primary database
 - **AWS Cognito**: User authentication & authorization
 - **AWS CloudWatch**: Monitoring & logging
+- **AWS CloudFront**: CDN and edge locations
 - **AWS Security Hub**: Security posture management
 - **AWS CloudTrail**: API activity logging
 - **AWS WAF**: Web application firewall
-- **AWS S3**: File storage
+- **AWS SQS**: Message queuing
+- **AWS EventBridge**: Event-driven architecture
 - **AWS CloudFormation**: Infrastructure as Code
 - **AWS X-Ray**: Distributed tracing
 - **AWS Step Functions**: Workflow orchestration
+- **AWS CodeBuild**: Build automation
+- **AWS CodePipeline**: CI/CD pipeline
+- **Amazon Route 53**: DNS management
+- **AWS Q Developer**: AI-powered development assistant
+- **AWS SageMaker**: Machine learning platform
+- **AWS Glue**: Data integration service
+- **AWS Key Management Service**: Encryption key management
+- **AWS Migration Hub**: Migration tracking
+- **AWS Service Catalog**: IT service management
+- **AWS Control Tower**: Multi-account governance
+- **AWS Organizations**: Account management
+- **AWS WAF**: Web application firewall
+- **AWS Resource Explorer**: Resource discovery
+- **Amazon CodeCatalyst**: Unified software development
+- **AWS Systems Manager**: Configuration management
+- **Amazon SNS**: Push notifications
 
 ### Frontend Stack:
 
@@ -68,10 +87,10 @@ This is a **portfolio dummy project** designed to showcase enterprise-grade deve
 ### DevOps & Infrastructure:
 
 - **Docker**: Containerization
-- **Kubernetes**: Container orchestration
+- **Terraform**: Infrastructure as Code
+- **GitHub Actions**: CI/CD automation and workflows
 - **AWS CodePipeline**: CI/CD pipeline
 - **AWS CodeBuild**: Build automation
-- **AWS CodeCommit**: Source control
 
 ## 📱 Key Features for Recruiters
 
@@ -204,7 +223,6 @@ npm run dev
 - [ ] Step Functions for workflow automation
 - [ ] API Gateway for microservices
 - [ ] Docker containerization
-- [ ] Kubernetes deployment manifests
 
 ## 🤝 Contributing
 

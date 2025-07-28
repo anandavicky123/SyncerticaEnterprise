@@ -1,0 +1,498 @@
+name: CI/CD Pipeline for Syncertica Enterprise
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: syncertica-enterprise
+  ECS_SERVICE: syncertica-enterprise-app
+  ECS_CLUSTER: syncertica-enterprise-cluster
+
+jobs:
+  # Job 1: Code Quality and Testing
+  test:
+    name: Test and Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Prettier check
+        run: npm run format:check
+
+      - name: Run TypeScript type check
+        run: npm run type-check
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Generate test coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # Job 2: Security Scanning
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript, typescript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # Job 3: Build Application
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: [test, security]
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: GitHubActions-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.meta.outputs.tags }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
+  # Job 4: Infrastructure Validation
+  terraform-validate:
+    name: Terraform Validation
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: GitHubActions-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init
+
+      - name: Terraform Validate
+        run: |
+          cd terraform
+          terraform validate
+
+      - name: Terraform Plan
+        run: |
+          cd terraform
+          terraform plan -var-file="environments/${{ github.ref_name == 'main' && 'production' || 'staging' }}.tfvars"
+
+      - name: Run Checkov scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+
+      - name: Upload Checkov results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+
+  # Job 5: Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, terraform-validate]
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: GitHubActions-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Deploy Infrastructure
+        run: |
+          cd terraform
+          terraform init
+          terraform apply -var-file="environments/staging.tfvars" -auto-approve
+
+      - name: Update ECS Service
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }}-staging \
+            --service ${{ env.ECS_SERVICE }}-staging \
+            --force-new-deployment
+
+      - name: Wait for deployment
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }}-staging \
+            --services ${{ env.ECS_SERVICE }}-staging
+
+      - name: Run smoke tests
+        run: |
+          # Wait for ALB to be healthy
+          sleep 60
+
+          # Get ALB endpoint
+          ALB_ENDPOINT=$(aws elbv2 describe-load-balancers \
+            --names syncertica-enterprise-staging-alb \
+            --query 'LoadBalancers[0].DNSName' \
+            --output text)
+
+          # Run health check
+          curl -f https://$ALB_ENDPOINT/health || exit 1
+
+      - name: Notify deployment status
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: |
+            Staging deployment ${{ job.status }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Job 6: Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, terraform-validate]
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: GitHubActions-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Deploy Infrastructure
+        run: |
+          cd terraform
+          terraform init
+          terraform apply -var-file="environments/production.tfvars" -auto-approve
+
+      - name: Blue-Green Deployment
+        run: |
+          # Get current task definition
+          TASK_DEF=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }}-production \
+            --services ${{ env.ECS_SERVICE }}-production \
+            --query 'services[0].taskDefinition' \
+            --output text)
+
+          # Update service with new image
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }}-production \
+            --service ${{ env.ECS_SERVICE }}-production \
+            --force-new-deployment
+
+          # Wait for deployment
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }}-production \
+            --services ${{ env.ECS_SERVICE }}-production
+
+      - name: Run production tests
+        run: |
+          # Wait for ALB to be healthy
+          sleep 60
+
+          # Get ALB endpoint
+          ALB_ENDPOINT=$(aws elbv2 describe-load-balancers \
+            --names syncertica-enterprise-production-alb \
+            --query 'LoadBalancers[0].DNSName' \
+            --output text)
+
+          # Run comprehensive health checks
+          curl -f https://$ALB_ENDPOINT/health || exit 1
+          curl -f https://$ALB_ENDPOINT/api/health || exit 1
+
+      - name: Update Lambda functions
+        run: |
+          # Update Lambda function code
+          aws lambda update-function-code \
+            --function-name syncertica-enterprise-production-data-processor \
+            --zip-file fileb://terraform/lambda_data_processor.zip
+
+      - name: Notify deployment status
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: |
+            🚀 Production deployment ${{ job.status }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+            Version: ${{ needs.build.outputs.image-tag }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Job 7: Post-deployment monitoring
+  monitoring:
+    name: Post-deployment Monitoring
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: GitHubActions-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check application health
+        run: |
+          ENVIRONMENT=${{ needs.deploy-staging.result == 'success' && 'staging' || 'production' }}
+
+          # Check ECS service health
+          RUNNING_COUNT=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }}-$ENVIRONMENT \
+            --services ${{ env.ECS_SERVICE }}-$ENVIRONMENT \
+            --query 'services[0].runningCount' \
+            --output text)
+
+          DESIRED_COUNT=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }}-$ENVIRONMENT \
+            --services ${{ env.ECS_SERVICE }}-$ENVIRONMENT \
+            --query 'services[0].desiredCount' \
+            --output text)
+
+          if [ "$RUNNING_COUNT" -ne "$DESIRED_COUNT" ]; then
+            echo "❌ ECS service unhealthy: $RUNNING_COUNT/$DESIRED_COUNT tasks running"
+            exit 1
+          fi
+
+          echo "✅ ECS service healthy: $RUNNING_COUNT/$DESIRED_COUNT tasks running"
+
+      - name: Check database connections
+        run: |
+          ENVIRONMENT=${{ needs.deploy-staging.result == 'success' && 'staging' || 'production' }}
+
+          # Check Aurora database health
+          DB_STATUS=$(aws rds describe-db-clusters \
+            --db-cluster-identifier syncertica-enterprise-$ENVIRONMENT-aurora \
+            --query 'DBClusters[0].Status' \
+            --output text)
+
+          if [ "$DB_STATUS" != "available" ]; then
+            echo "❌ Database unhealthy: $DB_STATUS"
+            exit 1
+          fi
+
+          echo "✅ Database healthy: $DB_STATUS"
+
+      - name: Check Lambda functions
+        run: |
+          ENVIRONMENT=${{ needs.deploy-staging.result == 'success' && 'staging' || 'production' }}
+
+          # Check Lambda function health
+          aws lambda invoke \
+            --function-name syncertica-enterprise-$ENVIRONMENT-data-processor \
+            --payload '{"action":"healthCheck"}' \
+            /tmp/lambda-response.json
+
+          if [ $? -eq 0 ]; then
+            echo "✅ Lambda function healthy"
+          else
+            echo "❌ Lambda function unhealthy"
+            exit 1
+          fi
+
+      - name: Create GitHub deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const environment = '${{ needs.deploy-staging.result == 'success' && 'staging' || 'production' }}';
+
+            await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: environment,
+              description: `Deployment to ${environment}`,
+              auto_merge: false
+            });
+
+  # Job 8: Cleanup
+  cleanup:
+    name: Cleanup Resources
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      [
+        test,
+        security,
+        build,
+        terraform-validate,
+        deploy-staging,
+        deploy-production,
+        monitoring,
+      ]
+
+    steps:
+      - name: Clean up Docker build cache
+        run: docker system prune -f
+
+      - name: Clean up workspace
+        run: |
+          sudo rm -rf /tmp/*
+          sudo rm -rf ~/.cache/*

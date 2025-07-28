@@ -25,6 +25,7 @@ export interface ToolbarItem {
   name: string;
   icon: React.ComponentType<{ className?: string }>;
   action: () => void;
+  disabled?: boolean;
 }
 
 export interface StickyNote {
@@ -340,4 +341,36 @@ export interface LogEntry {
   service: string;
   traceId?: string;
   metadata?: Record<string, unknown>;
+}
+
+// GitHub Integration Types
+export interface GitHubRepository {
+  name: string;
+  full_name: string;
+  description: string;
+  private: boolean;
+  html_url: string;
+  clone_url: string;
+  default_branch: string;
+  created_at: string;
+  updated_at: string;
+  stargazers_count: number;
+  forks_count: number;
+  language: string;
+  topics: string[];
+}
+
+export interface AWSDeploymentStatus {
+  ecr: {
+    status: "available" | "building" | "unknown";
+    lastUpdate: Date;
+  };
+  ecs: {
+    status: "running" | "deploying" | "stopped" | "unknown";
+    lastUpdate: Date;
+  };
+  terraform: {
+    status: "applied" | "planning" | "unknown";
+    lastUpdate: Date;
+  };
 }

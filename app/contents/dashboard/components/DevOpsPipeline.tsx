@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Play,
   CheckCircle,
@@ -14,218 +14,41 @@ import {
   Download,
   Eye,
   ExternalLink,
+  RefreshCw,
+  Github,
 } from "lucide-react";
-import { Pipeline, Repository } from "../../../shared/types/dashboard";
+import { useGitHubActions } from "../hooks/useGitHubActions";
+import { Pipeline, PipelineStage } from "../../../shared/types/dashboard";
+
+interface DeploymentInfo {
+  service: string;
+  status: string;
+  environment: string;
+  lastDeployed: string;
+  lastDeployment: string;
+  version: string;
+}
 
 interface DevOpsPipelineProps {
   className?: string;
 }
 
 const DevOpsPipeline: React.FC<DevOpsPipelineProps> = ({ className = "" }) => {
-  const [pipelines, setPipelines] = useState<Pipeline[]>([
-    {
-      id: "pipeline-1",
-      name: "syncertica-enterprise-main",
-      status: "success",
-      lastRun: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-      duration: 234,
-      branch: "main",
-      commit: "a1b2c3d",
-      author: "John Admin",
-      stages: [
-        {
-          id: "source",
-          name: "Source",
-          status: "success",
-          duration: 12,
-          logs: [
-            "✓ Code retrieved from AWS CodeCommit",
-            "✓ Webhook triggered successfully",
-          ],
-        },
-        {
-          id: "build",
-          name: "Build",
-          status: "success",
-          duration: 156,
-          logs: [
-            "✓ Installing dependencies...",
-            "✓ npm install completed",
-            "✓ TypeScript compilation successful",
-            "✓ Next.js build completed",
-            "✓ Tests passed: 47/47",
-          ],
-          artifacts: ["build-artifacts.zip", "test-results.xml"],
-        },
-        {
-          id: "test",
-          name: "Test",
-          status: "success",
-          duration: 45,
-          logs: [
-            "✓ Unit tests: 32 passed",
-            "✓ Integration tests: 15 passed",
-            "✓ Coverage: 87%",
-          ],
-        },
-        {
-          id: "deploy",
-          name: "Deploy",
-          status: "success",
-          duration: 21,
-          logs: [
-            "✓ Deploying to AWS ECS...",
-            "✓ Container image pushed to ECR",
-            "✓ ECS service updated",
-            "✓ Health checks passed",
-          ],
-        },
-      ],
-    },
-    {
-      id: "pipeline-2",
-      name: "syncertica-enterprise-dev",
-      status: "running",
-      lastRun: new Date().toISOString(),
-      duration: 0,
-      branch: "feature/ai-assistant",
-      commit: "f4e5d6c",
-      author: "Jane Employee",
-      stages: [
-        {
-          id: "source",
-          name: "Source",
-          status: "success",
-          duration: 8,
-        },
-        {
-          id: "build",
-          name: "Build",
-          status: "running",
-          duration: 0,
-        },
-        {
-          id: "test",
-          name: "Test",
-          status: "pending",
-        },
-        {
-          id: "deploy",
-          name: "Deploy",
-          status: "pending",
-        },
-      ],
-    },
-    {
-      id: "pipeline-3",
-      name: "syncertica-enterprise-hotfix",
-      status: "failed",
-      lastRun: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-      duration: 89,
-      branch: "hotfix/security-patch",
-      commit: "c7d8e9f",
-      author: "Mike Manager",
-      stages: [
-        {
-          id: "source",
-          name: "Source",
-          status: "success",
-          duration: 5,
-        },
-        {
-          id: "build",
-          name: "Build",
-          status: "failed",
-          duration: 84,
-          logs: [
-            "✓ Installing dependencies...",
-            "✗ TypeScript compilation failed",
-            "Error: Type 'string' is not assignable to type 'number'",
-            "Build failed with exit code 1",
-          ],
-        },
-        {
-          id: "test",
-          name: "Test",
-          status: "skipped",
-        },
-        {
-          id: "deploy",
-          name: "Deploy",
-          status: "skipped",
-        },
-      ],
-    },
-  ]);
-
-  const [repositories] = useState<Repository[]>([
-    {
-      id: "repo-1",
-      name: "syncertica-enterprise",
-      url: "https://github.com/anandavicky123/syncerticaenterprise",
-      lastCommit: "feat: Add AI assistant integration",
-      author: "Jane Employee",
-      branch: "main",
-      language: "TypeScript",
-      size: "12.3 MB",
-    },
-    {
-      id: "repo-2",
-      name: "syncertica-lambda-functions",
-      url: "codecommit://syncertica-lambda",
-      lastCommit: "fix: Update Cognito token validation",
-      author: "John Admin",
-      branch: "main",
-      language: "Node.js",
-      size: "2.1 MB",
-    },
-    {
-      id: "repo-3",
-      name: "syncertica-infrastructure",
-      url: "codecommit://syncertica-iac",
-      lastCommit: "update: CloudFormation templates",
-      author: "Mike Manager",
-      branch: "main",
-      language: "YAML",
-      size: "456 KB",
-    },
-  ]);
+  const {
+    pipelines,
+    repository,
+    deployments,
+    loading,
+    error,
+    lastUpdated,
+    statistics,
+    refreshData,
+    triggerWorkflow,
+  } = useGitHubActions();
 
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(
     null
   );
-
-  // Simulate real-time pipeline updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPipelines((prev) =>
-        prev.map((pipeline) => {
-          if (pipeline.status === "running") {
-            // Update running pipeline
-            const runningStage = pipeline.stages.find(
-              (s) => s.status === "running"
-            );
-            if (runningStage) {
-              const updatedStages = pipeline.stages.map((stage) => {
-                if (stage.id === runningStage.id) {
-                  return { ...stage, duration: (stage.duration || 0) + 1 };
-                }
-                return stage;
-              });
-              return {
-                ...pipeline,
-                stages: updatedStages,
-                duration: pipeline.duration + 1,
-              };
-            }
-          }
-          return pipeline;
-        })
-      );
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -267,12 +90,6 @@ const DevOpsPipeline: React.FC<DevOpsPipelineProps> = ({ className = "" }) => {
     return `${mins}m ${secs}s`;
   };
 
-  const getSuccessRate = () => {
-    const total = pipelines.length;
-    const successful = pipelines.filter((p) => p.status === "success").length;
-    return Math.round((successful / total) * 100);
-  };
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
@@ -280,32 +97,65 @@ const DevOpsPipeline: React.FC<DevOpsPipelineProps> = ({ className = "" }) => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">DevOps Pipeline</h2>
           <p className="text-gray-600">
-            AWS CodePipeline, CodeBuild & CodeCommit Integration
+            GitHub Actions, AWS Integration & Real-time Monitoring
           </p>
+          {lastUpdated && (
+            <p className="text-sm text-gray-500 mt-1">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-4">
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 px-3 py-1 rounded-lg">
+              {error}
+            </div>
+          )}
           <div className="text-sm text-gray-600">
             Success Rate:{" "}
             <span className="font-bold text-green-600">
-              {getSuccessRate()}%
+              {statistics.successRate}%
             </span>
           </div>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+          <button
+            onClick={refreshData}
+            disabled={loading}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+          <button
+            onClick={() => triggerWorkflow("ci-cd")}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
             <Play className="w-4 h-4" />
             Run Pipeline
           </button>
         </div>
       </div>
 
-      {/* AWS Services Status */}
+      {/* GitHub Actions & AWS Services Status */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg p-4 border border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Code className="w-5 h-5 text-orange-600" />
+            <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
+              <GitBranch className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-medium text-gray-900">CodeCommit</h3>
+              <h3 className="font-medium text-gray-900">GitHub Actions</h3>
+              <p className="text-sm text-green-600">Active</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+              <Package className="w-5 h-5 text-orange-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-900">AWS ECR</h3>
               <p className="text-sm text-green-600">Connected</p>
             </div>
           </div>
@@ -314,22 +164,10 @@ const DevOpsPipeline: React.FC<DevOpsPipelineProps> = ({ className = "" }) => {
         <div className="bg-white rounded-lg p-4 border border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Package className="w-5 h-5 text-blue-600" />
+              <Rocket className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-medium text-gray-900">CodeBuild</h3>
-              <p className="text-sm text-green-600">Active</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg p-4 border border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <GitBranch className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-900">CodePipeline</h3>
+              <h3 className="font-medium text-gray-900">AWS ECS</h3>
               <p className="text-sm text-green-600">Running</p>
             </div>
           </div>
@@ -338,11 +176,11 @@ const DevOpsPipeline: React.FC<DevOpsPipelineProps> = ({ className = "" }) => {
         <div className="bg-white rounded-lg p-4 border border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <Rocket className="w-5 h-5 text-green-600" />
+              <Code className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <h3 className="font-medium text-gray-900">CodeDeploy</h3>
-              <p className="text-sm text-green-600">Ready</p>
+              <h3 className="font-medium text-gray-900">Terraform</h3>
+              <p className="text-sm text-green-600">Deployed</p>
             </div>
           </div>
         </div>
@@ -356,7 +194,7 @@ const DevOpsPipeline: React.FC<DevOpsPipelineProps> = ({ className = "" }) => {
           </h3>
         </div>
         <div className="divide-y divide-gray-200">
-          {pipelines.map((pipeline) => (
+          {pipelines.map((pipeline: Pipeline) => (
             <div
               key={pipeline.id}
               className="p-6 hover:bg-gray-50 transition-colors"
@@ -406,7 +244,7 @@ const DevOpsPipeline: React.FC<DevOpsPipelineProps> = ({ className = "" }) => {
 
               {/* Pipeline Stages */}
               <div className="mt-4 flex items-center gap-2">
-                {pipeline.stages.map((stage, index) => (
+                {pipeline.stages.map((stage: PipelineStage, index: number) => (
                   <React.Fragment key={stage.id}>
                     <div className="flex items-center gap-2">
                       {getStatusIcon(stage.status)}
@@ -433,40 +271,47 @@ const DevOpsPipeline: React.FC<DevOpsPipelineProps> = ({ className = "" }) => {
       {/* Repositories */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Repositories</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Repository</h3>
         </div>
-        <div className="divide-y divide-gray-200">
-          {repositories.map((repo) => (
-            <div
-              key={repo.id}
-              className="p-6 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Code className="w-5 h-5 text-gray-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">{repo.name}</h4>
-                    <p className="text-sm text-gray-600">{repo.lastCommit}</p>
-                    <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
-                      <span>{repo.language}</span>
-                      <span>{repo.size}</span>
-                      <span>by {repo.author}</span>
-                    </div>
-                  </div>
+        <div className="p-6">
+          {repository ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
+                  <Github className="w-5 h-5 text-white" />
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                    {repo.branch}
-                  </span>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <ExternalLink className="w-4 h-4" />
-                  </button>
+                <div>
+                  <h4 className="font-medium text-gray-900">
+                    {repository.name}
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    {repository.description}
+                  </p>
+                  <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
+                    <span>{repository.language}</span>
+                    <span>{repository.size}</span>
+                    <span>Branch: {repository.branch}</span>
+                  </div>
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={repository.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
             </div>
-          ))}
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              {loading
+                ? "Loading repository data..."
+                : "No repository data available"}
+            </div>
+          )}
         </div>
       </div>
 
@@ -489,7 +334,7 @@ const DevOpsPipeline: React.FC<DevOpsPipelineProps> = ({ className = "" }) => {
             </div>
             <div className="p-6 overflow-y-auto max-h-[70vh]">
               <div className="space-y-6">
-                {selectedPipeline.stages.map((stage) => (
+                {selectedPipeline.stages.map((stage: PipelineStage) => (
                   <div
                     key={stage.id}
                     className="border border-gray-200 rounded-lg p-4"
@@ -523,7 +368,7 @@ const DevOpsPipeline: React.FC<DevOpsPipelineProps> = ({ className = "" }) => {
                     </div>
                     {stage.logs && (
                       <div className="bg-gray-900 text-green-400 p-3 rounded-lg font-mono text-sm">
-                        {stage.logs.map((log, index) => (
+                        {stage.logs?.map((log: string, index: number) => (
                           <div key={index}>{log}</div>
                         ))}
                       </div>
@@ -543,22 +388,72 @@ const DevOpsPipeline: React.FC<DevOpsPipelineProps> = ({ className = "" }) => {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">94%</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {statistics.successRate}%
+            </div>
             <div className="text-sm text-gray-600">Success Rate</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">3m 45s</div>
+            <div className="text-2xl font-bold text-green-600">
+              {formatDuration(statistics.avgDuration)}
+            </div>
             <div className="text-sm text-gray-600">Avg Build Time</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">127</div>
+            <div className="text-2xl font-bold text-purple-600">
+              {statistics.total}
+            </div>
             <div className="text-sm text-gray-600">Total Builds</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">15</div>
-            <div className="text-sm text-gray-600">Deployments Today</div>
+            <div className="text-2xl font-bold text-orange-600">
+              {statistics.running}
+            </div>
+            <div className="text-sm text-gray-600">Running Now</div>
           </div>
         </div>
+
+        {/* Deployment Status */}
+        {deployments.length > 0 && (
+          <div className="mt-6 pt-6 border-t border-blue-200">
+            <h4 className="font-medium text-gray-900 mb-3">
+              AWS Deployment Status
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {deployments.map((deployment: DeploymentInfo, index: number) => (
+                <div
+                  key={index}
+                  className="bg-white rounded-lg p-4 border border-gray-200"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h5 className="font-medium text-gray-900 capitalize">
+                        {deployment.environment}
+                      </h5>
+                      <p className="text-sm text-gray-600">
+                        Version: {deployment.version}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(deployment.lastDeployment).toLocaleString()}
+                      </p>
+                    </div>
+                    <div
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        deployment.status === "deployed"
+                          ? "bg-green-100 text-green-800"
+                          : deployment.status === "deploying"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {deployment.status}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
