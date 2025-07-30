@@ -4,17 +4,35 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { LambdaClient } from "@aws-sdk/client-lambda";
 import { CloudWatchClient } from "@aws-sdk/client-cloudwatch";
+import {
+  getAWSCredentials,
+  isDevelopment,
+} from "../app/shared/config/environment";
 
 const region = process.env.AWS_REGION || "us-east-1";
+
+// Get AWS credentials from environment configuration
+const awsCredentials = getAWSCredentials();
 
 // AWS SDK Configuration
 const awsConfig = {
   region,
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    accessKeyId: awsCredentials.accessKey,
+    secretAccessKey: awsCredentials.secretAccessKey,
   },
 };
+
+// Log configuration mode for debugging
+if (isDevelopment()) {
+  console.log("🔧 AWS SDK: Running in DEVELOPMENT mode");
+  console.log(`🌍 Region: ${region}`);
+  console.log(
+    `🔑 Credentials available: ${
+      !!awsCredentials.accessKey && !!awsCredentials.secretAccessKey
+    }`
+  );
+}
 
 // RDS Client for Aurora DSQL
 export const rdsClient = new RDSClient(awsConfig);

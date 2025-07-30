@@ -277,12 +277,25 @@ export interface PipelineStage {
 export interface Repository {
   id: string;
   name: string;
-  url: string;
-  lastCommit: string;
-  author: string;
+  url?: string;
+  lastCommit?: string;
+  author?: string;
   branch: string;
-  language: string;
-  size: string;
+  language?: string;
+  size?: string;
+  source: string;
+  lastUpdated: string;
+  status: string;
+  detectedFiles: {
+    dockerfile: boolean;
+    workflow: boolean;
+    terraform: boolean;
+  };
+  connectionType: string;
+  description: string;
+  infraStatus?: "deployed" | "deploying" | "failed" | "not-deployed";
+  infraResources?: number;
+  infraCost?: string;
 }
 
 // Infrastructure as Code Types

@@ -1,4 +1,4 @@
-import AppWrapper from "./contents/dashboard/components/AppWrapper";
+import AppWrapper from "./shared/AppWrapper";
 
 export default function Home() {
   return <AppWrapper />;

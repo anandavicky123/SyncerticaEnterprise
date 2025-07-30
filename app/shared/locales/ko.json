@@ -1,0 +1,14 @@
+{
+  "settings": "설정",
+  "dateFormat": "날짜 형식",
+  "language": "언어",
+  "save": "저장",
+  "cancel": "취소",
+  "profile": "프로필",
+  "logout": "로그아웃",
+  "addEventFor": "이벤트 추가:",
+  "eventsFor": "이벤트:",
+  "noEvents": "이 날짜에 이벤트가 없습니다.",
+  "today": "오늘",
+  "hasEvents": "이벤트 있음"
+}

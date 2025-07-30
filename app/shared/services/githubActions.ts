@@ -64,38 +64,29 @@ export interface GitHubRepository {
 }
 
 class GitHubActionsService {
-  private baseUrl = "https://api.github.com";
-  private owner: string;
-  private repo: string;
-  private token: string;
+  private baseUrl = "/api/github/workflows";
 
   constructor() {
-    this.owner = process.env.NEXT_PUBLIC_GITHUB_OWNER || "anandavicky123";
-    this.repo = process.env.NEXT_PUBLIC_GITHUB_REPO || "syncerticaenterprise";
-    this.token = process.env.GITHUB_TOKEN || "";
+    // No need for tokens or credentials on client side
   }
 
-  private async request<T>(endpoint: string): Promise<T> {
-    const headers: HeadersInit = {
-      Accept: "application/vnd.github.v3+json",
-      "User-Agent": "Syncertica-Enterprise-Dashboard",
-    };
+  private async request<T>(
+    action: string,
+    params: Record<string, string> = {}
+  ): Promise<T> {
+    const searchParams = new URLSearchParams({ action, ...params });
 
-    if (this.token) {
-      headers["Authorization"] = `token ${this.token}`;
-    }
-
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      headers,
+    const response = await fetch(`${this.baseUrl}?${searchParams}`, {
       cache: "no-store",
     });
 
     if (!response.ok) {
-      if (response.status === 403) {
-        throw new Error("GitHub API rate limit exceeded or unauthorized");
-      }
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Unknown error" }));
       throw new Error(
-        `GitHub API error: ${response.status} ${response.statusText}`
+        errorData.error ||
+          `API error: ${response.status} ${response.statusText}`
       );
     }
 
@@ -108,7 +99,7 @@ class GitHubActionsService {
   async getWorkflows(): Promise<GitHubWorkflow[]> {
     try {
       const data = await this.request<{ workflows: GitHubWorkflow[] }>(
-        `/repos/${this.owner}/${this.repo}/actions/workflows`
+        "workflows"
       );
       return data.workflows;
     } catch (error) {
@@ -125,12 +116,14 @@ class GitHubActionsService {
     limit = 10
   ): Promise<GitHubWorkflowRun[]> {
     try {
-      const endpoint = workflowId
-        ? `/repos/${this.owner}/${this.repo}/actions/workflows/${workflowId}/runs?per_page=${limit}`
-        : `/repos/${this.owner}/${this.repo}/actions/runs?per_page=${limit}`;
+      const params: Record<string, string> = { limit: limit.toString() };
+      if (workflowId) {
+        params.workflowId = workflowId.toString();
+      }
 
       const data = await this.request<{ workflow_runs: GitHubWorkflowRun[] }>(
-        endpoint
+        "runs",
+        params
       );
       return data.workflow_runs;
     } catch (error) {
@@ -144,9 +137,9 @@ class GitHubActionsService {
    */
   async getWorkflowRunJobs(runId: number): Promise<GitHubJob[]> {
     try {
-      const data = await this.request<{ jobs: GitHubJob[] }>(
-        `/repos/${this.owner}/${this.repo}/actions/runs/${runId}/jobs`
-      );
+      const data = await this.request<{ jobs: GitHubJob[] }>("jobs", {
+        runId: runId.toString(),
+      });
       return data.jobs;
     } catch (error) {
       console.error("Error fetching workflow run jobs:", error);
@@ -159,9 +152,7 @@ class GitHubActionsService {
    */
   async getRepository(): Promise<GitHubRepository | null> {
     try {
-      return await this.request<GitHubRepository>(
-        `/repos/${this.owner}/${this.repo}`
-      );
+      return await this.request<GitHubRepository>("repository");
     } catch (error) {
       console.error("Error fetching repository:", error);
       return null;
@@ -177,26 +168,25 @@ class GitHubActionsService {
     inputs = {}
   ): Promise<boolean> {
     try {
-      const headers: HeadersInit = {
-        Accept: "application/vnd.github.v3+json",
-        "Content-Type": "application/json",
-        "User-Agent": "Syncertica-Enterprise-Dashboard",
-      };
+      const response = await fetch(`${this.baseUrl}?action=trigger`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ workflowId, ref, inputs }),
+      });
 
-      if (this.token) {
-        headers["Authorization"] = `token ${this.token}`;
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Unknown error" }));
+        throw new Error(
+          errorData.error ||
+            `Failed to trigger workflow: ${response.statusText}`
+        );
       }
 
-      const response = await fetch(
-        `${this.baseUrl}/repos/${this.owner}/${this.repo}/actions/workflows/${workflowId}/dispatches`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ ref, inputs }),
-        }
-      );
-
-      return response.ok;
+      return true;
     } catch (error) {
       console.error("Error triggering workflow:", error);
       return false;
@@ -275,7 +265,9 @@ class GitHubActionsService {
    * Get workflow run logs URL
    */
   getLogsUrl(runId: number): string {
-    return `https://github.com/${this.owner}/${this.repo}/actions/runs/${runId}`;
+    const owner = process.env.NEXT_PUBLIC_GITHUB_OWNER || "anandavicky123";
+    const repo = process.env.NEXT_PUBLIC_GITHUB_REPO || "SyncerticaEnterprise";
+    return `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
   }
 
   /**
@@ -291,18 +283,12 @@ class GitHubActionsService {
     }>
   > {
     try {
-      const data = await this.request<{ 
-        artifacts: Array<{
-          id: number;
-          name: string;
-          size_in_bytes: number;
-          url: string;
-          archive_download_url: string;
-        }> 
-      }>(
-        `/repos/${this.owner}/${this.repo}/actions/runs/${runId}/artifacts`
+      // For now, return empty array since we don't have artifacts endpoint in our API
+      // You can extend the API route to handle artifacts if needed
+      console.warn(
+        `Artifacts endpoint not implemented in API route for run ${runId}`
       );
-      return data.artifacts;
+      return [];
     } catch (error) {
       console.error("Error fetching artifacts:", error);
       return [];
