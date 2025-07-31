@@ -10,10 +10,10 @@ if (!GITHUB_TOKEN) {
 }
 
 async function githubRequest(endpoint: string, options: RequestInit = {}) {
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
     "User-Agent": "Syncertica-Enterprise-Dashboard",
-    ...options.headers,
+    ...(options.headers as Record<string, string>),
   };
 
   if (GITHUB_TOKEN) {
