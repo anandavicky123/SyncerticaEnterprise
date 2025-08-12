@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { MessageSquare, StickyNote, Calendar } from "lucide-react";
+import {
+  MessageSquare,
+  StickyNote,
+  Calendar,
+  Folder,
+  Wrench,
+} from "lucide-react";
 
 // Components
 import Sidebar from "./Sidebar";
@@ -20,11 +26,14 @@ import WorkersManagement from "../contents/WorkersManagement";
 import CallChatModal from "./CallChatModal";
 import ProfileDropdown from "./ProfileDropdown";
 import CalendarModal from "./CalendarModal";
-import RepositoriesModal from "./RepositoriesModal";
+import WorkflowEditorModal from "./WorkflowEditorModal";
+import InfrastructureEditorModal from "./InfrastructureEditorModal";
+import ContainerEditorModal from "./ContainerEditorModal";
 
 // Hooks
 import { useStickyNotes } from "../hooks/useStickyNotes";
 import { useDragAndDrop } from "../hooks/useDragAndDrop";
+import { useGitHubData } from "../hooks/useGitHubData";
 
 // Constants and Types
 import {
@@ -32,21 +41,14 @@ import {
   sidebarItems,
   dashboardBlocks,
 } from "../shared/constants/dashboardData";
-import {
-  ToolbarItem,
-  StickyNote as StickyNoteType,
-  User,
-} from "../shared/types/dashboard";
+import { StickyNote as StickyNoteType, User } from "../shared/types/dashboard";
 
-interface SyncerticaEnterpriseProps {
+interface DashboardProps {
   user: User;
   onLogout: () => void;
 }
 
-const SyncerticaEnterprise: React.FC<SyncerticaEnterpriseProps> = ({
-  user,
-  onLogout,
-}) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [activeSection, setActiveSection] = useState("overview");
   const [stickyNotes, setStickyNotes] = useState<StickyNoteType[]>([]);
@@ -54,7 +56,12 @@ const SyncerticaEnterprise: React.FC<SyncerticaEnterpriseProps> = ({
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [showCallChat, setShowCallChat] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [showRepositories, setShowRepositories] = useState(false);
+
+  // DevOps modals
+  const [showWorkflowEditor, setShowWorkflowEditor] = useState(false);
+  const [showInfrastructureEditor, setShowInfrastructureEditor] =
+    useState(false);
+  const [showContainerEditor, setShowContainerEditor] = useState(false);
 
   const {
     addStickyNote,
@@ -64,8 +71,14 @@ const SyncerticaEnterprise: React.FC<SyncerticaEnterpriseProps> = ({
   } = useStickyNotes(stickyNotes, setStickyNotes);
 
   const { draggedNote, handleMouseDown } = useDragAndDrop(updateNotePosition);
+  const {
+    connectionStatus,
+    connectToGitHub,
+    disconnectFromGitHub,
+    refreshData,
+  } = useGitHubData();
 
-  const toolbarItems: ToolbarItem[] = [
+  const toolbarItems = [
     { name: "Add Note", icon: StickyNote, action: () => setShowAddNote(true) },
     {
       name: "Call/Chat",
@@ -73,11 +86,120 @@ const SyncerticaEnterprise: React.FC<SyncerticaEnterpriseProps> = ({
       action: () => setShowCallChat(true),
     },
     { name: "Calendar", icon: Calendar, action: () => setShowCalendar(true) },
+    {
+      name: "Repository",
+      icon: Folder,
+      dropdown: [
+        {
+          label: "Connect to GitHub",
+          action: connectToGitHub,
+          disabled: connectionStatus.connected,
+        },
+        {
+          label: "Refresh",
+          action: () => {
+            console.log("🔄 Toolbar Refresh clicked");
+            refreshData();
+          },
+        },
+        {
+          label: "Disconnect",
+          action: () => {
+            console.log("🔌 Toolbar Disconnect clicked");
+            disconnectFromGitHub();
+          },
+          disabled: !connectionStatus.connected,
+        },
+      ],
+    },
+    {
+      name: "DevOps Tools",
+      icon: Wrench,
+      dropdown: [
+        {
+          label: "Add Workflow",
+          action: () => {
+            console.log("Add workflow clicked");
+            setShowWorkflowEditor(true);
+          },
+        },
+        {
+          label: "Add Infrastructure",
+          action: () => {
+            console.log("Add infrastructure clicked");
+            setShowInfrastructureEditor(true);
+          },
+        },
+        {
+          label: "Add Container",
+          action: () => {
+            console.log("Add container clicked");
+            setShowContainerEditor(true);
+          },
+        },
+      ],
+    },
   ];
 
   const handleAddNote = (content: string, type: "text" | "checklist") => {
     addStickyNote(content, type);
     setShowAddNote(false);
+  };
+
+  // DevOps modal handlers
+  const handleSaveWorkflow = async (
+    content: string,
+    filename?: string,
+    repository?: string
+  ) => {
+    try {
+      console.log("Saving workflow:", { content, filename, repository });
+      alert(
+        "Workflow created successfully! (Note: This is a demo - actual GitHub integration would save to repository)"
+      );
+    } catch (error) {
+      console.error("Error saving workflow:", error);
+      alert("Failed to save workflow. Please try again.");
+    }
+  };
+
+  const handleSaveInfrastructure = async (
+    content: string,
+    filename?: string,
+    repository?: string,
+    type?: string
+  ) => {
+    try {
+      console.log("Saving infrastructure:", {
+        content,
+        filename,
+        repository,
+        type,
+      });
+      alert(
+        "Infrastructure created successfully! (Note: This is a demo - actual GitHub integration would save to repository)"
+      );
+    } catch (error) {
+      console.error("Error saving infrastructure:", error);
+      alert("Failed to save infrastructure. Please try again.");
+    }
+  };
+
+  const handleSaveContainer = async (
+    content: string,
+    filename?: string,
+    repository?: string,
+    type?: string
+  ) => {
+    try {
+      console.log("Saving container:", { content, filename, repository, type });
+      alert(
+        "Container configuration created successfully! (Note: This is a demo - actual GitHub integration would save to repository)"
+      );
+    } catch (error) {
+      console.error("Error saving container:", error);
+      alert("Failed to save container. Please try again.");
+    }
   };
 
   const getAllBlocks = (section: string) => {
@@ -104,11 +226,10 @@ const SyncerticaEnterprise: React.FC<SyncerticaEnterpriseProps> = ({
 
         {/* Toolbar */}
         <div className="border-b border-gray-200 dark:border-gray-600 p-4 flex items-center justify-between bg-white dark:bg-gray-800">
-          <Toolbar
-            toolbarItems={toolbarItems}
-            onRepositoriesClick={() => setShowRepositories(true)}
-          />
-          <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <Toolbar toolbarItems={toolbarItems} />
+          </div>
+          <div className="flex items-center gap-2 ml-4">
             <RealtimeNotifications />
             <ProfileDropdown user={user} onLogout={onLogout} />
           </div>
@@ -176,13 +297,32 @@ const SyncerticaEnterprise: React.FC<SyncerticaEnterpriseProps> = ({
         onClose={() => setShowCalendar(false)}
       />
 
-      {/* Repositories Modal */}
-      <RepositoriesModal
-        isOpen={showRepositories}
-        onClose={() => setShowRepositories(false)}
+      {/* DevOps Tool Modals */}
+      <WorkflowEditorModal
+        isOpen={showWorkflowEditor}
+        onClose={() => setShowWorkflowEditor(false)}
+        workflow={null}
+        mode="create"
+        onSave={handleSaveWorkflow}
+      />
+
+      <InfrastructureEditorModal
+        isOpen={showInfrastructureEditor}
+        onClose={() => setShowInfrastructureEditor(false)}
+        infrastructure={null}
+        mode="create"
+        onSave={handleSaveInfrastructure}
+      />
+
+      <ContainerEditorModal
+        isOpen={showContainerEditor}
+        onClose={() => setShowContainerEditor(false)}
+        container={null}
+        mode="create"
+        onSave={handleSaveContainer}
       />
     </div>
   );
 };
 
-export default SyncerticaEnterprise;
+export default Dashboard;

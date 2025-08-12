@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocalization } from "../shared/localization";
+import { useSettings } from "../shared/contexts/SettingsContext";
 
 const dateFormats = [
   { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
@@ -31,34 +32,20 @@ const languages = [
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (settings: {
-    dateFormat: string;
-    timeFormat: string;
-    language: string;
-  }) => void;
-  initialSettings: {
-    dateFormat: string;
-    timeFormat: string;
-    language: string;
-  };
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({
-  isOpen,
-  onClose,
-  onSave,
-  initialSettings,
-}) => {
-  const [dateFormat, setDateFormat] = useState(initialSettings.dateFormat);
-  const [timeFormat, setTimeFormat] = useState(initialSettings.timeFormat);
-  const [language, setLanguage] = useState(initialSettings.language);
+const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+  const { settings, updateSettings } = useSettings();
+  const [dateFormat, setDateFormat] = useState(settings.dateFormat);
+  const [timeFormat, setTimeFormat] = useState(settings.timeFormat);
+  const [language, setLanguage] = useState(settings.language);
   const { t, setLanguage: setGlobalLanguage } = useLocalization();
 
   useEffect(() => {
-    setDateFormat(initialSettings.dateFormat);
-    setTimeFormat(initialSettings.timeFormat);
-    setLanguage(initialSettings.language);
-  }, [initialSettings]);
+    setDateFormat(settings.dateFormat);
+    setTimeFormat(settings.timeFormat);
+    setLanguage(settings.language);
+  }, [settings]);
 
   if (!isOpen) return null;
 
@@ -143,7 +130,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   | "de"
                   | "ru"
               );
-              onSave({ dateFormat, timeFormat, language });
+              updateSettings({ dateFormat, timeFormat, language });
+              onClose();
             }}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >

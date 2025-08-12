@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, X, Plus, Bell } from "lucide-react";
+import { useSettings } from "../shared/contexts/SettingsContext";
+import { useLocalization } from "../shared/localization";
 
 interface CalendarEvent {
   id: string;
@@ -23,6 +25,9 @@ const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
   const [eventTitle, setEventTitle] = useState("");
   const [eventType, setEventType] = useState<"memo" | "alarm">("memo");
   const [eventTime, setEventTime] = useState("");
+
+  const { formatDate: formatUserDate } = useSettings();
+  const { t } = useLocalization();
 
   // Check for alarms and send notifications
   useEffect(() => {
@@ -164,7 +169,9 @@ const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-auto">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Calendar</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            {t("calendar")}
+          </h2>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
             <X className="w-5 h-5 text-gray-600" />
           </button>
@@ -222,12 +229,12 @@ const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
           <div className="mt-6 flex gap-4 text-sm">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-blue-500 rounded"></div>
-              <span>Today</span>
+              <span>{t("today")}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-gray-200 rounded"></div>
               <div className="w-1 h-1 bg-blue-500 rounded-full"></div>
-              <span>Has Events</span>
+              <span>{t("hasEvents")}</span>
             </div>
           </div>
         </div>
@@ -235,10 +242,7 @@ const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
         {showEventForm && selectedDate && (
           <div className="border-t border-gray-200 p-6 bg-gray-50">
             <h4 className="font-medium mb-4">
-              Add Event for{" "}
-              {selectedDate.toLocaleDateString(
-                Intl.DateTimeFormat().resolvedOptions().locale
-              )}
+              {t("addEventFor")} {formatUserDate(selectedDate)}
             </h4>
             <div className="space-y-4">
               <div>
@@ -301,7 +305,7 @@ const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
                   }}
                   className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
               </div>
             </div>
@@ -309,14 +313,10 @@ const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
             {/* Show events for selected date below the form */}
             <div className="mt-6">
               <h5 className="font-medium mb-2">
-                Events for{" "}
-                {selectedDate.toLocaleDateString(
-                  Intl.DateTimeFormat().resolvedOptions().locale
-                )}
-                :
+                {t("eventsFor")} {formatUserDate(selectedDate)}:
               </h5>
               {getEvents(formatDate(selectedDate)).length === 0 ? (
-                <div className="text-gray-500">No events for this date.</div>
+                <div className="text-gray-500">{t("noEvents")}</div>
               ) : (
                 <ul className="space-y-2">
                   {getEvents(formatDate(selectedDate)).map((event) => (

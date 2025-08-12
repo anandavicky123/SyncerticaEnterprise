@@ -16,11 +16,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settings, setSettings] = useState({
-    dateFormat: "DD/MM/YYYY",
-    timeFormat: "24",
-    language: "en",
-  });
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,45 +46,20 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
         return "bg-gray-100 text-gray-800";
     }
   };
-  const { t, setLanguage } = useLocalization();
-
-  const handleSettingsSave = (newSettings: {
-    dateFormat: string;
-    timeFormat: string;
-    language: string;
-  }) => {
-    setSettings(newSettings);
-    setLanguage(
-      newSettings.language as
-        | "en"
-        | "id"
-        | "ja"
-        | "es"
-        | "fr"
-        | "pt"
-        | "ko"
-        | "zh-Hant"
-        | "zh-Hans"
-        | "ar"
-        | "it"
-        | "de"
-        | "ru"
-    );
-    setSettingsOpen(false);
-  };
+  const { t } = useLocalization();
 
   return (
     <div className="relative" ref={dropdownRef}>
       <Tooltip content={t("profile") + " menu"}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors min-w-0"
         >
-          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
             <User className="w-4 h-4 text-white" />
           </div>
-          <div className="hidden md:block text-left">
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
+          <div className="hidden md:block text-left min-w-0 flex-1">
+            <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
               {user.name}
             </div>
             <div
@@ -101,7 +71,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
             </div>
           </div>
           <ChevronDown
-            className={`w-4 h-4 text-gray-600 transition-transform ${
+            className={`w-4 h-4 text-gray-600 transition-transform flex-shrink-0 ${
               isOpen ? "rotate-180" : ""
             }`}
           />
@@ -109,17 +79,17 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
       </Tooltip>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
                 <User className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <div className="font-medium text-gray-900 dark:text-white">
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-gray-900 dark:text-white truncate">
                   {user.name}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-300">
+                <div className="text-sm text-gray-600 dark:text-gray-300 truncate">
                   {user.email}
                 </div>
                 <div
@@ -166,8 +136,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        onSave={handleSettingsSave}
-        initialSettings={settings}
       />
     </div>
   );
