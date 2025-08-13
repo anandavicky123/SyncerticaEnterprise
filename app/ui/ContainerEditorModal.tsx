@@ -282,10 +282,10 @@ CMD ["npm", "start"]`;
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-5/6 flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center gap-3">
             <Container className="w-6 h-6 text-purple-500" />
             <h2 className="text-xl font-semibold text-gray-900">
@@ -318,7 +318,7 @@ CMD ["npm", "start"]`;
 
         {/* Form Fields */}
         {mode === "create" && (
-          <div className="p-6 border-b border-gray-200 bg-gray-50">
+          <div className="p-6 border-b border-gray-200 bg-gray-50 flex-shrink-0">
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -371,13 +371,13 @@ CMD ["npm", "start"]`;
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="w-full h-full min-h-96 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
+            className="w-full h-80 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm resize-none overflow-y-auto"
             placeholder="Enter your container configuration here..."
           />
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50">
+        <div className="p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-500">
               {mode === "edit" && container

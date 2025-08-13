@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MessageSquare,
   StickyNote,
   Calendar,
   Folder,
   Wrench,
+  Users,
+  CheckSquare,
 } from "lucide-react";
 
 // Components
@@ -29,6 +31,8 @@ import CalendarModal from "./CalendarModal";
 import WorkflowEditorModal from "./WorkflowEditorModal";
 import InfrastructureEditorModal from "./InfrastructureEditorModal";
 import ContainerEditorModal from "./ContainerEditorModal";
+import CreateTaskModal from "./CreateTaskModal";
+import AddWorkerModal from "./AddWorkerModal";
 
 // Hooks
 import { useStickyNotes } from "../hooks/useStickyNotes";
@@ -38,10 +42,18 @@ import { useGitHubData } from "../hooks/useGitHubData";
 // Constants and Types
 import {
   sections,
-  sidebarItems,
+  sidebarItems as staticSidebarItems,
   dashboardBlocks,
 } from "../shared/constants/dashboardData";
-import { StickyNote as StickyNoteType, User } from "../shared/types/dashboard";
+import {
+  StickyNote as StickyNoteType,
+  User,
+  SidebarSection,
+} from "../shared/types/dashboard";
+import {
+  getDatabaseStats,
+  generateDynamicSidebarItems,
+} from "../../lib/sidebar-stats-client";
 
 interface DashboardProps {
   user: User;
@@ -57,11 +69,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [showCallChat, setShowCallChat] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
 
+  // Dynamic sidebar items based on database statistics
+  const [sidebarItems, setSidebarItems] =
+    useState<SidebarSection[]>(staticSidebarItems);
+  const [statsLoading, setStatsLoading] = useState(false);
+
   // DevOps modals
   const [showWorkflowEditor, setShowWorkflowEditor] = useState(false);
   const [showInfrastructureEditor, setShowInfrastructureEditor] =
     useState(false);
   const [showContainerEditor, setShowContainerEditor] = useState(false);
+
+  // Task and Worker modals
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [showAddWorker, setShowAddWorker] = useState(false);
 
   const {
     addStickyNote,
@@ -78,6 +99,32 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     refreshData,
   } = useGitHubData();
 
+  // Function to update sidebar statistics from database
+  const updateSidebarStats = async () => {
+    try {
+      setStatsLoading(true);
+      const stats = await getDatabaseStats();
+      const dynamicItems = generateDynamicSidebarItems(stats);
+      setSidebarItems(dynamicItems);
+    } catch (error) {
+      console.error("Error fetching sidebar statistics:", error);
+      // Fallback to static items if there's an error
+      setSidebarItems(staticSidebarItems);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  // Update stats when component mounts
+  useEffect(() => {
+    updateSidebarStats();
+  }, []);
+
+  // Update stats when tasks or workers change (can be triggered by modals)
+  const refreshSidebarStats = () => {
+    updateSidebarStats();
+  };
+
   const toolbarItems = [
     { name: "Add Note", icon: StickyNote, action: () => setShowAddNote(true) },
     {
@@ -86,6 +133,26 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       action: () => setShowCallChat(true),
     },
     { name: "Calendar", icon: Calendar, action: () => setShowCalendar(true) },
+    {
+      name: "Task Management",
+      icon: CheckSquare,
+      dropdown: [
+        {
+          label: "Create Task",
+          action: () => setShowCreateTask(true),
+        },
+      ],
+    },
+    {
+      name: "Workers",
+      icon: Users,
+      dropdown: [
+        {
+          label: "Add Worker",
+          action: () => setShowAddWorker(true),
+        },
+      ],
+    },
     {
       name: "Repository",
       icon: Folder,
@@ -199,6 +266,71 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     } catch (error) {
       console.error("Error saving container:", error);
       alert("Failed to save container. Please try again.");
+    }
+  };
+
+  // Task and Worker handlers
+  const handleCreateTask = async (taskData: {
+    title: string;
+    description: string;
+    assignedTo: string;
+    assignedBy: string;
+    priority: string;
+    dueDate?: string;
+    estimatedHours?: number;
+    tags: string[];
+  }) => {
+    try {
+      const response = await fetch("/api/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(taskData),
+      });
+
+      if (response.ok) {
+        const newTask = await response.json();
+        console.log("✅ Task created successfully:", newTask);
+        alert("Task created successfully!");
+        // Refresh sidebar statistics after successful task creation
+        await updateSidebarStats();
+      } else {
+        throw new Error("Failed to create task");
+      }
+    } catch (error) {
+      console.error("Error creating task:", error);
+      throw error;
+    }
+  };
+
+  const handleAddWorker = async (workerData: {
+    name: string;
+    pronouns: string;
+    jobRole: "UI/UX Designer" | "Developer" | "Manager" | "QA";
+    email: string;
+  }) => {
+    try {
+      const response = await fetch("/api/workers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(workerData),
+      });
+
+      if (response.ok) {
+        const newWorker = await response.json();
+        console.log("✅ Worker added successfully:", newWorker);
+        alert("Worker added successfully!");
+        // Refresh sidebar statistics after successful worker addition
+        await updateSidebarStats();
+      } else {
+        throw new Error("Failed to add worker");
+      }
+    } catch (error) {
+      console.error("Error adding worker:", error);
+      throw error;
     }
   };
 
@@ -320,6 +452,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         container={null}
         mode="create"
         onSave={handleSaveContainer}
+      />
+
+      {/* Task and Worker Modals */}
+      <CreateTaskModal
+        isOpen={showCreateTask}
+        onClose={() => setShowCreateTask(false)}
+        onCreateTask={handleCreateTask}
+        currentUserId="admin-1"
+      />
+
+      <AddWorkerModal
+        isOpen={showAddWorker}
+        onClose={() => setShowAddWorker(false)}
+        onAddWorker={handleAddWorker}
       />
     </div>
   );

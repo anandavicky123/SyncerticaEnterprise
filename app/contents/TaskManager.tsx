@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   Filter,
@@ -17,8 +17,12 @@ import {
   MoreHorizontal,
   MessageSquare,
   Paperclip,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { Task, User as UserType } from "../shared/types/dashboard";
+import CreateTaskModal from "../ui/CreateTaskModal";
+import EditTaskModal from "../ui/EditTaskModal";
 
 interface TaskManagerProps {
   className?: string;
@@ -26,111 +30,174 @@ interface TaskManagerProps {
 }
 
 const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: "task-1",
-      title: "Set up AWS Lambda functions for user authentication",
-      description:
-        "Implement serverless authentication using AWS Lambda and Cognito integration with JWT token validation.",
-      status: "doing",
-      priority: "high",
-      assignedTo: "employee-1",
-      assignedBy: "admin-1",
-      createdAt: "2024-01-15T10:00:00Z",
-      updatedAt: "2024-01-16T14:30:00Z",
-      dueDate: "2024-01-20T17:00:00Z",
-      tags: ["aws", "lambda", "authentication"],
-      estimatedHours: 16,
-      actualHours: 12,
-      stepFunctionArn:
-        "arn:aws:states:us-east-1:123456789:stateMachine:TaskWorkflow",
-    },
-    {
-      id: "task-2",
-      title: "Design DynamoDB schema for user data",
-      description:
-        "Create efficient NoSQL schema design for user profiles, permissions, and session management.",
-      status: "todo",
-      priority: "medium",
-      assignedTo: "employee-1",
-      assignedBy: "manager-1",
-      createdAt: "2024-01-16T09:00:00Z",
-      updatedAt: "2024-01-16T09:00:00Z",
-      dueDate: "2024-01-25T17:00:00Z",
-      tags: ["aws", "dynamodb", "database"],
-      estimatedHours: 8,
-    },
-    {
-      id: "task-3",
-      title: "Implement CloudWatch monitoring dashboard",
-      description:
-        "Set up comprehensive monitoring with custom metrics, alarms, and automated alerting system.",
-      status: "done",
-      priority: "medium",
-      assignedTo: "admin-1",
-      assignedBy: "admin-1",
-      createdAt: "2024-01-10T08:00:00Z",
-      updatedAt: "2024-01-14T16:00:00Z",
-      dueDate: "2024-01-15T17:00:00Z",
-      tags: ["aws", "cloudwatch", "monitoring"],
-      estimatedHours: 12,
-      actualHours: 10,
-    },
-    {
-      id: "task-4",
-      title: "Security audit and penetration testing",
-      description:
-        "Conduct comprehensive security assessment including AWS Security Hub integration and compliance checks.",
-      status: "blocked",
-      priority: "critical",
-      assignedTo: "manager-1",
-      assignedBy: "admin-1",
-      createdAt: "2024-01-17T11:00:00Z",
-      updatedAt: "2024-01-17T15:00:00Z",
-      dueDate: "2024-01-30T17:00:00Z",
-      tags: ["security", "audit", "compliance"],
-      estimatedHours: 24,
-      actualHours: 4,
-    },
-  ]);
-
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [showEditTask, setShowEditTask] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filter, setFilter] = useState<
     "all" | "todo" | "doing" | "done" | "blocked"
   >("all");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const users: Record<string, UserType> = {
-    "admin-1": {
-      id: "admin-1",
-      name: "John Admin",
-      email: "admin@syncertica.com",
-      role: "admin",
-      department: "IT",
-      lastLogin: "",
-      cognitoId: "",
-      permissions: [],
-    },
-    "employee-1": {
-      id: "employee-1",
-      name: "Jane Employee",
-      email: "employee@syncertica.com",
-      role: "employee",
-      department: "Development",
-      lastLogin: "",
-      cognitoId: "",
-      permissions: [],
-    },
-    "manager-1": {
-      id: "manager-1",
-      name: "Mike Manager",
-      email: "manager@syncertica.com",
-      role: "manager",
-      department: "Operations",
-      lastLogin: "",
-      cognitoId: "",
-      permissions: [],
-    },
+  // Fetch tasks from database
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/tasks");
+      if (response.ok) {
+        const tasksData = await response.json();
+        setTasks(tasksData);
+      }
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleCreateTask = async (taskData: {
+    title: string;
+    description: string;
+    assignedTo: string;
+    assignedBy: string;
+    priority: string;
+    dueDate?: string;
+    estimatedHours?: number;
+    tags: string[];
+  }) => {
+    try {
+      const response = await fetch("/api/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(taskData),
+      });
+
+      if (response.ok) {
+        const newTask = await response.json();
+        setTasks((prev) => [newTask, ...prev]);
+        console.log("✅ Task created successfully:", newTask);
+      } else {
+        throw new Error("Failed to create task");
+      }
+    } catch (error) {
+      console.error("Error creating task:", error);
+      throw error;
+    }
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setShowEditTask(true);
+  };
+
+  const handleUpdateTask = async (taskData: {
+    id: string;
+    title: string;
+    description: string;
+    assignedTo: string;
+    priority: string;
+    status: string;
+    dueDate?: string;
+    estimatedHours?: number;
+    tags: string[];
+  }) => {
+    try {
+      const response = await fetch("/api/tasks", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(taskData),
+      });
+
+      if (response.ok) {
+        const updatedTask = await response.json();
+        setTasks((prev) =>
+          prev.map((task) => (task.id === taskData.id ? updatedTask : task))
+        );
+        console.log("✅ Task updated successfully:", updatedTask);
+      } else {
+        throw new Error("Failed to update task");
+      }
+    } catch (error) {
+      console.error("Error updating task:", error);
+      throw error;
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm("Are you sure you want to delete this task?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/tasks?id=${taskId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setTasks((prev) => prev.filter((task) => task.id !== taskId));
+        console.log("✅ Task deleted successfully");
+      } else {
+        throw new Error("Failed to delete task");
+      }
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      alert("Failed to delete task. Please try again.");
+    }
+  };
+
+  const [workers, setWorkers] = useState<{
+    [key: string]: { name: string; email?: string };
+  }>({});
+
+  // Fetch workers to display names
+  const fetchWorkers = async () => {
+    try {
+      const response = await fetch("/api/workers");
+      if (response.ok) {
+        const workersData = await response.json();
+        const workersMap = workersData.reduce((acc: any, worker: any) => {
+          acc[worker.id] = { name: worker.name, email: worker.email };
+          return acc;
+        }, {});
+        setWorkers(workersMap);
+      }
+    } catch (error) {
+      console.error("Error fetching workers:", error);
+    }
+  };
+
+  // Fetch workers when component mounts
+  useEffect(() => {
+    fetchWorkers();
+  }, []);
+
+  // Convert workers to users format for backward compatibility
+  const users: Record<string, UserType> = Object.keys(workers).reduce(
+    (acc, workerId) => {
+      const worker = workers[workerId];
+      acc[workerId] = {
+        id: workerId,
+        name: worker.name,
+        email: worker.email || `${workerId}@syncertica.com`,
+        role: "employee", // Default role, can be enhanced later
+        department: "Development", // Default department, can be enhanced later
+        lastLogin: "",
+        cognitoId: "",
+        permissions: [],
+      };
+      return acc;
+    },
+    {} as Record<string, UserType>
+  );
 
   const filteredTasks = tasks.filter((task) => {
     const matchesFilter = filter === "all" || task.status === filter;
@@ -188,21 +255,38 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
     }
   };
 
-  const updateTaskStatus = (taskId: string, newStatus: Task["status"]) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId
-          ? { ...task, status: newStatus, updatedAt: new Date().toISOString() }
-          : task
-      )
-    );
+  const updateTaskStatus = async (
+    taskId: string,
+    newStatus: Task["status"]
+  ) => {
+    try {
+      const response = await fetch("/api/tasks", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: taskId,
+          status: newStatus,
+        }),
+      });
 
-    // Simulate AWS Step Functions workflow
-    console.log(
-      `🔄 AWS Step Functions: Task ${taskId} status changed to ${newStatus}`
-    );
-    console.log(`📊 Triggering CloudWatch metrics update`);
-    console.log(`📨 SNS notification sent to stakeholders`);
+      if (response.ok) {
+        const updatedTask = await response.json();
+        setTasks((prev) =>
+          prev.map((task) => (task.id === taskId ? updatedTask : task))
+        );
+
+        // Simulate AWS Step Functions workflow
+        console.log(
+          `🔄 AWS Step Functions: Task ${taskId} status changed to ${newStatus}`
+        );
+        console.log(`📊 Triggering CloudWatch metrics update`);
+        console.log(`📨 SNS notification sent to stakeholders`);
+      }
+    } catch (error) {
+      console.error("Error updating task status:", error);
+    }
   };
 
   const getTaskStats = () => {
@@ -227,7 +311,10 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
             Powered by AWS Step Functions & DynamoDB
           </p>
         </div>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+        <button
+          onClick={() => setShowCreateTask(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+        >
           <Plus className="w-4 h-4" />
           Create Task
         </button>
@@ -410,6 +497,20 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleEditTask(task)}
+                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                  title="Edit task"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDeleteTask(task.id)}
+                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                  title="Delete task"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
                 <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                   <MessageSquare className="w-4 h-4" />
                 </button>
@@ -445,6 +546,25 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
           </div>
         </div>
       </div>
+
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        isOpen={showCreateTask}
+        onClose={() => setShowCreateTask(false)}
+        onCreateTask={handleCreateTask}
+        currentUserId="admin-1"
+      />
+
+      {/* Edit Task Modal */}
+      <EditTaskModal
+        isOpen={showEditTask}
+        onClose={() => {
+          setShowEditTask(false);
+          setEditingTask(null);
+        }}
+        onUpdateTask={handleUpdateTask}
+        task={editingTask}
+      />
     </div>
   );
 };

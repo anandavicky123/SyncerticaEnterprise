@@ -18,6 +18,7 @@ import {
   Eye,
   Settings,
   FileText,
+  Plus,
 } from "lucide-react";
 import { useGitHubData } from "../hooks/useGitHubData";
 import WorkflowEditorModal from "../ui/WorkflowEditorModal";
@@ -433,6 +434,17 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
               <h3 className="text-lg font-semibold text-gray-900">
                 Workflow Files ({workflows.length})
               </h3>
+              <button
+                onClick={() => {
+                  setSelectedWorkflow(null);
+                  setEditorMode("create");
+                  setShowWorkflowEditor(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Workflow
+              </button>
             </div>
 
             {workflows.length === 0 ? (
@@ -519,6 +531,17 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
               <h3 className="text-lg font-semibold text-gray-900">
                 Infrastructure Files ({infrastructure.length})
               </h3>
+              <button
+                onClick={() => {
+                  setSelectedInfrastructure(null);
+                  setEditorMode("create");
+                  setShowInfrastructureEditor(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Infrastructure
+              </button>
             </div>
 
             {infrastructure.length === 0 ? (
@@ -594,6 +617,17 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
               <h3 className="text-lg font-semibold text-gray-900">
                 Container Files ({containers.length})
               </h3>
+              <button
+                onClick={() => {
+                  setSelectedContainer(null);
+                  setEditorMode("create");
+                  setShowContainerEditor(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Container
+              </button>
             </div>
 
             {containers.length === 0 ? (

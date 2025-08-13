@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   Trash2,
@@ -14,6 +14,7 @@ import {
   Shield,
   Settings,
 } from "lucide-react";
+import AddWorkerModal from "../ui/AddWorkerModal";
 
 interface Worker {
   id: string;
@@ -31,52 +32,80 @@ interface WorkersManagementProps {
 const WorkersManagement: React.FC<WorkersManagementProps> = ({
   className = "",
 }) => {
-  const [workers, setWorkers] = useState<Worker[]>([
-    {
-      id: "1",
-      name: "Alice Johnson",
-      pronouns: "she/her",
-      jobRole: "UI/UX Designer",
-      email: "alice.johnson@syncertica.com",
-    },
-    {
-      id: "2",
-      name: "Bob Smith",
-      pronouns: "he/him",
-      jobRole: "Developer",
-      email: "bob.smith@syncertica.com",
-    },
-    {
-      id: "3",
-      name: "Charlie Davis",
-      pronouns: "they/them",
-      jobRole: "Manager",
-      email: "charlie.davis@syncertica.com",
-    },
-    {
-      id: "4",
-      name: "Diana Lee",
-      pronouns: "she/her",
-      jobRole: "QA",
-      email: "diana.lee@syncertica.com",
-    },
-    {
-      id: "5",
-      name: "Ethan Wilson",
-      pronouns: "he/him",
-      jobRole: "Developer",
-      email: "ethan.wilson@syncertica.com",
-    },
-  ]);
-
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
-  const [newWorker, setNewWorker] = useState({
-    name: "",
-    pronouns: "",
-    jobRole: "Developer" as Worker["jobRole"],
-    email: "",
-  });
+
+  // Fetch workers from database
+  useEffect(() => {
+    fetchWorkers();
+  }, []);
+
+  const fetchWorkers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/workers");
+      if (response.ok) {
+        const workersData = await response.json();
+        setWorkers(workersData);
+      }
+    } catch (error) {
+      console.error("Error fetching workers:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddWorker = async (workerData: {
+    name: string;
+    pronouns: string;
+    jobRole: Worker["jobRole"];
+    email: string;
+  }) => {
+    try {
+      if (editingWorker) {
+        // Update existing worker
+        const response = await fetch("/api/workers", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: editingWorker.id,
+            ...workerData,
+          }),
+        });
+
+        if (response.ok) {
+          const updatedWorker = await response.json();
+          setWorkers((prev) =>
+            prev.map((worker) =>
+              worker.id === editingWorker.id ? updatedWorker : worker
+            )
+          );
+          setEditingWorker(null);
+        }
+      } else {
+        // Create new worker
+        const response = await fetch("/api/workers", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(workerData),
+        });
+
+        if (response.ok) {
+          const newWorker = await response.json();
+          setWorkers((prev) => [...prev, newWorker]);
+        }
+      }
+    } catch (error) {
+      console.error("Error saving worker:", error);
+      throw error;
+    }
+  };
 
   // Calculate statistics
   const totalWorkers = workers.length;
@@ -115,55 +144,31 @@ const WorkersManagement: React.FC<WorkersManagementProps> = ({
     }
   };
 
-  const handleAddWorker = () => {
-    if (newWorker.name && newWorker.pronouns) {
-      const worker: Worker = {
-        id: Date.now().toString(),
-        name: newWorker.name,
-        pronouns: newWorker.pronouns,
-        jobRole: newWorker.jobRole,
-        email: newWorker.email || undefined,
-      };
-      setWorkers([...workers, worker]);
-      setNewWorker({ name: "", pronouns: "", jobRole: "Developer", email: "" });
-      setShowAddModal(false);
-    }
-  };
-
   const handleEditWorker = (worker: Worker) => {
     setEditingWorker(worker);
-    setNewWorker({
-      name: worker.name,
-      pronouns: worker.pronouns,
-      jobRole: worker.jobRole,
-      email: worker.email || "",
-    });
     setShowAddModal(true);
   };
 
-  const handleUpdateWorker = () => {
-    if (editingWorker && newWorker.name && newWorker.pronouns) {
-      setWorkers(
-        workers.map((worker) =>
-          worker.id === editingWorker.id
-            ? {
-                ...worker,
-                name: newWorker.name,
-                pronouns: newWorker.pronouns,
-                jobRole: newWorker.jobRole,
-                email: newWorker.email || undefined,
-              }
-            : worker
-        )
-      );
-      setEditingWorker(null);
-      setNewWorker({ name: "", pronouns: "", jobRole: "Developer", email: "" });
-      setShowAddModal(false);
+  const handleRemoveWorker = async (workerId: string) => {
+    if (!confirm("Are you sure you want to delete this worker?")) {
+      return;
     }
-  };
 
-  const handleRemoveWorker = (workerId: string) => {
-    setWorkers(workers.filter((worker) => worker.id !== workerId));
+    try {
+      const response = await fetch(`/api/workers?id=${workerId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setWorkers((prev) => prev.filter((worker) => worker.id !== workerId));
+        console.log("✅ Worker deleted successfully");
+      } else {
+        throw new Error("Failed to delete worker");
+      }
+    } catch (error) {
+      console.error("Error deleting worker:", error);
+      alert("Failed to delete worker. Please try again.");
+    }
   };
 
   const handleChat = (worker: Worker) => {
@@ -334,105 +339,15 @@ const WorkersManagement: React.FC<WorkersManagementProps> = ({
       </div>
 
       {/* Add/Edit Worker Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingWorker ? "Edit Worker" : "Add New Worker"}
-              </h3>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={newWorker.name}
-                  onChange={(e) =>
-                    setNewWorker({ ...newWorker, name: e.target.value })
-                  }
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter worker name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Pronouns *
-                </label>
-                <input
-                  type="text"
-                  value={newWorker.pronouns}
-                  onChange={(e) =>
-                    setNewWorker({ ...newWorker, pronouns: e.target.value })
-                  }
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., he/him, she/her, they/them"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Job Role *
-                </label>
-                <select
-                  value={newWorker.jobRole}
-                  onChange={(e) =>
-                    setNewWorker({
-                      ...newWorker,
-                      jobRole: e.target.value as Worker["jobRole"],
-                    })
-                  }
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="Developer">Developer</option>
-                  <option value="UI/UX Designer">UI/UX Designer</option>
-                  <option value="Manager">Manager</option>
-                  <option value="QA">QA</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={newWorker.email}
-                  onChange={(e) =>
-                    setNewWorker({ ...newWorker, email: e.target.value })
-                  }
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter email address"
-                />
-              </div>
-            </div>
-            <div className="p-6 border-t border-gray-200 flex gap-3 justify-end">
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setEditingWorker(null);
-                  setNewWorker({
-                    name: "",
-                    pronouns: "",
-                    jobRole: "Developer",
-                    email: "",
-                  });
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={editingWorker ? handleUpdateWorker : handleAddWorker}
-                disabled={!newWorker.name || !newWorker.pronouns}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {editingWorker ? "Update" : "Add"} Worker
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AddWorkerModal
+        isOpen={showAddModal}
+        onClose={() => {
+          setShowAddModal(false);
+          setEditingWorker(null);
+        }}
+        onAddWorker={handleAddWorker}
+        editingWorker={editingWorker}
+      />
     </div>
   );
 };
