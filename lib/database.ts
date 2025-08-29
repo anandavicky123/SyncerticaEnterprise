@@ -310,6 +310,8 @@ class DatabaseManager {
       name: string;
       pronouns: string;
       jobRole: string;
+      email: string;
+      avatar: string;
     }
 
     const rows = this.db
