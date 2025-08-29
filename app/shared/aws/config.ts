@@ -4,8 +4,6 @@ import { LambdaClient } from "@aws-sdk/client-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { CloudWatchClient } from "@aws-sdk/client-cloudwatch";
 import { S3Client } from "@aws-sdk/client-s3";
-import { SNSClient } from "@aws-sdk/client-sns";
-import { SQSClient } from "@aws-sdk/client-sqs";
 
 // AWS Configuration
 const awsConfig = {
@@ -23,8 +21,6 @@ export const lambdaClient = new LambdaClient(awsConfig);
 export const dynamodbClient = new DynamoDBClient(awsConfig);
 export const cloudwatchClient = new CloudWatchClient(awsConfig);
 export const s3Client = new S3Client(awsConfig);
-export const snsClient = new SNSClient(awsConfig);
-export const sqsClient = new SQSClient(awsConfig);
 
 // AWS Service Names and Endpoints
 export const AWS_SERVICES = {
@@ -35,8 +31,6 @@ export const AWS_SERVICES = {
   DYNAMODB_TABLE_NAME:
     process.env.DYNAMODB_TABLE_NAME || "syncertica-enterprise-sessions",
   S3_BUCKET_NAME: process.env.S3_BUCKET_NAME || "syncertica-enterprise-assets",
-  SNS_TOPIC_ARN: process.env.SNS_TOPIC_ARN || "",
-  SQS_QUEUE_URL: process.env.SQS_QUEUE_URL || "",
 } as const;
 
 // Helper function to check if AWS is configured

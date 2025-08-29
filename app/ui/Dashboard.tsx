@@ -21,7 +21,6 @@ import AddNoteModal from "./AddNoteModal";
 import RealtimeNotifications from "./RealtimeNotifications";
 import DataVisualizationDashboard from "../contents/DataVisualizationDashboard";
 import SecurityDashboard from "../contents/SecurityDashboard";
-import AIAssistant from "../contents/AIAssistant";
 import TaskManager from "../contents/TaskManager";
 import Projects from "../contents/Projects";
 import WorkersManagement from "../contents/WorkersManagement";
@@ -65,7 +64,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [activeSection, setActiveSection] = useState("overview");
   const [stickyNotes, setStickyNotes] = useState<StickyNoteType[]>([]);
   const [showAddNote, setShowAddNote] = useState(false);
-  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [showCallChat, setShowCallChat] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
 
@@ -409,12 +407,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           />
         </div>
       </div>
-
-      {/* Floating AI Assistant */}
-      <AIAssistant
-        isOpen={aiAssistantOpen}
-        onToggle={() => setAiAssistantOpen(!aiAssistantOpen)}
-      />
 
       {/* Call/Chat Modal */}
       <CallChatModal
