@@ -427,9 +427,9 @@ class DatabaseManager {
   getAllTasks(): Task[] {
     const rows = this.db
       .prepare("SELECT * FROM tasks ORDER BY createdAt DESC")
-      .all();
+      .all() as TaskRow[];
 
-    return rows.map((row: TaskRow) => ({
+    return rows.map((row) => ({
       id: row.id,
       title: row.title,
       description: row.description,
