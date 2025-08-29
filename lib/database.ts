@@ -39,6 +39,43 @@ export interface Project {
   updatedAt: string;
 }
 
+// Database row type interfaces
+interface WorkerRow {
+  id: string;
+  name: string;
+  pronouns: string;
+  jobRole: string;
+  email: string;
+  avatar: string;
+}
+
+interface TaskRow {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  assignedTo: string;
+  assignedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  dueDate?: string;
+  tags?: string;
+  estimatedHours?: number;
+  actualHours?: number;
+  stepFunctionArn?: string;
+}
+
+interface ProjectRow {
+  id: string;
+  name: string;
+  description?: string;
+  repository?: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 class DatabaseManager {
   private db: Database.Database;
   private dbPath: string;
@@ -305,15 +342,6 @@ class DatabaseManager {
 
   // Worker methods
   getAllWorkers(): Worker[] {
-    interface WorkerRow {
-      id: string;
-      name: string;
-      pronouns: string;
-      jobRole: string;
-      email: string;
-      avatar: string;
-    }
-
     const rows = this.db
       .prepare("SELECT * FROM workers ORDER BY name")
       .all() as WorkerRow[];
@@ -372,7 +400,7 @@ class DatabaseManager {
   }
 
   updateWorker(id: string, updates: Partial<Omit<Worker, "id">>): boolean {
-    const fields = Object.keys(updates).filter(
+    const fields = (Object.keys(updates) as Array<keyof typeof updates>).filter(
       (key) => updates[key as keyof typeof updates] !== undefined
     );
     if (fields.length === 0) return false;
@@ -401,7 +429,7 @@ class DatabaseManager {
       .prepare("SELECT * FROM tasks ORDER BY createdAt DESC")
       .all();
 
-    return rows.map((row: any) => ({
+    return rows.map((row: TaskRow) => ({
       id: row.id,
       title: row.title,
       description: row.description,
@@ -487,8 +515,10 @@ class DatabaseManager {
     const { tags, ...taskUpdates } = updates;
 
     // Update task fields (excluding tags)
-    const fields = Object.keys(taskUpdates).filter(
-      (key) => taskUpdates[key] !== undefined
+    const fields = (
+      Object.keys(taskUpdates) as Array<keyof typeof taskUpdates>
+    ).filter(
+      (key): key is keyof typeof taskUpdates => taskUpdates[key] !== undefined
     );
     if (fields.length > 0) {
       const setClause = fields.map((field) => `${field} = ?`).join(", ");
@@ -527,7 +557,9 @@ class DatabaseManager {
 
   // Project methods
   getAllProjects(): Project[] {
-    const rows = this.db.prepare("SELECT * FROM projects ORDER BY name").all();
+    const rows = this.db
+      .prepare("SELECT * FROM projects ORDER BY name")
+      .all() as ProjectRow[];
     return rows.map((row) => ({
       id: row.id,
       name: row.name,
