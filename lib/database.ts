@@ -328,7 +328,18 @@ class DatabaseManager {
   }
 
   getWorkerById(id: string): Worker | null {
-    const row = this.db.prepare("SELECT * FROM workers WHERE id = ?").get(id);
+    interface WorkerRow {
+      id: string;
+      name: string;
+      pronouns: string;
+      jobRole: string;
+      email: string;
+      avatar: string;
+    }
+
+    const row = this.db
+      .prepare("SELECT * FROM workers WHERE id = ?")
+      .get(id) as WorkerRow;
     if (!row) return null;
 
     return {
@@ -362,7 +373,7 @@ class DatabaseManager {
 
   updateWorker(id: string, updates: Partial<Omit<Worker, "id">>): boolean {
     const fields = Object.keys(updates).filter(
-      (key) => updates[key] !== undefined
+      (key) => updates[key as keyof typeof updates] !== undefined
     );
     if (fields.length === 0) return false;
 
