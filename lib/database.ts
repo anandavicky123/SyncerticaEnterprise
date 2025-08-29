@@ -305,7 +305,16 @@ class DatabaseManager {
 
   // Worker methods
   getAllWorkers(): Worker[] {
-    const rows = this.db.prepare("SELECT * FROM workers ORDER BY name").all();
+    interface WorkerRow {
+      id: string;
+      name: string;
+      pronouns: string;
+      jobRole: string;
+    }
+
+    const rows = this.db
+      .prepare("SELECT * FROM workers ORDER BY name")
+      .all() as WorkerRow[];
     return rows.map((row) => ({
       id: row.id,
       name: row.name,
