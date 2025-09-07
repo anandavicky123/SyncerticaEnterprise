@@ -51,7 +51,29 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
       const response = await fetch("/api/tasks");
       if (response.ok) {
         const tasksData = await response.json();
-        setTasks(tasksData);
+        // Normalize response into an array. Some API handlers may return
+        // { items: [...] } or an object map instead of a plain array.
+        let normalized: Task[] = [];
+        if (Array.isArray(tasksData)) {
+          normalized = tasksData;
+        } else if (tasksData && Array.isArray((tasksData as any).items)) {
+          normalized = (tasksData as any).items;
+        } else if (tasksData && typeof tasksData === "object") {
+          // Convert object map values to an array as a fallback
+          normalized = Object.values(tasksData) as Task[];
+        } else {
+          normalized = [];
+        }
+
+        if (!Array.isArray(normalized)) {
+          console.warn(
+            "TaskManager: unexpected tasks response shape",
+            tasksData
+          );
+          setTasks([]);
+        } else {
+          setTasks(normalized);
+        }
       }
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -201,12 +223,17 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
 
   const filteredTasks = tasks.filter((task) => {
     const matchesFilter = filter === "all" || task.status === filter;
+
+    const title = task.title ?? "";
+    const description = task.description ?? "";
+    const tags = Array.isArray(task.tags) ? task.tags : [];
+
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.tags.some((tag) =>
-        tag.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      title.toLowerCase().includes(term) ||
+      description.toLowerCase().includes(term) ||
+      tags.some((tag) => String(tag).toLowerCase().includes(term));
+
     return matchesFilter && matchesSearch;
   });
 

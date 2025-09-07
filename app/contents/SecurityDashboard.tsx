@@ -60,9 +60,9 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
     <div className={`space-y-6 ${className}`}>
       {/* Security Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map((metric) => (
+        {metrics.map((metric, idx) => (
           <div
-            key={metric.id}
+            key={metric.id ?? `metric-${idx}`}
             className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm"
           >
             <div className="flex items-center justify-between">
@@ -93,9 +93,9 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
         <h2 className="text-xl font-bold mb-4">Security Alerts</h2>
         <div className="space-y-4">
-          {alerts.map((alert) => (
+          {alerts.map((alert, idx) => (
             <div
-              key={alert.id}
+              key={alert.id ?? `alert-${idx}`}
               className={`p-4 rounded-lg ${
                 alert.severity === "high"
                   ? "bg-red-50 dark:bg-red-900/20"
@@ -136,9 +136,9 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
         <h2 className="text-xl font-bold mb-4">Compliance Status</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {compliance.map((item) => (
+          {compliance.map((item, idx) => (
             <div
-              key={item.id}
+              key={item.id ?? `compliance-${idx}`}
               className="border dark:border-gray-700 p-4 rounded-lg"
             >
               <div className="flex items-center justify-between mb-2">
@@ -188,9 +188,9 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
               </tr>
             </thead>
             <tbody>
-              {auditLogs.map((log) => (
+              {auditLogs.map((log, idx) => (
                 <tr
-                  key={log.id}
+                  key={log.id ?? `audit-${idx}`}
                   className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/50"
                 >
                   <td className="py-3 px-4 text-sm">{log.timestamp}</td>
