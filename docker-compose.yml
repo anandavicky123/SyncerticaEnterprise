@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database for Local Development
+  postgres:
+    image: postgres:15-alpine
+    container_name: syncertica-postgres
+    environment:
+      POSTGRES_DB: syncertica_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: SecurePass123!
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - syncertica-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d syncertica_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for Caching
+  redis:
+    image: redis:7-alpine
+    container_name: syncertica-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - syncertica-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Next.js Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: syncertica-app
+    environment:
+      - DATABASE_URL=postgresql://admin:SecurePass123!@postgres:5432/syncertica_db
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - syncertica-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  syncertica-network:
+    driver: bridge

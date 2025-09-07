@@ -1,0 +1,14 @@
+{
+  "settings": "Configurações",
+  "dateFormat": "Formato de Data",
+  "language": "Idioma",
+  "save": "Salvar",
+  "cancel": "Cancelar",
+  "profile": "Perfil",
+  "logout": "Sair",
+  "addEventFor": "Adicionar evento para",
+  "eventsFor": "Eventos para",
+  "noEvents": "Nenhum evento para esta data.",
+  "today": "Hoje",
+  "hasEvents": "Tem eventos"
+}
