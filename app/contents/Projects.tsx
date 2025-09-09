@@ -1,241 +1,149 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ExternalLink,
+  Plus,
+  Github,
+  RefreshCw,
   Folder,
   GitBranch,
   Cloud,
-  Container,
-  Github,
+  Container as ContainerIcon,
   CheckCircle,
   XCircle,
-  RefreshCw,
-  ExternalLink,
+  Settings,
   Play,
   Edit,
-  Trash2,
-  Download,
   Eye,
-  Settings,
-  FileText,
-  Plus,
+  ChevronDown,
+  Loader2,
 } from "lucide-react";
-import { useGitHubData } from "../hooks/useGitHubData";
-import WorkflowEditorModal from "../ui/WorkflowEditorModal";
-import InfrastructureEditorModal from "../ui/InfrastructureEditorModal";
-import ContainerEditorModal from "../ui/ContainerEditorModal";
-import WorkflowLogsModal from "../ui/WorkflowLogsModal";
+import {
+  useGitHubData,
+  Repository,
+  Workflow,
+  Infrastructure,
+  Container,
+} from "../hooks/useGitHubData";
 
-interface ProjectsProps {
-  className?: string;
+interface Project {
+  id: string;
+  name: string;
+  description?: string | null;
+  repository?: string | null;
+  status: string;
+  managerDeviceUUID?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
+type TabType =
+  | "projects"
+  | "repositories"
+  | "cicd"
+  | "infrastructure"
+  | "container";
+
+const Projects: React.FC<{ className?: string }> = ({ className = "" }) => {
   const {
-    repositories,
-    workflows,
-    infrastructure,
-    containers,
-    connectionStatus,
-    loading,
-    error,
-    refreshData,
-    connectToGitHub,
-    disconnectFromGitHub,
+    repositories = [],
+    workflows = [],
+    infrastructure = [],
+    containers = [],
+    connectionStatus = { connected: false, user: null },
+    refreshData: refreshGitHubData,
+    loading: githubLoading,
   } = useGitHubData();
 
-  // Debug logging to see when data changes
-  React.useEffect(() => {
-    console.log("🔍 Projects component - data updated:");
-    console.log("  - Repositories:", repositories.length);
-    console.log("  - Workflows:", workflows.length);
-    console.log("  - Infrastructure:", infrastructure.length);
-    console.log("  - Containers:", containers.length);
-    console.log("  - Connection status:", connectionStatus.connected);
-    console.log("  - Loading:", loading);
-    console.log("  - Error:", error);
-  }, [
-    repositories,
-    workflows,
-    infrastructure,
-    containers,
-    connectionStatus,
-    loading,
-    error,
-  ]);
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabType>("projects");
 
-  const [activeTab, setActiveTab] = useState<
-    "repositories" | "cicd" | "infrastructure" | "container"
-  >("repositories");
+  // Projects state
+  const [projectsList, setProjectsList] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [repository, setRepository] = useState("");
+  const [status, setStatus] = useState("active");
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Modal states
-  const [showWorkflowEditor, setShowWorkflowEditor] = useState(false);
-  const [showInfrastructureEditor, setShowInfrastructureEditor] =
-    useState(false);
-  const [showContainerEditor, setShowContainerEditor] = useState(false);
-  const [showWorkflowLogs, setShowWorkflowLogs] = useState(false);
-  const [selectedWorkflow, setSelectedWorkflow] = useState<any>(null);
-  const [selectedInfrastructure, setSelectedInfrastructure] =
-    useState<any>(null);
-  const [selectedContainer, setSelectedContainer] = useState<any>(null);
-  const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
+  const fetchProjects = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/projects");
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setProjectsList(Array.isArray(data) ? data : []);
+    } catch (err: unknown) {
+      console.error("Failed to fetch projects", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch projects");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "success":
-      case "completed":
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case "failure":
-      case "failed":
-        return <XCircle className="w-5 h-5 text-red-500" />;
-      case "in_progress":
-      case "running":
-        return <Play className="w-5 h-5 text-blue-500 animate-pulse" />;
-      default:
-        return <Github className="w-5 h-5 text-gray-400" />;
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const createProject = async () => {
+    if (!name) return alert("Project name is required");
+    try {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description: description || null,
+          repository: repository || null,
+          status,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const created: Project = await res.json();
+      setProjectsList((p) => [created, ...p]);
+      setShowAdd(false);
+      setName("");
+      setDescription("");
+      setRepository("");
+      setStatus("active");
+    } catch (err) {
+      console.error("Create project failed", err);
+      alert("Failed to create project");
+    }
+  };
+
+  const refreshData = async () => {
+    setRefreshing(true);
+    try {
+      await fetchProjects();
+      if (refreshGitHubData) {
+        await refreshGitHubData();
+      }
+    } finally {
+      setRefreshing(false);
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return new Date(dateString).toLocaleDateString();
   };
 
-  // Handler functions for modal actions
-  const handleRunWorkflow = async (workflow: any) => {
-    console.log("🚀 Attempting to run workflow:", workflow);
-
-    try {
-      const response = await fetch("/api/workflows/run", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          repository: workflow.repository,
-          workflow: workflow.filename,
-        }),
-      });
-
-      console.log("📡 Response status:", response.status);
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log("✅ Workflow triggered:", result);
-        alert(`Workflow triggered successfully: ${result.message}`);
-        refreshData(); // Refresh data to get updated status
-      } else {
-        const error = await response.json();
-        console.error("❌ Workflow run failed:", error);
-
-        if (response.status === 401) {
-          alert(
-            "Authentication required. Please connect to GitHub first and try again."
-          );
-        } else if (response.status === 404) {
-          alert(`Workflow not found: ${error.error}`);
-        } else {
-          alert(
-            `Failed to run workflow: ${error.error}\n\nDetails: ${
-              error.details || "Unknown error"
-            }`
-          );
-        }
-      }
-    } catch (error) {
-      console.error("❌ Error running workflow:", error);
-      alert(
-        "Network error: Failed to run workflow. Please check your connection and try again."
-      );
-    }
-  };
-
-  const handleEditWorkflow = (workflow: any) => {
-    setSelectedWorkflow(workflow);
-    setEditorMode("edit");
-    setShowWorkflowEditor(true);
-  };
-
-  const handleViewLogs = (workflow: any) => {
-    setSelectedWorkflow(workflow);
-    setShowWorkflowLogs(true);
-  };
-
-  const handleEditInfrastructure = (infrastructure: any) => {
-    setSelectedInfrastructure(infrastructure);
-    setEditorMode("edit");
-    setShowInfrastructureEditor(true);
-  };
-
-  const handleEditContainer = (container: any) => {
-    setSelectedContainer(container);
-    setEditorMode("edit");
-    setShowContainerEditor(true);
-  };
-
-  const handleSaveWorkflow = async (
-    content: string,
-    filename?: string,
-    repository?: string
-  ) => {
-    try {
-      console.log("Saving workflow:", { content, filename, repository });
-      alert(
-        "Workflow saved successfully! (Note: This is a demo - actual GitHub integration would save to repository)"
-      );
-    } catch (error) {
-      console.error("Error saving workflow:", error);
-      alert("Failed to save workflow. Please try again.");
-    }
-  };
-
-  const handleSaveInfrastructure = async (
-    content: string,
-    filename?: string,
-    repository?: string,
-    type?: string
-  ) => {
-    try {
-      console.log("Saving infrastructure:", {
-        content,
-        filename,
-        repository,
-        type,
-      });
-      alert(
-        "Infrastructure saved successfully! (Note: This is a demo - actual GitHub integration would save to repository)"
-      );
-    } catch (error) {
-      console.error("Error saving infrastructure:", error);
-      alert("Failed to save infrastructure. Please try again.");
-    }
-  };
-
-  const handleSaveContainer = async (
-    content: string,
-    filename?: string,
-    repository?: string,
-    type?: string
-  ) => {
-    try {
-      console.log("Saving container:", { content, filename, repository, type });
-      alert(
-        "Container configuration saved successfully! (Note: This is a demo - actual GitHub integration would save to repository)"
-      );
-    } catch (error) {
-      console.error("Error saving container:", error);
-      alert("Failed to save container. Please try again.");
-    }
+  const getTabClasses = (tab: TabType) => {
+    return `py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+      activeTab === tab
+        ? "border-blue-500 text-blue-600"
+        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+    }`;
   };
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* GitHub Status Header */}
+      {/* Header */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -247,6 +155,7 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
               </p>
             </div>
           </div>
+
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               {connectionStatus.connected ? (
@@ -266,33 +175,21 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
                 </>
               )}
             </div>
+
             <div className="flex items-center gap-2">
               <button
                 onClick={refreshData}
-                disabled={loading}
+                disabled={refreshing || githubLoading}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
-                title={`Refresh all GitHub data: ${repositories.length} repos, ${workflows.length} workflows, ${infrastructure.length} infrastructure files, ${containers.length} containers`}
+                title={`Refresh all data: ${projectsList.length} projects, ${repositories.length} repos, ${workflows.length} workflows, ${infrastructure.length} infra, ${containers.length} containers`}
               >
                 <RefreshCw
-                  className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                  className={`w-4 h-4 ${
+                    refreshing || githubLoading ? "animate-spin" : ""
+                  }`}
                 />
-                {loading ? "Refreshing..." : "Refresh"}
+                {refreshing || githubLoading ? "Refreshing..." : "Refresh"}
               </button>
-              {connectionStatus.connected ? (
-                <button
-                  onClick={disconnectFromGitHub}
-                  className="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg transition-colors"
-                >
-                  Disconnect
-                </button>
-              ) : (
-                <button
-                  onClick={connectToGitHub}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  Connect to GitHub
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -304,58 +201,155 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
         )}
       </div>
 
-      {/* Navigation Tabs */}
+      {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           <button
-            onClick={() => setActiveTab("repositories")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-              activeTab === "repositories"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
+            onClick={() => setActiveTab("projects")}
+            className={getTabClasses("projects")}
           >
-            <Folder className="w-4 h-4" />
-            Repositories ({repositories.length})
+            <Folder className="w-4 h-4" /> Projects ({projectsList.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("repositories")}
+            className={getTabClasses("repositories")}
+          >
+            <Folder className="w-4 h-4" /> Repositories ({repositories.length})
           </button>
           <button
             onClick={() => setActiveTab("cicd")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-              activeTab === "cicd"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
+            className={getTabClasses("cicd")}
           >
-            <GitBranch className="w-4 h-4" />
-            CI/CD ({workflows.length})
+            <GitBranch className="w-4 h-4" /> CI/CD ({workflows.length})
           </button>
           <button
             onClick={() => setActiveTab("infrastructure")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-              activeTab === "infrastructure"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
+            className={getTabClasses("infrastructure")}
           >
-            <Cloud className="w-4 h-4" />
-            Infrastructure ({infrastructure.length})
+            <Cloud className="w-4 h-4" /> Infrastructure (
+            {infrastructure.length})
           </button>
           <button
             onClick={() => setActiveTab("container")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-              activeTab === "container"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
+            className={getTabClasses("container")}
           >
-            <Container className="w-4 h-4" />
-            Container ({containers.length})
+            <ContainerIcon className="w-4 h-4" /> Container ({containers.length}
+            )
           </button>
         </nav>
       </div>
 
-      {/* Content */}
+      {/* Tab Content */}
       <div className="bg-white rounded-lg border border-gray-200">
+        {/* Projects Tab */}
+        {activeTab === "projects" && (
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Projects ({projectsList.length})
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                  onClick={() => setShowAdd(true)}
+                >
+                  <Plus className="w-4 h-4" /> Add Project
+                </button>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Loading projects...</p>
+              </div>
+            ) : projectsList.length === 0 ? (
+              <div className="text-center py-12">
+                <Folder className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 mb-4">No projects yet</p>
+                <button
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 mx-auto"
+                  onClick={() => setShowAdd(true)}
+                >
+                  <Plus className="w-4 h-4" /> Create Your First Project
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {projectsList.map((project) => (
+                  <div
+                    key={project.id}
+                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <Folder className="w-5 h-5 text-blue-500" />
+                          <h4 className="font-medium text-gray-900">
+                            {project.name}
+                          </h4>
+                          <span
+                            className={`px-2 py-1 text-xs rounded ${
+                              project.status === "active"
+                                ? "bg-green-100 text-green-800"
+                                : project.status === "on-hold"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : project.status === "completed"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {project.status}
+                          </span>
+                        </div>
+                        {project.description && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {project.description}
+                          </p>
+                        )}
+                        {project.repository && (
+                          <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
+                            <Github className="w-3 h-3" />
+                            <span>{project.repository}</span>
+                            <ExternalLink className="w-3 h-3 ml-1" />
+                          </div>
+                        )}
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                          {project.createdAt && (
+                            <span>Created {formatDate(project.createdAt)}</span>
+                          )}
+                          {project.updatedAt && (
+                            <span>Updated {formatDate(project.updatedAt)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {project.repository && (
+                          <button
+                            onClick={() =>
+                              window.open(project.repository!, "_blank")
+                            }
+                            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                            title="View Repository"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                          title="Settings"
+                        >
+                          <Settings className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Repositories Tab */}
         {activeTab === "repositories" && (
           <div className="p-6">
@@ -376,7 +370,7 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
               </div>
             ) : (
               <div className="space-y-4">
-                {repositories.map((repo) => (
+                {repositories.map((repo: Repository) => (
                   <div
                     key={repo.id}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
@@ -434,14 +428,7 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
               <h3 className="text-lg font-semibold text-gray-900">
                 Workflow Files ({workflows.length})
               </h3>
-              <button
-                onClick={() => {
-                  setSelectedWorkflow(null);
-                  setEditorMode("create");
-                  setShowWorkflowEditor(true);
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
                 <Plus className="w-4 h-4" />
                 Add Workflow
               </button>
@@ -458,7 +445,7 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
               </div>
             ) : (
               <div className="space-y-4">
-                {workflows.map((workflow) => (
+                {workflows.map((workflow: Workflow) => (
                   <div
                     key={workflow.id}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
@@ -466,12 +453,12 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
-                          {getStatusIcon(workflow.status)}
+                          <GitBranch className="w-5 h-5 text-green-500" />
                           <h4 className="font-medium text-gray-900">
-                            {workflow.filename}
+                            {workflow.filename || workflow.name}
                           </h4>
                           <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                            {workflow.state}
+                            {workflow.state || workflow.status}
                           </span>
                         </div>
                         <p className="text-sm text-gray-600 mt-1">
@@ -495,25 +482,16 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
                           <ExternalLink className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleRunWorkflow(workflow)}
                           className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded"
                           title="Run Workflow"
                         >
                           <Play className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleEditWorkflow(workflow)}
                           className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
                           title="Edit Workflow"
                         >
                           <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleViewLogs(workflow)}
-                          className="p-2 text-purple-500 hover:text-purple-700 hover:bg-purple-50 rounded"
-                          title="View Logs"
-                        >
-                          <FileText className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -531,14 +509,7 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
               <h3 className="text-lg font-semibold text-gray-900">
                 Infrastructure Files ({infrastructure.length})
               </h3>
-              <button
-                onClick={() => {
-                  setSelectedInfrastructure(null);
-                  setEditorMode("create");
-                  setShowInfrastructureEditor(true);
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
                 <Plus className="w-4 h-4" />
                 Add Infrastructure
               </button>
@@ -555,7 +526,7 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
               </div>
             ) : (
               <div className="space-y-4">
-                {infrastructure.map((infra) => (
+                {infrastructure.map((infra: Infrastructure) => (
                   <div
                     key={infra.id}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
@@ -583,23 +554,10 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
-                          title="Download"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEditInfrastructure(infra)}
                           className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
                           title="Edit Infrastructure"
                         >
                           <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -617,14 +575,7 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
               <h3 className="text-lg font-semibold text-gray-900">
                 Container Files ({containers.length})
               </h3>
-              <button
-                onClick={() => {
-                  setSelectedContainer(null);
-                  setEditorMode("create");
-                  setShowContainerEditor(true);
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
                 <Plus className="w-4 h-4" />
                 Add Container
               </button>
@@ -632,7 +583,7 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
 
             {containers.length === 0 ? (
               <div className="text-center py-12">
-                <Container className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <ContainerIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
                   {connectionStatus.connected
                     ? "No container files found"
@@ -641,7 +592,7 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
               </div>
             ) : (
               <div className="space-y-4">
-                {containers.map((container) => (
+                {containers.map((container: Container) => (
                   <div
                     key={container.id}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
@@ -649,7 +600,7 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
-                          <Container className="w-5 h-5 text-purple-500" />
+                          <ContainerIcon className="w-5 h-5 text-purple-500" />
                           <h4 className="font-medium text-gray-900">
                             {container.name}
                           </h4>
@@ -669,23 +620,10 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
-                          title="Download"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEditContainer(container)}
                           className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
                           title="Edit Container"
                         >
                           <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -697,37 +635,126 @@ const Projects: React.FC<ProjectsProps> = ({ className = "" }) => {
         )}
       </div>
 
-      {/* Modals */}
-      <WorkflowEditorModal
-        isOpen={showWorkflowEditor}
-        onClose={() => setShowWorkflowEditor(false)}
-        workflow={selectedWorkflow}
-        mode={editorMode}
-        onSave={handleSaveWorkflow}
-      />
+      {/* Add Project Modal */}
+      {showAdd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
+            <h4 className="text-lg font-semibold mb-4">Create New Project</h4>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                createProject();
+              }}
+            >
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Project Name *
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter project name"
+                    required
+                  />
+                </div>
 
-      <InfrastructureEditorModal
-        isOpen={showInfrastructureEditor}
-        onClose={() => setShowInfrastructureEditor(false)}
-        infrastructure={selectedInfrastructure}
-        mode={editorMode}
-        onSave={handleSaveInfrastructure}
-      />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Project description (optional)"
+                    rows={3}
+                  />
+                </div>
 
-      <ContainerEditorModal
-        isOpen={showContainerEditor}
-        onClose={() => setShowContainerEditor(false)}
-        container={selectedContainer}
-        mode={editorMode}
-        onSave={handleSaveContainer}
-      />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Repository
+                  </label>
+                  {githubLoading ? (
+                    <div className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 flex items-center">
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      <span className="text-gray-500">
+                        Loading repositories...
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <select
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                        value={repository}
+                        onChange={(e) => setRepository(e.target.value)}
+                      >
+                        <option value="">Select a repository (optional)</option>
+                        {repositories.map((repo: Repository) => (
+                          <option key={repo.id} value={repo.html_url}>
+                            {repo.full_name}
+                          </option>
+                        ))}
+                        <option value="custom">Custom Repository URL</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </div>
+                  )}
 
-      {selectedWorkflow && (
-        <WorkflowLogsModal
-          isOpen={showWorkflowLogs}
-          onClose={() => setShowWorkflowLogs(false)}
-          workflow={selectedWorkflow}
-        />
+                  {repository === "custom" && (
+                    <input
+                      type="url"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 mt-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="https://github.com/username/repository"
+                      onChange={(e) => setRepository(e.target.value)}
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <option value="active">Active</option>
+                    <option value="on-hold">On Hold</option>
+                    <option value="completed">Completed</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => {
+                    setShowAdd(false);
+                    setName("");
+                    setDescription("");
+                    setRepository("");
+                    setStatus("active");
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Create Project
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -35,7 +35,7 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { settings, updateSettings } = useSettings();
+  const { settings, isLoading, error, updateSettings } = useSettings();
   const [dateFormat, setDateFormat] = useState(settings.dateFormat);
   const [timeFormat, setTimeFormat] = useState(settings.timeFormat);
   const [language, setLanguage] = useState(settings.language);
@@ -48,6 +48,33 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   }, [settings]);
 
   if (!isOpen) return null;
+  
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="bg-white p-6 rounded-lg">
+          <h2 className="text-xl font-bold mb-4">{t("Loading settings...")}</h2>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="bg-white p-6 rounded-lg">
+          <h2 className="text-xl font-bold mb-4">{t("Error loading settings")}</h2>
+          <p className="text-red-600">{error}</p>
+          <button 
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            onClick={onClose}
+          >
+            {t("Close")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

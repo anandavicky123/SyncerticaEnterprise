@@ -45,7 +45,7 @@ export interface Project {
   name: string;
   description?: string;
   repository?: string;
-  status: "active" | "inactive" | "completed";
+  status: "active" | "on-hold" | "completed" | "archived";
   createdAt: string;
   updatedAt: string;
 }
@@ -340,6 +340,7 @@ export class DatabaseManager {
       id: project.id,
       name: project.name,
       description: project.description || undefined,
+      repository: project.repository || undefined,
       status: project.status as Project["status"],
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
@@ -362,6 +363,7 @@ export class DatabaseManager {
       id: created.id,
       name: created.name,
       description: created.description || undefined,
+      repository: created.repository || undefined,
       status: created.status as Project["status"],
       createdAt: created.createdAt.toISOString(),
       updatedAt: created.updatedAt.toISOString(),

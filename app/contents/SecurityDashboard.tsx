@@ -19,7 +19,7 @@ interface SecurityDashboardProps {
   className?: string;
 }
 
-const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
+const ReportsDashboard: React.FC<SecurityDashboardProps> = ({
   className = "",
 }) => {
   const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
@@ -33,13 +33,40 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
     const loadData = async () => {
       try {
         setLoading(true);
-        // Simulate API calls with mock data
-        setAlerts(mockSecurityAlerts);
-        setMetrics(mockSecurityMetrics);
-        setCompliance(mockComplianceStatus);
-        setAuditLogs(mockAuditLogs);
+        // Fetch summary counts from reports APIs
+        try {
+          const uaRes = await fetch("/api/reports/user-activity?userId=manager_1");
+          const ua = uaRes.ok ? await uaRes.json() : [];
+          setAlerts(ua.slice(0, 5));
+        } catch (e) {
+          console.error("Failed fetching user activity:", e);
+        }
+
+        try {
+          const ptRes = await fetch("/api/reports/project-tasks?projectId=project_1");
+          const pt = ptRes.ok ? await ptRes.json() : [];
+          setMetrics(pt.slice(0, 5));
+        } catch (e) {
+          console.error("Failed fetching project tasks:", e);
+        }
+
+        try {
+          const nRes = await fetch("/api/reports/notifications?userId=manager_1");
+          const ns = nRes.ok ? await nRes.json() : [];
+          setCompliance(ns.slice(0, 5));
+        } catch (e) {
+          console.error("Failed fetching notifications:", e);
+        }
+
+        try {
+          const mRes = await fetch("/api/reports/metrics?id=system_2025-09-09");
+          const ms = mRes.ok ? await mRes.json() : [];
+          setAuditLogs(ms.slice(0, 5));
+        } catch (e) {
+          console.error("Failed fetching metrics:", e);
+        }
       } catch (error) {
-        console.error("Error loading security data:", error);
+        console.error("Error loading reports data:", error);
       } finally {
         setLoading(false);
       }
@@ -225,4 +252,4 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
   );
 };
 
-export default SecurityDashboard;
+export default ReportsDashboard;

@@ -15,10 +15,10 @@ import {
 
 export const sections: Section[] = [
   { id: "overview", name: "Overview", icon: "📊" },
-  { id: "security", name: "Security", icon: "🔒" },
   { id: "tasks", name: "Task Manager", icon: "✅" },
   { id: "projects", name: "Projects", icon: "📋" },
-  { id: "workers", name: "Workers", icon: "👥" },
+  { id: "workers", name: "Workers", icon: "�" },
+  { id: "reports", name: "Reports", icon: "�" },
 ];
 
 export const sidebarItems: SidebarSection[] = [
@@ -138,11 +138,11 @@ export const dashboardBlocks: DashboardBlocks = {
       period: "Always Free Tier",
     },
   ],
-  security: [
+  reports: [
     {
       id: "security-score",
       type: "metric",
-      title: "Security Score",
+      title: "Report Score",
       value: "87%",
       change: "+5%",
       changeType: "positive",

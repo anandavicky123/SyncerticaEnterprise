@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "../../../lib/database";
 
+// Temporary hardcoded manager UUID - should be replaced with actual authentication
+const TEMP_MANAGER_UUID = "123e4567-e89b-12d3-a456-426614174000";
+
 // GET /api/projects - Get all projects
 export async function GET() {
   try {
     const db = getDatabase();
-    const projects = db.getAllProjects();
+    const projects = await db.getAllProjects(TEMP_MANAGER_UUID);
     return NextResponse.json(projects);
   } catch (error) {
     console.error("Error fetching projects:", error);
@@ -30,12 +33,15 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getDatabase();
-    const project = db.createProject({
-      name,
-      description,
-      repository,
-      status: status || "active",
-    });
+    const project = await db.createProject(
+      {
+        name,
+        description,
+        repository,
+        status: status || "active",
+      },
+      TEMP_MANAGER_UUID
+    );
 
     return NextResponse.json(project, { status: 201 });
   } catch (error) {

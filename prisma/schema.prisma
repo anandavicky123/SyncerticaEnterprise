@@ -11,7 +11,7 @@ model Manager {
   deviceUUID   String   @id @db.Uuid @map("deviceuuid")
   name         String
   dateFormat   String   @default("YYYY-MM-DD") @map("dateformat")
-  timeFormat   String   @default("24h")        @map("timeformat")
+  timeFormat   String   @default("24")        @map("timeformat")
   language     String   @default("en")
   createdAt    DateTime @default(now()) @db.Timestamptz @map("createdat")
   updatedAt    DateTime @default(now()) @db.Timestamptz @map("updatedat")

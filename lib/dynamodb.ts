@@ -193,3 +193,186 @@ export async function getAuditLogsByActor(
     return [];
   }
 }
+
+// ==============================
+// Reports: New schema helpers
+// ==============================
+
+// a) User Activity Reports
+export interface UserActivityReport {
+  userId: string; // PK
+  timestamp: number; // SK (unix)
+  userType: "Manager" | "Worker";
+  action: string;
+  projectId?: string;
+}
+
+export async function putUserActivityReport(item: UserActivityReport) {
+  try {
+    await docClient.send(
+      new PutCommand({
+        TableName: "user_activity_reports",
+        Item: item,
+      })
+    );
+  } catch (error) {
+    console.error("Error putting user activity report:", error);
+  }
+}
+
+export async function queryUserActivityReports(
+  userId: string,
+  limit: number = 50
+): Promise<UserActivityReport[]> {
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: "user_activity_reports",
+        KeyConditionExpression: "userId = :uid",
+        ExpressionAttributeValues: { ":uid": userId },
+        Limit: limit,
+        ScanIndexForward: false,
+      })
+    );
+    return (result.Items as UserActivityReport[]) || [];
+  } catch (error) {
+    console.error("Error querying user activity reports:", error);
+    return [];
+  }
+}
+
+// b) Project & Task Reports
+export interface ProjectTaskReport {
+  projectId: string; // PK
+  taskId: string; // SK
+  assignedTo?: string;
+  status?: string;
+  priority?: string;
+  startDate?: string;
+  dueDate?: string;
+  completedAt?: number | null;
+  updatedBy?: string;
+}
+
+export async function putProjectTaskReport(item: ProjectTaskReport) {
+  try {
+    await docClient.send(
+      new PutCommand({
+        TableName: "project_task_reports",
+        Item: item,
+      })
+    );
+  } catch (error) {
+    console.error("Error putting project task report:", error);
+  }
+}
+
+export async function queryProjectReports(
+  projectId: string,
+  limit: number = 100
+): Promise<ProjectTaskReport[]> {
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: "project_task_reports",
+        KeyConditionExpression: "projectId = :pid",
+        ExpressionAttributeValues: { ":pid": projectId },
+        Limit: limit,
+        ScanIndexForward: false,
+      })
+    );
+
+    return (result.Items as ProjectTaskReport[]) || [];
+  } catch (error) {
+    console.error("Error querying project reports:", error);
+    return [];
+  }
+}
+
+// c) Notifications & Alerts
+export interface NotificationItem {
+  userId: string; // PK
+  createdAt: number; // SK
+  type: string;
+  message: string;
+  status: "unread" | "read";
+  triggeredBy?: string;
+}
+
+export async function putNotification(item: NotificationItem) {
+  try {
+    await docClient.send(
+      new PutCommand({
+        TableName: "notifications",
+        Item: item,
+      })
+    );
+  } catch (error) {
+    console.error("Error putting notification:", error);
+  }
+}
+
+export async function getNotifications(
+  userId: string,
+  limit: number = 50
+): Promise<NotificationItem[]> {
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: "notifications",
+        KeyConditionExpression: "userId = :uid",
+        ExpressionAttributeValues: { ":uid": userId },
+        Limit: limit,
+        ScanIndexForward: false,
+      })
+    );
+    return (result.Items as NotificationItem[]) || [];
+  } catch (error) {
+    console.error("Error getting notifications:", error);
+    return [];
+  }
+}
+
+// d) Performance Metrics
+export interface PerformanceMetric {
+  entityType: string;
+  entityId_period: string; // PK
+  metricType: string;
+  metricValue: number;
+  period: string;
+  calculatedAt: number;
+}
+
+export async function putPerformanceMetric(item: PerformanceMetric) {
+  try {
+    await docClient.send(
+      new PutCommand({
+        TableName: "performance_metrics",
+        Item: item,
+      })
+    );
+  } catch (error) {
+    console.error("Error putting performance metric:", error);
+  }
+}
+
+export async function queryPerformanceMetrics(
+  entityId_period: string,
+  limit: number = 100
+): Promise<PerformanceMetric[]> {
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: "performance_metrics",
+        KeyConditionExpression: "entityId_period = :eid",
+        ExpressionAttributeValues: { ":eid": entityId_period },
+        Limit: limit,
+        ScanIndexForward: false,
+      })
+    );
+    return (result.Items as PerformanceMetric[]) || [];
+  } catch (error) {
+    console.error("Error querying performance metrics:", error);
+    return [];
+  }
+}
