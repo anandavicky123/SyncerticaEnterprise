@@ -39,6 +39,29 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
     "all" | "todo" | "doing" | "done" | "blocked"
   >("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentManagerUUID, setCurrentManagerUUID] = useState<string>("11111111-1111-1111-1111-111111111111"); // Default fallback
+
+  // Fetch current user session to get their device UUID
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch("/api/auth/session");
+      if (response.ok) {
+        const sessionData = await response.json();
+        if (sessionData.success && sessionData.session?.actorId) {
+          setCurrentManagerUUID(sessionData.session.actorId);
+          console.log("✅ Current manager UUID:", sessionData.session.actorId);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching current user session:", error);
+      // Keep using the default UUID as fallback
+    }
+  };
+
+  // Fetch current user session when component mounts
+  useEffect(() => {
+    fetchCurrentUser();
+  }, []);
 
   // Fetch tasks from database
   useEffect(() => {
@@ -55,9 +78,12 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
         // { items: [...] } or an object map instead of a plain array.
         let normalized: Task[] = [];
         if (Array.isArray(tasksData)) {
-          normalized = tasksData;
-        } else if (tasksData && Array.isArray((tasksData as any).items)) {
-          normalized = (tasksData as any).items;
+          normalized = tasksData as Task[];
+        } else if (
+          tasksData &&
+          Array.isArray((tasksData as unknown as { items?: unknown }).items)
+        ) {
+          normalized = (tasksData as unknown as { items: Task[] }).items;
         } else if (tasksData && typeof tasksData === "object") {
           // Convert object map values to an array as a fallback
           normalized = Object.values(tasksData) as Task[];
@@ -86,7 +112,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
     title: string;
     description: string;
     assignedTo: string;
-    assignedBy: string;
+    managerdeviceuuid: string;
     priority: string;
     dueDate?: string;
     estimatedHours?: number;
@@ -106,7 +132,9 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
         setTasks((prev) => [newTask, ...prev]);
         console.log("✅ Task created successfully:", newTask);
       } else {
-        throw new Error("Failed to create task");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("API Error:", errorData);
+        throw new Error(`Failed to create task: ${errorData.error || response.statusText}`);
       }
     } catch (error) {
       console.error("Error creating task:", error);
@@ -186,11 +214,22 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
       const response = await fetch("/api/workers");
       if (response.ok) {
         const workersData = await response.json();
-        const workersMap = workersData.reduce((acc: any, worker: any) => {
-          acc[worker.id] = { name: worker.name, email: worker.email };
-          return acc;
-        }, {});
-        setWorkers(workersMap);
+        if (Array.isArray(workersData)) {
+          const map: Record<string, { name: string; email?: string }> = {};
+          for (const item of workersData as unknown[]) {
+            if (item && typeof item === "object" && "id" in item) {
+              const w = item as Record<string, unknown>;
+              map[String(w.id!)] = {
+                name: String(w.name ?? "Unknown"),
+                email:
+                  typeof w.email === "string" ? (w.email as string) : undefined,
+              };
+            }
+          }
+          setWorkers(map);
+        } else {
+          setWorkers({});
+        }
       }
     } catch (error) {
       console.error("Error fetching workers:", error);
@@ -445,112 +484,118 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
 
       {/* Task List */}
       <div className="space-y-4">
-        {filteredTasks.map((task) => (
-          <div
-            key={task.id}
-            className="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-4">
-                <button
-                  onClick={() => {
-                    const statusOrder: Task["status"][] = [
-                      "todo",
-                      "doing",
-                      "done",
-                    ];
-                    const currentIndex = statusOrder.indexOf(task.status);
-                    const nextStatus =
-                      statusOrder[(currentIndex + 1) % statusOrder.length];
-                    updateTaskStatus(task.id, nextStatus);
-                  }}
-                  className="mt-1"
-                >
-                  {getStatusIcon(task.status)}
-                </button>
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {task.title}
-                    </h3>
-                    <div
-                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(
-                        task.priority
-                      )}`}
-                    >
-                      <div className="flex items-center gap-1">
-                        {getPriorityIcon(task.priority)}
-                        {task.priority}
+        {loading ? (
+          <div className="text-center text-gray-500 py-8">Loading tasks...</div>
+        ) : (
+          filteredTasks.map((task) => (
+            <div
+              key={task.id}
+              className="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-4">
+                  <button
+                    onClick={() => {
+                      const statusOrder: Task["status"][] = [
+                        "todo",
+                        "doing",
+                        "done",
+                      ];
+                      const currentIndex = statusOrder.indexOf(task.status);
+                      const nextStatus =
+                        statusOrder[(currentIndex + 1) % statusOrder.length];
+                      updateTaskStatus(task.id, nextStatus);
+                    }}
+                    className="mt-1"
+                  >
+                    {getStatusIcon(task.status)}
+                  </button>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {task.title}
+                      </h3>
+                      <div
+                        className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(
+                          task.priority
+                        )}`}
+                      >
+                        <div className="flex items-center gap-1">
+                          {getPriorityIcon(task.priority)}
+                          {task.priority}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <p className="text-gray-600 mb-3">{task.description}</p>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {task.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-6 text-sm text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <User className="w-4 h-4" />
-                      <span>{users[task.assignedTo]?.name || "Unknown"}</span>
+                    <p className="text-gray-600 mb-3">{task.description}</p>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {(Array.isArray(task.tags) ? task.tags : []).map(
+                        (tag) => (
+                          <span
+                            key={String(tag)}
+                            className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs"
+                          >
+                            {tag}
+                          </span>
+                        )
+                      )}
                     </div>
-                    {task.dueDate && (
+                    <div className="flex items-center gap-6 text-sm text-gray-500">
                       <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
+                        <User className="w-4 h-4" />
+                        <span>{users[task.assignedTo]?.name || "Unknown"}</span>
+                      </div>
+                      {task.dueDate && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>
+                            {new Date(task.dueDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
                         <span>
-                          {new Date(task.dueDate).toLocaleDateString()}
+                          {task.actualHours || 0}h / {task.estimatedHours}h
                         </span>
                       </div>
-                    )}
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span>
-                        {task.actualHours || 0}h / {task.estimatedHours}h
-                      </span>
+                      {task.stepFunctionArn && (
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span>Step Functions</span>
+                        </div>
+                      )}
                     </div>
-                    {task.stepFunctionArn && (
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span>Step Functions</span>
-                      </div>
-                    )}
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleEditTask(task)}
-                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                  title="Edit task"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDeleteTask(task.id)}
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                  title="Delete task"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                  <MessageSquare className="w-4 h-4" />
-                </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                  <Paperclip className="w-4 h-4" />
-                </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleEditTask(task)}
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                    title="Edit task"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTask(task.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                    title="Delete task"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <MessageSquare className="w-4 h-4" />
+                  </button>
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* AWS Integration Status */}
@@ -579,7 +624,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
         isOpen={showCreateTask}
         onClose={() => setShowCreateTask(false)}
         onCreateTask={handleCreateTask}
-        currentUserId="admin-1"
+        currentUserId={currentManagerUUID}
       />
 
       {/* Edit Task Modal */}

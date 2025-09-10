@@ -71,7 +71,7 @@ model Task {
   statusId        Int       @map("statusid")
   priority        String    @default("medium")
   assignedTo      String    @map("assignedto")
-  assignedBy      String    @db.Uuid @map("assignedby")
+  assignedBy      String    @db.Uuid @map("managerdeviceuuid")
   projectId       String    @map("projectid")
   dueDate         DateTime? @db.Timestamptz @map("duedate")
   estimatedHours  Int?      @map("estimatedhours")

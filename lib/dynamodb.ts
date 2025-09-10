@@ -47,6 +47,8 @@ export async function createSession(
     expiresAt: expiresAt.toISOString(),
   };
 
+  console.log("Creating session with data:", session);
+
   await docClient.send(
     new PutCommand({
       TableName: "sessions",

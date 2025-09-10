@@ -24,6 +24,7 @@ import SecurityDashboard from "../contents/SecurityDashboard";
 import TaskManager from "../contents/TaskManager";
 import Projects from "../contents/Projects";
 import WorkersManagement from "../workers/management";
+import Reports from "../contents/Reports";
 import CallChatModal from "./CallChatModal";
 import ProfileDropdown from "./ProfileDropdown";
 import CalendarModal from "./CalendarModal";
@@ -66,6 +67,29 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
   const [showAddNote, setShowAddNote] = useState(false);
   const [showCallChat, setShowCallChat] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [currentManagerUUID, setCurrentManagerUUID] = useState<string>("11111111-1111-1111-1111-111111111111"); // Default fallback
+
+  // Fetch current user session to get their device UUID
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch("/api/auth/session");
+      if (response.ok) {
+        const sessionData = await response.json();
+        if (sessionData.success && sessionData.session?.actorId) {
+          setCurrentManagerUUID(sessionData.session.actorId);
+          console.log("✅ Dashboard - Current manager UUID:", sessionData.session.actorId);
+        }
+      }
+    } catch (error) {
+      console.error("Dashboard - Error fetching current user session:", error);
+      // Keep using the default UUID as fallback
+    }
+  };
+
+  // Fetch current user session when component mounts
+  useEffect(() => {
+    fetchCurrentUser();
+  }, []);
 
   // Dynamic sidebar items based on database statistics
   const [sidebarItems, setSidebarItems] =
@@ -272,7 +296,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
     title: string;
     description: string;
     assignedTo: string;
-    assignedBy: string;
+    managerdeviceuuid: string;
     priority: string;
     dueDate?: string;
     estimatedHours?: number;
@@ -378,6 +402,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
             <Projects />
           ) : activeSection === "workers" ? (
             <WorkersManagement />
+          ) : activeSection === "reports" ? (
+            <Reports />
           ) : (
             /* Default dashboard blocks for other sections */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -451,7 +477,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
         isOpen={showCreateTask}
         onClose={() => setShowCreateTask(false)}
         onCreateTask={handleCreateTask}
-        currentUserId="admin-1"
+        currentUserId={currentManagerUUID}
       />
 
       <AddWorkerModal

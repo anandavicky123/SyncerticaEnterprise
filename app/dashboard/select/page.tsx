@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
+import Link from "next/link";
 
 export default function DashboardSelectPage() {
   const router = useRouter();
@@ -51,7 +52,7 @@ export default function DashboardSelectPage() {
       setError("");
 
       // Redirect to manager dashboard
-      router.push("/dashboard/manager");
+      router.push("/dashboard");
     } catch (error) {
       console.error("Manager access error:", error);
       setError(
@@ -142,12 +143,12 @@ export default function DashboardSelectPage() {
         </div>
 
         <div className="text-center">
-          <a
+          <Link
             href="/"
             className="text-blue-600 hover:text-blue-700 text-sm font-medium"
           >
             ← Back to Home
-          </a>
+          </Link>
         </div>
       </div>
     </div>

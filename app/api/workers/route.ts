@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/database";
-import { hash } from "bcryptjs";
+import { hashPassword } from "@/lib/auth";
 import { z } from "zod";
 
 const createWorkerSchema = z.object({
@@ -17,9 +17,9 @@ export async function GET(request: NextRequest) {
     // Get session from headers (set by middleware)
     const actorType = request.headers.get("x-actor-type");
     const actorId = request.headers.get("x-actor-id");
-    console.log('GET /api/workers - headers:', {
-      'x-actor-type': actorType,
-      'x-actor-id': actorId,
+    console.log("GET /api/workers - headers:", {
+      "x-actor-type": actorType,
+      "x-actor-id": actorId,
     });
 
     if (actorType !== "manager") {
@@ -108,7 +108,11 @@ export async function POST(req: NextRequest) {
     const actorType = req.headers.get("x-actor-type");
     const actorId = req.headers.get("x-actor-id");
     const sessionId = req.headers.get("x-session-id");
-  console.log('POST /api/workers - headers:', { 'x-session-id': sessionId, 'x-actor-type': actorType, 'x-actor-id': actorId });
+    console.log("POST /api/workers - headers:", {
+      "x-session-id": sessionId,
+      "x-actor-type": actorType,
+      "x-actor-id": actorId,
+    });
 
     if (!sessionId || !actorType || !actorId) {
       return NextResponse.json(
@@ -124,8 +128,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-  const body = await req.json();
-  console.log('POST /api/workers - body:', body);
+    const body = await req.json();
+    console.log("POST /api/workers - body:", body);
     const validatedData = createWorkerSchema.parse(body);
 
     // Check worker limit (5 workers per manager)
@@ -150,7 +154,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Hash the password
-    const hashedPassword = await hash(validatedData.password, 12);
+    const hashedPassword = await hashPassword(validatedData.password);
 
     // Create worker
     const worker = await prisma.worker.create({

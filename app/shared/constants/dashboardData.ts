@@ -17,8 +17,8 @@ export const sections: Section[] = [
   { id: "overview", name: "Overview", icon: "📊" },
   { id: "tasks", name: "Task Manager", icon: "✅" },
   { id: "projects", name: "Projects", icon: "📋" },
-  { id: "workers", name: "Workers", icon: "�" },
-  { id: "reports", name: "Reports", icon: "�" },
+  { id: "workers", name: "Workers", icon: "👥" },
+  { id: "reports", name: "Reports", icon: "📈" },
 ];
 
 export const sidebarItems: SidebarSection[] = [

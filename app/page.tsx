@@ -131,7 +131,7 @@ export default function LandingPage() {
               together—so ops, engineers, and field workers move faster with fewer tools.
             </p>
             <div class="flex flex-wrap items-center gap-3">
-              <a href="/dashboard/select" class="rounded-xl bg-slate-900 px-5 py-3 text-white hover:opacity-95 dark:bg-white dark:text-slate-900 font-semibold shadow-soft">Try Demo</a>
+              <a href="/login" class="rounded-xl bg-slate-900 px-5 py-3 text-white hover:opacity-95 dark:bg-white dark:text-slate-900 font-semibold shadow-soft">Try Demo</a>
               <a href="#features" class="rounded-xl border border-slate-300 px-5 py-3 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-900 font-semibold">See features</a>
             </div>
             <div class="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">

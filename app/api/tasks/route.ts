@@ -26,13 +26,13 @@ export async function POST(request: NextRequest) {
       status,
       priority,
       assignedTo,
-      assignedBy,
+      managerdeviceuuid,
       dueDate,
       estimatedHours,
       tags,
     } = body;
 
-    if (!title || !description || !assignedTo || !assignedBy) {
+    if (!title || !description || !assignedTo || !managerdeviceuuid) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -40,13 +40,12 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getDatabase();
-    const task = db.createTask({
+    const task = await db.createTask(managerdeviceuuid, {
       title,
       description,
       status: status || "todo",
       priority: priority || "medium",
       assignedTo,
-      assignedBy,
       dueDate,
       estimatedHours,
       tags: tags || [],

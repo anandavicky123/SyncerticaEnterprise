@@ -19,7 +19,7 @@ export interface Task {
   status: string;
   priority: "low" | "medium" | "high" | "critical";
   assignedTo: string;
-  assignedBy: string;
+  managerdeviceuuid: string; // This matches the database column name
   createdAt: string;
   updatedAt: string;
   dueDate?: string;
@@ -149,10 +149,9 @@ export class DatabaseManager {
     }
   }
 
-  // Task methods
-  async getAllTasks(managerDeviceUUID: string): Promise<Task[]> {
+  async getAllTasks(managerDeviceUUID?: string): Promise<Task[]> {
     const tasks = await prisma.task.findMany({
-      where: { assignedBy: managerDeviceUUID },
+      where: managerDeviceUUID ? { assignedBy: managerDeviceUUID } : undefined,
       include: {
         status: true,
       },
@@ -163,9 +162,9 @@ export class DatabaseManager {
       title: task.title,
       description: task.description,
       status: task.status.name as Task["status"],
-      priority: task.priority,
+      priority: task.priority as Task["priority"],
       assignedTo: task.assignedTo,
-      assignedBy: task.assignedBy,
+      managerdeviceuuid: task.assignedBy,
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
       dueDate: task.dueDate?.toISOString(),
@@ -191,9 +190,9 @@ export class DatabaseManager {
       title: task.title,
       description: task.description,
       status: task.status.name as Task["status"],
-      priority: task.priority,
+      priority: task.priority as Task["priority"],
       assignedTo: task.assignedTo,
-      assignedBy: task.assignedBy,
+      managerdeviceuuid: task.assignedBy,
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
       dueDate: task.dueDate?.toISOString(),
@@ -208,6 +207,67 @@ export class DatabaseManager {
     managerDeviceUUID: string,
     task: Omit<Task, "id" | "createdAt" | "updatedAt">
   ): Promise<Task> {
+    // Ensure the manager exists first
+    let manager = await prisma.manager.findUnique({
+      where: { deviceUUID: managerDeviceUUID },
+    });
+
+    if (!manager) {
+      // Create the manager if it doesn't exist
+      manager = await prisma.manager.create({
+        data: {
+          deviceUUID: managerDeviceUUID,
+          name: "Default Manager",
+          dateFormat: "YYYY-MM-DD",
+          timeFormat: "24h",
+          language: "en",
+        },
+      });
+    }
+
+    // Helper: get allowed categories from DB check constraint (if present)
+    const getAllowedStatusCategories = async (): Promise<string[]> => {
+      try {
+        const rows = await prisma.$queryRaw<Array<{ def: string }>>`
+          SELECT pg_get_constraintdef(c.oid) AS def
+          FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          WHERE t.relname = 'statuses' AND c.conname = 'statuses_category_check'
+    `;
+        if (rows && rows[0]?.def) {
+          const def = rows[0].def as string; // e.g., CHECK ((category = ANY (ARRAY['workflow'::text,'task_status'::text])))
+          const matches = [...def.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+          if (matches.length) return matches;
+          const inList = def.match(/\(([^\)]+)\)/);
+          if (inList && inList[1]) {
+            return inList[1]
+              .split(",")
+              .map((s) => s.replace(/['":\s]/g, ""))
+              .filter(Boolean);
+          }
+        }
+      } catch {
+        // ignore; will use fallback list
+      }
+      return ["workflow", "tasks", "task_status", "general", "status"];
+    };
+
+    // Ensure a default project exists for this manager
+    let defaultProject = await prisma.project.findFirst({
+      where: { managerDeviceUUID, name: "Default Project" },
+    });
+    if (!defaultProject) {
+      defaultProject = await prisma.project.create({
+        data: {
+          id: crypto.randomUUID(),
+          managerDeviceUUID,
+          name: "Default Project",
+          description: "Auto-created default project",
+          status: "active",
+        },
+      });
+    }
+
     // Get or create status
     let status = await prisma.status.findFirst({
       where: {
@@ -217,12 +277,30 @@ export class DatabaseManager {
     });
 
     if (!status) {
-      status = await prisma.status.create({
-        data: {
-          name: task.status,
-          managerDeviceUUID,
-        },
-      });
+      const categoryCandidates = await getAllowedStatusCategories();
+      let createdStatusLocal = null as Awaited<
+        ReturnType<typeof prisma.status.create>
+      > | null;
+      for (const category of categoryCandidates) {
+        try {
+          createdStatusLocal = await prisma.status.create({
+            data: {
+              name: task.status,
+              category,
+              managerDeviceUUID,
+            },
+          });
+          break;
+        } catch {
+          // try next category
+        }
+      }
+      if (!createdStatusLocal) {
+        throw new Error(
+          "Failed to create status due to category check constraint. Please adjust allowed categories or seed statuses."
+        );
+      }
+      status = createdStatusLocal;
     }
 
     const created = await prisma.task.create({
@@ -239,7 +317,7 @@ export class DatabaseManager {
         estimatedHours: task.estimatedHours,
         actualHours: task.actualHours,
         stepFunctionArn: task.stepFunctionArn,
-        projectId: task.projectId || "default", // Make sure to handle project ID
+        projectId: defaultProject.id,
       },
       include: {
         status: true,
@@ -251,9 +329,9 @@ export class DatabaseManager {
       title: created.title,
       description: created.description,
       status: created.status.name as Task["status"],
-      priority: created.priority,
+      priority: created.priority as Task["priority"],
       assignedTo: created.assignedTo,
-      assignedBy: created.assignedBy,
+      managerdeviceuuid: created.assignedBy,
       createdAt: created.createdAt.toISOString(),
       updatedAt: created.updatedAt.toISOString(),
       dueDate: created.dueDate?.toISOString(),
@@ -285,30 +363,95 @@ export class DatabaseManager {
         });
 
         if (!status) {
-          status = await prisma.status.create({
-            data: {
-              name: updates.status,
-              managerDeviceUUID: task.assignedBy,
-            },
-          });
+          const rows = await prisma.$queryRaw<Array<{ def: string }>>`
+            SELECT pg_get_constraintdef(c.oid) AS def
+            FROM pg_constraint c
+            JOIN pg_class t ON t.oid = c.conrelid
+            WHERE t.relname = 'statuses' AND c.conname = 'statuses_category_check'
+          `;
+          const candidates = (() => {
+            if (rows && rows[0]?.def) {
+              const def = rows[0].def as string;
+              const matches = [...def.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+              if (matches.length) return matches;
+            }
+            return ["workflow", "tasks", "task_status", "general", "status"];
+          })();
+          let newStatus: Awaited<
+            ReturnType<typeof prisma.status.create>
+          > | null = null;
+          for (const category of candidates) {
+            try {
+              newStatus = await prisma.status.create({
+                data: {
+                  name: updates.status,
+                  category,
+                  managerDeviceUUID: task.assignedBy,
+                },
+              });
+              break;
+            } catch {
+              // continue
+            }
+          }
+          if (!newStatus) {
+            throw new Error(
+              "Failed to create status due to category check constraint. Please adjust allowed categories or seed statuses."
+            );
+          }
+          status = newStatus;
         }
 
-        const { status: _, ...restUpdates } = updates;
+        // Build prisma update data without undefineds and excluding status
+        const maybeUpdates = updates as Partial<Omit<Task, "id" | "createdAt">>;
+        const data: Record<string, unknown> = {};
+        if (maybeUpdates.title !== undefined) data.title = maybeUpdates.title;
+        if (maybeUpdates.description !== undefined)
+          data.description = maybeUpdates.description;
+        if (maybeUpdates.priority !== undefined)
+          data.priority = maybeUpdates.priority;
+        if (maybeUpdates.assignedTo !== undefined)
+          data.assignedTo = maybeUpdates.assignedTo;
+        if (maybeUpdates.tags !== undefined) data.tags = maybeUpdates.tags;
+        if (maybeUpdates.estimatedHours !== undefined)
+          data.estimatedHours = maybeUpdates.estimatedHours;
+        if (maybeUpdates.actualHours !== undefined)
+          data.actualHours = maybeUpdates.actualHours;
+        if (maybeUpdates.stepFunctionArn !== undefined)
+          data.stepFunctionArn = maybeUpdates.stepFunctionArn;
+        data.statusId = status.id;
+        data.dueDate = updates.dueDate ? new Date(updates.dueDate) : undefined;
+
         await prisma.task.update({
           where: { id },
-          data: {
-            ...restUpdates,
-            statusId: status.id,
-            dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
-          },
+          data,
         });
       } else {
+        // Build prisma update data without undefineds
+        const maybeUpdates2 = updates as Partial<
+          Omit<Task, "id" | "createdAt">
+        >;
+        const data2: Record<string, unknown> = {};
+        if (maybeUpdates2.title !== undefined)
+          data2.title = maybeUpdates2.title;
+        if (maybeUpdates2.description !== undefined)
+          data2.description = maybeUpdates2.description;
+        if (maybeUpdates2.priority !== undefined)
+          data2.priority = maybeUpdates2.priority;
+        if (maybeUpdates2.assignedTo !== undefined)
+          data2.assignedTo = maybeUpdates2.assignedTo;
+        if (maybeUpdates2.tags !== undefined) data2.tags = maybeUpdates2.tags;
+        if (maybeUpdates2.estimatedHours !== undefined)
+          data2.estimatedHours = maybeUpdates2.estimatedHours;
+        if (maybeUpdates2.actualHours !== undefined)
+          data2.actualHours = maybeUpdates2.actualHours;
+        if (maybeUpdates2.stepFunctionArn !== undefined)
+          data2.stepFunctionArn = maybeUpdates2.stepFunctionArn;
+        data2.dueDate = updates.dueDate ? new Date(updates.dueDate) : undefined;
+
         await prisma.task.update({
           where: { id },
-          data: {
-            ...updates,
-            dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
-          },
+          data: data2,
         });
       }
       return true;

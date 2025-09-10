@@ -18,7 +18,7 @@ interface CreateTaskModalProps {
     title: string;
     description: string;
     assignedTo: string;
-    assignedBy: string;
+    managerdeviceuuid: string;
     priority: string;
     dueDate?: string;
     estimatedHours?: number;
@@ -31,7 +31,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   isOpen,
   onClose,
   onCreateTask,
-  currentUserId = "admin-1",
+  currentUserId = "11111111-1111-1111-1111-111111111111",
 }) => {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(false);
@@ -79,7 +79,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         title: formData.title,
         description: formData.description,
         assignedTo: formData.assignedTo,
-        assignedBy: currentUserId,
+        managerdeviceuuid: currentUserId,
         priority: formData.priority,
         dueDate: formData.dueDate || undefined,
         estimatedHours: formData.estimatedHours

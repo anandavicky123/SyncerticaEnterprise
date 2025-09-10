@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import { Shield, UserCircle2 } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [showWorkerForm, setShowWorkerForm] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -46,15 +44,21 @@ export default function LoginPage() {
         throw new Error(data.error || "Failed to create manager session");
       }
 
-      // Set session cookie
-      document.cookie = `session-id=${data.sessionId}; path=/; max-age=${
-        24 * 60 * 60
-      }; ${
-        process.env.NODE_ENV === "development" ? "" : "secure; "
-      }samesite=lax`;
+      console.log("Manager authentication response:", data);
 
-      // Redirect to manager dashboard
-      router.push("/dashboard");
+      // Set new manager session cookie with explicit attributes
+      const cookieString = `session-id=${data.sessionId}; path=/; max-age=${
+        24 * 60 * 60
+      }; samesite=lax`;
+      document.cookie = cookieString;
+      console.log("Setting cookie:", cookieString);
+
+      // Verify cookie was set
+      console.log("All cookies after setting:", document.cookie);
+
+      console.log("Cookie set, now redirecting to /dashboard");
+      // Force a complete page reload to ensure new cookie is used
+      window.location.href = "/dashboard";
     } catch (error) {
       console.error("Manager access error:", error);
       setError(
@@ -87,15 +91,13 @@ export default function LoginPage() {
         throw new Error(data.error || "Login failed");
       }
 
-      // Set session cookie
+      // Set new worker session cookie
       document.cookie = `session-id=${data.sessionId}; path=/; max-age=${
         24 * 60 * 60
-      }; ${
-        process.env.NODE_ENV === "development" ? "" : "secure; "
-      }samesite=lax`;
+      }; samesite=lax`;
 
-      // Redirect to worker tasks
-      router.push("/tasks");
+      // Force a complete page reload to ensure new cookie is used
+      window.location.href = "/tasks";
     } catch (error) {
       console.error("Login error:", error);
       setError(error instanceof Error ? error.message : "Login failed");
