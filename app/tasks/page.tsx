@@ -23,6 +23,9 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [worker, setWorker] = useState<{ name: string; email: string } | null>(
+    null
+  );
   const [filter, setFilter] = useState("all");
 
   useEffect(() => {
@@ -30,64 +33,30 @@ export default function TasksPage() {
   }, []);
 
   const fetchTasks = async () => {
+    setLoading(true);
     try {
-      // For now, we'll use mock data since we haven't implemented the tasks API yet
-      const mockTasks: Task[] = [
-        {
-          id: "1",
-          title: "Design user interface for login page",
-          description:
-            "Create a modern, responsive login page design with proper accessibility features.",
-          status: "todo",
-          priority: "high",
-          dueDate: "2024-01-15",
-          estimatedHours: 8,
-          project: {
-            name: "Authentication System",
-            description: "User authentication and authorization system",
-          },
-          createdAt: "2024-01-10T10:00:00Z",
-          updatedAt: "2024-01-10T10:00:00Z",
-        },
-        {
-          id: "2",
-          title: "Implement password validation",
-          description:
-            "Add client-side and server-side password validation with strength indicators.",
-          status: "doing",
-          priority: "medium",
-          dueDate: "2024-01-20",
-          estimatedHours: 4,
-          actualHours: 2,
-          project: {
-            name: "Authentication System",
-            description: "User authentication and authorization system",
-          },
-          createdAt: "2024-01-08T14:30:00Z",
-          updatedAt: "2024-01-12T09:15:00Z",
-        },
-        {
-          id: "3",
-          title: "Write unit tests for API endpoints",
-          description:
-            "Create comprehensive unit tests for all authentication-related API endpoints.",
-          status: "done",
-          priority: "medium",
-          estimatedHours: 6,
-          actualHours: 5,
-          project: {
-            name: "Authentication System",
-            description: "User authentication and authorization system",
-          },
-          createdAt: "2024-01-05T11:00:00Z",
-          updatedAt: "2024-01-11T16:45:00Z",
-        },
-      ];
+      // Fetch worker info first
+      const workerRes = await fetch("/api/workers/me", {
+        credentials: "include",
+      });
+      if (!workerRes.ok) {
+        throw new Error("Failed to get worker info");
+      }
+      const workerData = await workerRes.json();
+      setWorker({ name: workerData.name, email: workerData.email });
 
-      setTasks(mockTasks);
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
-      setError("Failed to fetch tasks");
+      // Fetch tasks assigned to this worker
+      const tasksRes = await fetch("/api/tasks/worker", {
+        credentials: "include",
+      });
+      if (!tasksRes.ok) {
+        throw new Error("Failed to fetch tasks");
+      }
+      const tasksData: Task[] = await tasksRes.json();
+      setTasks(tasksData);
+    } catch (err) {
+      console.error("Error fetching tasks or worker info:", err);
+      setError((err as Error).message || "Failed to fetch tasks");
     } finally {
       setLoading(false);
     }
@@ -108,12 +77,20 @@ export default function TasksPage() {
         )
       );
 
-      // Here you would make an API call to update the task status
-      // const response = await fetch(`/api/tasks/${taskId}`, {
-      //   method: 'PATCH',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ status: newStatus })
-      // });
+      // Persist the change to the server
+      const response = await fetch("/api/tasks", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, status: newStatus }),
+      });
+
+      if (!response.ok) {
+        // Revert local change and surface error
+        console.error("Failed to update task on server");
+        await fetchTasks();
+        setError("Failed to update task status. Changes were reverted.");
+      }
     } catch (error) {
       console.error("Error updating task status:", error);
       // Revert the change if API call fails
@@ -176,13 +153,34 @@ export default function TasksPage() {
                 </h1>
               </div>
               <div className="flex items-center space-x-4">
+                <div className="text-sm text-gray-700 mr-4">
+                  {worker ? (
+                    <div className="text-right">
+                      <div className="font-medium text-gray-900">
+                        {worker.name}
+                      </div>
+                      <div className="text-gray-500">{worker.email}</div>
+                    </div>
+                  ) : null}
+                </div>
                 <button
-                  onClick={() => {
-                    document.cookie =
-                      "session-id=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-                    window.location.href = "/login";
+                  onClick={async () => {
+                    try {
+                      // Call logout API to properly invalidate session
+                      await fetch("/api/auth/logout", {
+                        method: "POST",
+                        credentials: "include",
+                      });
+                    } catch (error) {
+                      console.error("Logout API error:", error);
+                    } finally {
+                      // Clear cookie and redirect even if API fails
+                      document.cookie =
+                        "session-id=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+                      window.location.href = "/login";
+                    }
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-gray-700 cursor-pointer"
                 >
                   Logout
                 </button>
@@ -219,6 +217,16 @@ export default function TasksPage() {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-700 mr-4">
+                {worker ? (
+                  <div className="text-right">
+                    <div className="font-medium text-gray-900">
+                      {worker.name}
+                    </div>
+                    <div className="text-gray-500">{worker.email}</div>
+                  </div>
+                ) : null}
+              </div>
               <button
                 onClick={async () => {
                   try {
@@ -236,7 +244,7 @@ export default function TasksPage() {
                     window.location.href = "/login";
                   }
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 cursor-pointer"
               >
                 Logout
               </button>
