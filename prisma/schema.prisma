@@ -21,7 +21,6 @@ model Manager {
   projects      Project[]
   tasks         Task[]        @relation("TaskAssignedBy")
   statuses      Status[]
-  comments      Comment[]
   notifications Notification[]
 
   @@map("managers")
@@ -41,8 +40,9 @@ model Worker {
   // Relations
   manager       Manager        @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
   tasks         Task[]         @relation("TaskAssignedTo")
-  comments      Comment[]
   notifications Notification[]
+  sentChats     chats[]        @relation("SentChats")
+  receivedChats chats[]        @relation("ReceivedChats")
 
   @@map("workers")
 }
@@ -87,7 +87,6 @@ model Task {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   status  Status  @relation(fields: [statusId], references: [id], onDelete: Cascade)
 
-  comments          Comment[]
   dependentTasks    TaskDependency[] @relation("DependentTask")
   prerequisiteTasks TaskDependency[] @relation("PrerequisiteTask")
 
@@ -108,7 +107,7 @@ model Status {
 }
 
 model TaskDependency {
-  taskId     String @map("taskid")
+  taskId      String @map("taskid")
   dependsOnId String @map("dependsonid")
 
   // Relations
@@ -119,20 +118,18 @@ model TaskDependency {
   @@map("task_dependencies")
 }
 
-model Comment {
-  id                String   @id
-  taskId            String   @map("taskid")
-  workerId          String?  @map("workerid")
-  managerDeviceUUID String?  @db.Uuid @map("managerdeviceuuid")
-  content           String
-  createdAt         DateTime @default(now()) @db.Timestamptz @map("createdat")
+model chats {
+  id         String   @id
+  senderId   String   @map("sender_id")
+  receiverId String   @map("receiver_id")
+  content    String
+  createdAt  DateTime @default(now()) @db.Timestamptz @map("created_at")
 
   // Relations
-  task    Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  worker  Worker?  @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  manager Manager? @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
+  sender   Worker @relation("SentChats", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver Worker @relation("ReceivedChats", fields: [receiverId], references: [id], onDelete: Cascade)
 
-  @@map("comments")
+  @@map("chats")
 }
 
 model Notification {

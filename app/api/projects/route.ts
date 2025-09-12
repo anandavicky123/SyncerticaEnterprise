@@ -1,14 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "../../../lib/database";
 
-// Temporary hardcoded manager UUID - should be replaced with actual authentication
-const TEMP_MANAGER_UUID = "123e4567-e89b-12d3-a456-426614174000";
-
 // GET /api/projects - Get all projects
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const actorType = request.headers.get("x-actor-type");
+    const actorId = request.headers.get("x-actor-id");
+
+    if (!actorType || !actorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
     const db = getDatabase();
-    const projects = await db.getAllProjects(TEMP_MANAGER_UUID);
+
+    let managerDeviceUUID: string;
+
+    if (actorType === "manager") {
+      // Manager requests should return projects for their own managerDeviceUUID
+      managerDeviceUUID = actorId;
+    } else if (actorType === "worker") {
+      // Workers should only see projects for their manager
+      const worker = await db.getWorkerById(actorId);
+      if (!worker) {
+        return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+      }
+      managerDeviceUUID = worker.managerDeviceUUID;
+    } else {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const projects = await db.getAllProjects(managerDeviceUUID);
     return NextResponse.json(projects);
   } catch (error) {
     console.error("Error fetching projects:", error);
@@ -19,9 +40,20 @@ export async function GET() {
   }
 }
 
-// POST /api/projects - Create a new project
+// POST /api/projects - Create a new project (managers only)
 export async function POST(request: NextRequest) {
   try {
+    const actorType = request.headers.get("x-actor-type");
+    const actorId = request.headers.get("x-actor-id");
+
+    if (!actorType || !actorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    if (actorType !== "manager") {
+      return NextResponse.json({ error: "Only managers can create projects" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { name, description, repository, status } = body;
 
@@ -40,7 +72,7 @@ export async function POST(request: NextRequest) {
         repository,
         status: status || "active",
       },
-      TEMP_MANAGER_UUID
+      actorId
     );
 
     return NextResponse.json(project, { status: 201 });

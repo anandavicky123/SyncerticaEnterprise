@@ -22,30 +22,59 @@ export async function GET(request: NextRequest) {
       "x-actor-id": actorId,
     });
 
-    if (actorType !== "manager") {
+    if (actorType === "manager") {
+      // Managers can see all their workers
+      const workers = await prisma.worker.findMany({
+        where: {
+          managerDeviceUUID: actorId!,
+        },
+        select: {
+          id: true,
+          name: true,
+          pronouns: true,
+          jobRole: true,
+          email: true,
+          createdAt: true,
+          updatedAt: true,
+          managerDeviceUUID: true,
+        },
+      });
+
+      return NextResponse.json(workers);
+    } else if (actorType === "worker") {
+      // Workers can see other workers under the same manager
+      const currentWorker = await prisma.worker.findUnique({
+        where: { id: actorId! },
+        select: { managerDeviceUUID: true },
+      });
+
+      if (!currentWorker) {
+        return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+      }
+
+      const coWorkers = await prisma.worker.findMany({
+        where: {
+          managerDeviceUUID: currentWorker.managerDeviceUUID,
+        },
+        select: {
+          id: true,
+          name: true,
+          pronouns: true,
+          jobRole: true,
+          email: true,
+          createdAt: true,
+          updatedAt: true,
+          managerDeviceUUID: true,
+        },
+      });
+
+      return NextResponse.json(coWorkers);
+    } else {
       return NextResponse.json(
-        { error: "Unauthorized - Manager access required" },
+        { error: "Unauthorized - Manager or Worker access required" },
         { status: 401 }
       );
     }
-
-    const workers = await prisma.worker.findMany({
-      where: {
-        managerDeviceUUID: actorId!,
-      },
-      select: {
-        id: true,
-        name: true,
-        pronouns: true,
-        jobRole: true,
-        email: true,
-        createdAt: true,
-        updatedAt: true,
-        managerDeviceUUID: true,
-      },
-    });
-
-    return NextResponse.json(workers);
   } catch (error) {
     console.error("Get workers error:", error);
     return NextResponse.json(

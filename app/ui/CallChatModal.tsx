@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Phone, MessageCircle, X, User, Video } from "lucide-react";
 import { User as UserType } from "../shared/types/dashboard";
 
@@ -9,6 +9,24 @@ interface TeamMember {
   department: string;
   status: "online" | "away" | "busy" | "offline";
   avatar?: string;
+}
+
+interface WorkerRow {
+  id: string;
+  name: string;
+  email?: string;
+  jobRole?: string;
+}
+
+interface ChatRow {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  sender: { id: string; name: string; email?: string };
+  receiver: { id: string; name: string; email?: string };
+  content: string;
+  createdAt: string;
+  isFromCurrentUser: boolean;
 }
 
 interface CallChatModalProps {
@@ -25,45 +43,39 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
   const [activeChat, setActiveChat] = useState<TeamMember | null>(null);
   const [activeCall, setActiveCall] = useState<TeamMember | null>(null);
   const [chatMessage, setChatMessage] = useState("");
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [chats, setChats] = useState<ChatRow[]>([]);
 
-  // Mock team members
-  const teamMembers: TeamMember[] = [
-    {
-      id: "1",
-      name: "John Admin",
-      role: "admin",
-      department: "IT",
-      status: "online" as const,
-    },
-    {
-      id: "2",
-      name: "Jane Employee",
-      role: "employee",
-      department: "Development",
-      status: "online" as const,
-    },
-    {
-      id: "3",
-      name: "Mike Manager",
-      role: "manager",
-      department: "Operations",
-      status: "away" as const,
-    },
-    {
-      id: "4",
-      name: "Sarah Designer",
-      role: "employee",
-      department: "Design",
-      status: "busy" as const,
-    },
-    {
-      id: "5",
-      name: "Tom Developer",
-      role: "employee",
-      department: "Development",
-      status: "offline" as const,
-    },
-  ].filter((member) => member.name !== currentUser.name);
+  // Fetch team members (workers) for the current managerDeviceUUID (middleware will scope by headers)
+  useEffect(() => {
+    if (!isOpen) return;
+    let mounted = true;
+    async function loadWorkers() {
+      try {
+        const res = await fetch("/api/workers", { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to fetch workers");
+        const data = await res.json();
+        if (!mounted) return;
+        // Map to TeamMember shape; keep status "offline" as default
+        const mapped: TeamMember[] = data
+          .filter((w: WorkerRow) => w.name !== currentUser.name)
+          .map((w: WorkerRow) => ({
+            id: w.id,
+            name: w.name,
+            role: w.jobRole || "employee",
+            department: "",
+            status: "offline",
+          }));
+        setTeamMembers(mapped);
+      } catch (err) {
+        console.error("Error loading workers:", err);
+      }
+    }
+    loadWorkers();
+    return () => {
+      mounted = false;
+    };
+  }, [isOpen, currentUser.name]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -96,6 +108,19 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
   const handleStartChat = (member: TeamMember) => {
     setActiveChat(member);
     setActiveCall(null);
+    setChats([]);
+    // Load existing chats with this member
+    (async () => {
+      try {
+        const res = await fetch(`/api/chat?receiverId=${member.id}`, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to fetch chats");
+        const chatData = await res.json();
+        setChats(chatData);
+      } catch (err) {
+        console.error(err);
+        setChats([]);
+      }
+    })();
   };
 
   const handleStartCall = (member: TeamMember) => {
@@ -104,12 +129,48 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
   };
 
   const handleSendMessage = () => {
-    if (chatMessage.trim()) {
-      // Mock sending message
-      console.log(`Sending message to ${activeChat?.name}: ${chatMessage}`);
-      setChatMessage("");
+    if (chatMessage.trim() && activeChat) {
+      (async () => {
+        try {
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ receiverId: activeChat.id, content: chatMessage }),
+          });
+          if (!res.ok) throw new Error("Failed to send message");
+          setChatMessage("");
+          // reload chats
+          const listRes = await fetch(`/api/chat?receiverId=${activeChat.id}`, { credentials: "include" });
+          if (listRes.ok) {
+            const list = await listRes.json();
+            setChats(list);
+          }
+        } catch (err) {
+          console.error("Error sending chat:", err);
+          alert("Failed to send message");
+        }
+      })();
     }
   };
+
+  // load chats when activeChat changes
+  useEffect(() => {
+    if (!activeChat) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/chat?receiverId=${activeChat.id}`, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to fetch chats");
+        const data = await res.json();
+        if (mounted) setChats(data);
+      } catch (err) {
+        console.error(err);
+        if (mounted) setChats([]);
+      }
+    })();
+    return () => { mounted = false };
+  }, [activeChat]);
 
   if (!isOpen) return null;
 
@@ -206,8 +267,17 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
               </div>
 
               <div className="flex-1 p-4 bg-gray-50 overflow-y-auto">
-                <div className="text-center text-gray-500 text-sm">
-                  Start chatting with {activeChat.name}
+                <div className="space-y-3">
+                  {chats.length === 0 ? (
+                    <div className="text-center text-gray-500 text-sm">Start chatting with {activeChat.name}</div>
+                  ) : (
+                    chats.map((c) => (
+                      <div key={c.id} className="p-2 bg-white border rounded">
+                        <div className="text-xs text-gray-500">{c.sender?.name || 'Unknown'} • {new Date(c.createdAt).toLocaleString()}</div>
+                        <div className="mt-1 text-sm text-gray-800">{c.content}</div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 

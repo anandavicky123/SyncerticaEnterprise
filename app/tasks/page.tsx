@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { MessageCircle } from "lucide-react";
+import WorkerChatModal from "../ui/WorkerChatModal";
 
 interface Task {
   id: string;
@@ -27,6 +29,7 @@ export default function TasksPage() {
     null
   );
   const [filter, setFilter] = useState("all");
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -506,6 +509,20 @@ export default function TasksPage() {
           )}
         </div>
       </div>
+
+      {/* Floating Chat Button */}
+      <button
+        onClick={() => setIsChatOpen(true)}
+        className="fixed bottom-6 right-6 bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-full shadow-lg transition-colors z-40"
+      >
+        <MessageCircle className="w-6 h-6" />
+      </button>
+
+      {/* Worker Chat Modal */}
+      <WorkerChatModal 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+      />
     </div>
   );
 }
