@@ -2,10 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "../../../lib/database";
 
 // GET /api/tasks - Get all tasks
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const actorType = request.headers.get("x-actor-type");
+    const actorId = request.headers.get("x-actor-id");
+
+    if (!actorType || !actorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
     const db = getDatabase();
-    const tasks = db.getAllTasks();
+
+    let managerDeviceUUID: string;
+
+    if (actorType === "manager") {
+      managerDeviceUUID = actorId;
+    } else if (actorType === "worker") {
+      const worker = await db.getWorkerById(actorId);
+      if (!worker) {
+        return NextResponse.json(
+          { error: "Worker not found" },
+          { status: 404 }
+        );
+      }
+      managerDeviceUUID = worker.managerDeviceUUID;
+    } else {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const tasks = await db.getAllTasks(managerDeviceUUID);
     return NextResponse.json(tasks);
   } catch (error) {
     console.error("Error fetching tasks:", error);
@@ -26,13 +51,28 @@ export async function POST(request: NextRequest) {
       status,
       priority,
       assignedTo,
-      managerdeviceuuid,
       dueDate,
       estimatedHours,
       tags,
     } = body;
+    // Determine managerDeviceUUID from session headers (only managers can create tasks)
+    const actorType = request.headers.get("x-actor-type");
+    const actorId = request.headers.get("x-actor-id");
 
-    if (!title || !description || !assignedTo || !managerdeviceuuid) {
+    if (!actorType || !actorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    if (actorType !== "manager") {
+      return NextResponse.json(
+        { error: "Only managers can create tasks" },
+        { status: 403 }
+      );
+    }
+
+    const managerdeviceuuid = actorId;
+
+    if (!title || !description || !assignedTo) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -45,6 +85,7 @@ export async function POST(request: NextRequest) {
       description,
       status: status || "todo",
       priority: priority || "medium",
+      managerdeviceuuid,
       assignedTo,
       dueDate,
       estimatedHours,
@@ -76,13 +117,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const db = getDatabase();
-    const success = db.updateTask(id, updates);
+    const success = await db.updateTask(id, updates);
 
     if (!success) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const updatedTask = db.getTaskById(id);
+    const updatedTask = await db.getTaskById(id);
     return NextResponse.json(updatedTask);
   } catch (error) {
     console.error("Error updating task:", error);
@@ -107,7 +148,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const db = getDatabase();
-    const success = db.deleteTask(id);
+    const success = await db.deleteTask(id);
 
     if (!success) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });

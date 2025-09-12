@@ -24,7 +24,10 @@ interface WorkerChatModalProps {
   onClose: () => void;
 }
 
-export default function WorkerChatModal({ isOpen, onClose }: WorkerChatModalProps) {
+export default function WorkerChatModal({
+  isOpen,
+  onClose,
+}: WorkerChatModalProps) {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [activeChat, setActiveChat] = useState<Worker | null>(null);
   const [chats, setChats] = useState<ChatRow[]>([]);
@@ -37,17 +40,27 @@ export default function WorkerChatModal({ isOpen, onClose }: WorkerChatModalProp
       (async () => {
         try {
           // Get current worker info
-          const workerRes = await fetch("/api/workers/me", { credentials: "include" });
+          const workerRes = await fetch("/api/workers/me", {
+            credentials: "include",
+          });
           if (workerRes.ok) {
             const worker = await workerRes.json();
-            setCurrentWorker({ id: worker.id, name: worker.name, email: worker.email });
-            
+            setCurrentWorker({
+              id: worker.id,
+              name: worker.name,
+              email: worker.email,
+            });
+
             // Get all workers under the same manager
-            const workersRes = await fetch("/api/workers", { credentials: "include" });
+            const workersRes = await fetch("/api/workers", {
+              credentials: "include",
+            });
             if (workersRes.ok) {
               const allWorkers = await workersRes.json();
               // Filter out current worker
-              const coWorkers = allWorkers.filter((w: Worker) => w.id !== worker.id);
+              const coWorkers = allWorkers.filter(
+                (w: Worker) => w.id !== worker.id
+              );
               setWorkers(coWorkers);
             }
           }
@@ -63,7 +76,9 @@ export default function WorkerChatModal({ isOpen, onClose }: WorkerChatModalProp
     if (activeChat) {
       (async () => {
         try {
-          const res = await fetch(`/api/chat?receiverId=${activeChat.id}`, { credentials: "include" });
+          const res = await fetch(`/api/chat?receiverId=${activeChat.id}`, {
+            credentials: "include",
+          });
           if (res.ok) {
             const list = await res.json();
             setChats(list);
@@ -87,12 +102,17 @@ export default function WorkerChatModal({ isOpen, onClose }: WorkerChatModalProp
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ receiverId: activeChat.id, content: chatMessage }),
+            body: JSON.stringify({
+              receiverId: activeChat.id,
+              content: chatMessage,
+            }),
           });
           if (!res.ok) throw new Error("Failed to send message");
           setChatMessage("");
           // reload chats
-          const listRes = await fetch(`/api/chat?receiverId=${activeChat.id}`, { credentials: "include" });
+          const listRes = await fetch(`/api/chat?receiverId=${activeChat.id}`, {
+            credentials: "include",
+          });
           if (listRes.ok) {
             const list = await listRes.json();
             setChats(list);
@@ -116,7 +136,7 @@ export default function WorkerChatModal({ isOpen, onClose }: WorkerChatModalProp
             <h3 className="text-lg font-medium text-gray-900">Co-workers</h3>
             <p className="text-sm text-gray-500">Chat with your teammates</p>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto">
             {workers.length === 0 ? (
               <div className="p-4 text-center text-gray-500 text-sm">
@@ -128,7 +148,9 @@ export default function WorkerChatModal({ isOpen, onClose }: WorkerChatModalProp
                   key={worker.id}
                   onClick={() => handleStartChat(worker)}
                   className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                    activeChat?.id === worker.id ? "bg-blue-50 border-l-4 border-l-blue-500" : ""
+                    activeChat?.id === worker.id
+                      ? "bg-blue-50 border-l-4 border-l-blue-500"
+                      : ""
                   }`}
                 >
                   <div className="flex items-center space-x-3">
@@ -136,8 +158,12 @@ export default function WorkerChatModal({ isOpen, onClose }: WorkerChatModalProp
                       {worker.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 truncate">{worker.name}</div>
-                      <div className="text-sm text-gray-500 truncate">{worker.email}</div>
+                      <div className="font-medium text-gray-900 truncate">
+                        {worker.name}
+                      </div>
+                      <div className="text-sm text-gray-500 truncate">
+                        {worker.email}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -152,8 +178,12 @@ export default function WorkerChatModal({ isOpen, onClose }: WorkerChatModalProp
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <MessageCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Select a co-worker to start chatting</h3>
-                <p className="text-gray-500">Choose someone from the list to begin a conversation</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Select a co-worker to start chatting
+                </h3>
+                <p className="text-gray-500">
+                  Choose someone from the list to begin a conversation
+                </p>
               </div>
             </div>
           ) : (
@@ -165,8 +195,12 @@ export default function WorkerChatModal({ isOpen, onClose }: WorkerChatModalProp
                     {activeChat.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div className="font-medium text-gray-900">{activeChat.name}</div>
-                    <div className="text-sm text-gray-500">{activeChat.email}</div>
+                    <div className="font-medium text-gray-900">
+                      {activeChat.name}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {activeChat.email}
+                    </div>
                   </div>
                 </div>
                 <button
@@ -181,19 +215,32 @@ export default function WorkerChatModal({ isOpen, onClose }: WorkerChatModalProp
               <div className="flex-1 p-4 bg-gray-50 overflow-y-auto">
                 <div className="space-y-3">
                   {chats.length === 0 ? (
-                    <div className="text-center text-gray-500 text-sm">Start chatting with {activeChat.name}</div>
+                    <div className="text-center text-gray-500 text-sm">
+                      Start chatting with {activeChat.name}
+                    </div>
                   ) : (
                     chats.map((c) => {
                       const isFromMe = c.senderId === currentWorker?.id;
                       return (
-                        <div key={c.id} className={`flex ${isFromMe ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                            isFromMe 
-                              ? 'bg-blue-500 text-white' 
-                              : 'bg-white border text-gray-800'
-                          }`}>
+                        <div
+                          key={c.id}
+                          className={`flex ${
+                            isFromMe ? "justify-end" : "justify-start"
+                          }`}
+                        >
+                          <div
+                            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                              isFromMe
+                                ? "bg-blue-500 text-white"
+                                : "bg-white border text-gray-800"
+                            }`}
+                          >
                             <div className="text-sm">{c.content}</div>
-                            <div className={`text-xs mt-1 ${isFromMe ? 'text-blue-100' : 'text-gray-500'}`}>
+                            <div
+                              className={`text-xs mt-1 ${
+                                isFromMe ? "text-blue-100" : "text-gray-500"
+                              }`}
+                            >
                               {new Date(c.createdAt).toLocaleString()}
                             </div>
                           </div>

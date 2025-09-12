@@ -519,9 +519,9 @@ export default function TasksPage() {
       </button>
 
       {/* Worker Chat Modal */}
-      <WorkerChatModal 
-        isOpen={isChatOpen} 
-        onClose={() => setIsChatOpen(false)} 
+      <WorkerChatModal
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
       />
     </div>
   );

@@ -10,12 +10,16 @@ async function run() {
     if (!task) throw new Error("No task found in DB to use for test insert");
     const taskId = task.id;
 
-    const manager = await prisma.manager.findFirst({ select: { deviceUUID: true } });
-    if (!manager) throw new Error("No manager found in DB to use for test insert");
+    const manager = await prisma.manager.findFirst({
+      select: { deviceUUID: true },
+    });
+    if (!manager)
+      throw new Error("No manager found in DB to use for test insert");
     const managerDeviceUUID = manager.deviceUUID;
 
     const worker = await prisma.worker.findFirst({ select: { id: true } });
-    if (!worker) throw new Error("No worker found in DB to use for test insert");
+    if (!worker)
+      throw new Error("No worker found in DB to use for test insert");
     const workerId = worker.id;
 
     // Manager-style message: managerdeviceuuid set (uuid column), workerid NULL (text column)

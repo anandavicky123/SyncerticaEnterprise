@@ -14,7 +14,10 @@ export async function GET(request: NextRequest) {
     const receiverId = url.searchParams.get("receiverId");
 
     if (!receiverId) {
-      return NextResponse.json({ error: "receiverId is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "receiverId is required" },
+        { status: 400 }
+      );
     }
 
     if (actorType === "worker") {
@@ -22,38 +25,52 @@ export async function GET(request: NextRequest) {
       const currentWorkerId = actorId as string;
 
       // Verify both sender and receiver are workers under same manager
-      const currentWorker = await prisma.worker.findUnique({ 
-        where: { id: currentWorkerId }, 
-        select: { managerDeviceUUID: true } 
+      const currentWorker = await prisma.worker.findUnique({
+        where: { id: currentWorkerId },
+        select: { managerDeviceUUID: true },
       });
-      
-      const receiverWorker = await prisma.worker.findUnique({ 
-        where: { id: receiverId }, 
-        select: { managerDeviceUUID: true } 
+
+      const receiverWorker = await prisma.worker.findUnique({
+        where: { id: receiverId },
+        select: { managerDeviceUUID: true },
       });
 
       if (!currentWorker || !receiverWorker) {
-        return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Worker not found" },
+          { status: 404 }
+        );
       }
 
-      if (currentWorker.managerDeviceUUID !== receiverWorker.managerDeviceUUID) {
-        return NextResponse.json({ error: "Can only chat with workers under same manager" }, { status: 403 });
+      if (
+        currentWorker.managerDeviceUUID !== receiverWorker.managerDeviceUUID
+      ) {
+        return NextResponse.json(
+          { error: "Can only chat with workers under same manager" },
+          { status: 403 }
+        );
       }
     } else if (actorType === "manager") {
       // Managers can chat with their workers
       const managerId = actorId as string;
-      
-      const receiverWorker = await prisma.worker.findUnique({ 
-        where: { id: receiverId }, 
-        select: { managerDeviceUUID: true } 
+
+      const receiverWorker = await prisma.worker.findUnique({
+        where: { id: receiverId },
+        select: { managerDeviceUUID: true },
       });
 
       if (!receiverWorker) {
-        return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Worker not found" },
+          { status: 404 }
+        );
       }
 
       if (receiverWorker.managerDeviceUUID !== managerId) {
-        return NextResponse.json({ error: "Can only chat with your own workers" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Can only chat with your own workers" },
+          { status: 403 }
+        );
       }
     } else {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
@@ -97,17 +114,28 @@ export async function GET(request: NextRequest) {
       id: chat.id,
       senderId: chat.sender_id,
       receiverId: chat.receiver_id,
-      sender: { id: chat.sender_id, name: chat.sender_name, email: chat.sender_email },
-      receiver: { id: chat.receiver_id, name: chat.receiver_name, email: chat.receiver_email },
+      sender: {
+        id: chat.sender_id,
+        name: chat.sender_name,
+        email: chat.sender_email,
+      },
+      receiver: {
+        id: chat.receiver_id,
+        name: chat.receiver_name,
+        email: chat.receiver_email,
+      },
       content: chat.content,
       createdAt: chat.created_at.toISOString(),
-      isFromCurrentUser: chat.sender_id === currentUserId
+      isFromCurrentUser: chat.sender_id === currentUserId,
     }));
 
     return NextResponse.json(mapped);
   } catch (error) {
     console.error("GET /api/chat error:", error);
-    return NextResponse.json({ error: "Failed to fetch chats" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch chats" },
+      { status: 500 }
+    );
   }
 }
 
@@ -120,7 +148,10 @@ export async function POST(request: NextRequest) {
     const { receiverId, content } = body;
 
     if (!receiverId || !content) {
-      return NextResponse.json({ error: "receiverId and content are required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "receiverId and content are required" },
+        { status: 400 }
+      );
     }
 
     if (actorType === "worker") {
@@ -128,38 +159,52 @@ export async function POST(request: NextRequest) {
       const currentWorkerId = actorId as string;
 
       // Verify both sender and receiver exist and are under same manager
-      const currentWorker = await prisma.worker.findUnique({ 
-        where: { id: currentWorkerId }, 
-        select: { managerDeviceUUID: true } 
+      const currentWorker = await prisma.worker.findUnique({
+        where: { id: currentWorkerId },
+        select: { managerDeviceUUID: true },
       });
-      
-      const receiverWorker = await prisma.worker.findUnique({ 
-        where: { id: receiverId }, 
-        select: { managerDeviceUUID: true } 
+
+      const receiverWorker = await prisma.worker.findUnique({
+        where: { id: receiverId },
+        select: { managerDeviceUUID: true },
       });
 
       if (!currentWorker || !receiverWorker) {
-        return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Worker not found" },
+          { status: 404 }
+        );
       }
 
-      if (currentWorker.managerDeviceUUID !== receiverWorker.managerDeviceUUID) {
-        return NextResponse.json({ error: "Can only chat with workers under same manager" }, { status: 403 });
+      if (
+        currentWorker.managerDeviceUUID !== receiverWorker.managerDeviceUUID
+      ) {
+        return NextResponse.json(
+          { error: "Can only chat with workers under same manager" },
+          { status: 403 }
+        );
       }
     } else if (actorType === "manager") {
       // Managers can chat with their workers
       const managerId = actorId as string;
-      
-      const receiverWorker = await prisma.worker.findUnique({ 
-        where: { id: receiverId }, 
-        select: { managerDeviceUUID: true } 
+
+      const receiverWorker = await prisma.worker.findUnique({
+        where: { id: receiverId },
+        select: { managerDeviceUUID: true },
       });
 
       if (!receiverWorker) {
-        return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Worker not found" },
+          { status: 404 }
+        );
       }
 
       if (receiverWorker.managerDeviceUUID !== managerId) {
-        return NextResponse.json({ error: "Can only chat with your own workers" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Can only chat with your own workers" },
+          { status: 403 }
+        );
       }
     } else {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
@@ -192,34 +237,44 @@ export async function POST(request: NextRequest) {
 
     // Get sender and receiver info
     let sender: { id: string; name: string; email: string } | null = null;
-    
+
     if (actorType === "worker") {
       sender = await prisma.worker.findUnique({
         where: { id: actorId as string },
-        select: { id: true, name: true, email: true }
+        select: { id: true, name: true, email: true },
       });
     } else if (actorType === "manager") {
       // Manager profile fields were removed from RDS; use a generic manager identity
-      sender = { id: `manager:${actorId}`, name: 'Manager', email: 'manager@local' };
+      sender = {
+        id: `manager:${actorId}`,
+        name: "Manager",
+        email: "manager@local",
+      };
     }
 
     const receiver = await prisma.worker.findUnique({
       where: { id: receiverId },
-      select: { id: true, name: true, email: true }
+      select: { id: true, name: true, email: true },
     });
 
-    return NextResponse.json({
-      id: chat.id,
-      senderId: chat.sender_id,
-      receiverId: chat.receiver_id,
-      sender,
-      receiver,
-      content: chat.content,
-      createdAt: chat.created_at.toISOString(),
-      isFromCurrentUser: true
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        id: chat.id,
+        senderId: chat.sender_id,
+        receiverId: chat.receiver_id,
+        sender,
+        receiver,
+        content: chat.content,
+        createdAt: chat.created_at.toISOString(),
+        isFromCurrentUser: true,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("POST /api/chat error:", error);
-    return NextResponse.json({ error: "Failed to create chat" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create chat" },
+      { status: 500 }
+    );
   }
 }

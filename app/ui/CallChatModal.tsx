@@ -112,7 +112,9 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
     // Load existing chats with this member
     (async () => {
       try {
-        const res = await fetch(`/api/chat?receiverId=${member.id}`, { credentials: "include" });
+        const res = await fetch(`/api/chat?receiverId=${member.id}`, {
+          credentials: "include",
+        });
         if (!res.ok) throw new Error("Failed to fetch chats");
         const chatData = await res.json();
         setChats(chatData);
@@ -136,12 +138,17 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ receiverId: activeChat.id, content: chatMessage }),
+            body: JSON.stringify({
+              receiverId: activeChat.id,
+              content: chatMessage,
+            }),
           });
           if (!res.ok) throw new Error("Failed to send message");
           setChatMessage("");
           // reload chats
-          const listRes = await fetch(`/api/chat?receiverId=${activeChat.id}`, { credentials: "include" });
+          const listRes = await fetch(`/api/chat?receiverId=${activeChat.id}`, {
+            credentials: "include",
+          });
           if (listRes.ok) {
             const list = await listRes.json();
             setChats(list);
@@ -160,7 +167,9 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
     let mounted = true;
     (async () => {
       try {
-        const res = await fetch(`/api/chat?receiverId=${activeChat.id}`, { credentials: "include" });
+        const res = await fetch(`/api/chat?receiverId=${activeChat.id}`, {
+          credentials: "include",
+        });
         if (!res.ok) throw new Error("Failed to fetch chats");
         const data = await res.json();
         if (mounted) setChats(data);
@@ -169,7 +178,9 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
         if (mounted) setChats([]);
       }
     })();
-    return () => { mounted = false };
+    return () => {
+      mounted = false;
+    };
   }, [activeChat]);
 
   if (!isOpen) return null;
@@ -269,12 +280,19 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
               <div className="flex-1 p-4 bg-gray-50 overflow-y-auto">
                 <div className="space-y-3">
                   {chats.length === 0 ? (
-                    <div className="text-center text-gray-500 text-sm">Start chatting with {activeChat.name}</div>
+                    <div className="text-center text-gray-500 text-sm">
+                      Start chatting with {activeChat.name}
+                    </div>
                   ) : (
                     chats.map((c) => (
                       <div key={c.id} className="p-2 bg-white border rounded">
-                        <div className="text-xs text-gray-500">{c.sender?.name || 'Unknown'} • {new Date(c.createdAt).toLocaleString()}</div>
-                        <div className="mt-1 text-sm text-gray-800">{c.content}</div>
+                        <div className="text-xs text-gray-500">
+                          {c.sender?.name || "Unknown"} •{" "}
+                          {new Date(c.createdAt).toLocaleString()}
+                        </div>
+                        <div className="mt-1 text-sm text-gray-800">
+                          {c.content}
+                        </div>
                       </div>
                     ))
                   )}

@@ -49,7 +49,10 @@ export async function GET(request: NextRequest) {
       });
 
       if (!currentWorker) {
-        return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Worker not found" },
+          { status: 404 }
+        );
       }
 
       const coWorkers = await prisma.worker.findMany({

@@ -21,14 +21,16 @@ async function main() {
   }
 
   // Also show table columns and types to help diagnose mismatch
-  const cols = await prisma.$queryRaw<Array<{ column_name: string; data_type: string }>>`
+  const cols = await prisma.$queryRaw<
+    Array<{ column_name: string; data_type: string }>
+  >`
     SELECT column_name, data_type
     FROM information_schema.columns
     WHERE table_name = 'chats'
     ORDER BY ordinal_position
   `;
 
-  console.log('\nColumns on chats:');
+  console.log("\nColumns on chats:");
   for (const c of cols) {
     console.log(`- ${c.column_name}: ${c.data_type}`);
   }
@@ -36,7 +38,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error('Error running inspection script:', e);
+    console.error("Error running inspection script:", e);
     process.exit(1);
   })
   .finally(async () => {

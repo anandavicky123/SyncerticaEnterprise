@@ -22,7 +22,10 @@ export async function GET(request: NextRequest) {
       // Workers should only see projects for their manager
       const worker = await db.getWorkerById(actorId);
       if (!worker) {
-        return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Worker not found" },
+          { status: 404 }
+        );
       }
       managerDeviceUUID = worker.managerDeviceUUID;
     } else {
@@ -51,7 +54,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (actorType !== "manager") {
-      return NextResponse.json({ error: "Only managers can create projects" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Only managers can create projects" },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
