@@ -50,7 +50,12 @@ const Projects: React.FC<{
   onOpenWorkflowEditor?: () => void;
   onOpenInfrastructureEditor?: () => void;
   onOpenContainerEditor?: () => void;
-}> = ({ className = "", onOpenWorkflowEditor, onOpenInfrastructureEditor, onOpenContainerEditor }) => {
+}> = ({
+  className = "",
+  onOpenWorkflowEditor,
+  onOpenInfrastructureEditor,
+  onOpenContainerEditor,
+}) => {
   const {
     repositories = [],
     workflows = [],
@@ -534,7 +539,9 @@ const Projects: React.FC<{
                 Infrastructure Files ({infrastructure.length})
               </h3>
               <button
-                onClick={() => onOpenInfrastructureEditor && onOpenInfrastructureEditor()}
+                onClick={() =>
+                  onOpenInfrastructureEditor && onOpenInfrastructureEditor()
+                }
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
               >
                 <Plus className="w-4 h-4" />
