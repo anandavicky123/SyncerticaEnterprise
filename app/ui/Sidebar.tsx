@@ -6,12 +6,14 @@ interface SidebarProps {
   expanded: boolean;
   onToggle: () => void;
   sidebarItems: SidebarSection[];
+  statsLoading?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   expanded,
   onToggle,
   sidebarItems,
+  statsLoading = false,
 }) => {
   return (
     <div
@@ -102,6 +104,21 @@ const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </div>
       </div>
+      {/* Centered loading overlay (shown when statsLoading is true) */}
+      {statsLoading && (
+        <div
+          aria-live="polite"
+          className={`absolute inset-y-0 left-0 flex items-center justify-center pointer-events-none ${
+            expanded ? "w-72" : "w-16"
+          }`}
+        >
+          <div className="bg-black/60 dark:bg-white/10 backdrop-blur-sm rounded px-3 py-2">
+            <div className="text-xs text-gray-300 dark:text-gray-200 text-center">
+              Loading stats...
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -40,11 +40,7 @@ import { useDragAndDrop } from "../hooks/useDragAndDrop";
 import { useGitHubData } from "../hooks/useGitHubData";
 
 // Constants and Types
-import {
-  sections,
-  sidebarItems as staticSidebarItems,
-  dashboardBlocks,
-} from "../shared/constants/dashboardData";
+import { sections, dashboardBlocks } from "../shared/constants/dashboardData";
 import {
   StickyNote as StickyNoteType,
   User,
@@ -67,17 +63,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
   const [showAddNote, setShowAddNote] = useState(false);
   const [showCallChat, setShowCallChat] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [currentManagerUUID, setCurrentManagerUUID] = useState<string>("11111111-1111-1111-1111-111111111111"); // Default fallback
+  const [currentManagerUUID, setCurrentManagerUUID] = useState<string>("");
 
   // Fetch current user session to get their device UUID
   const fetchCurrentUser = async () => {
     try {
-      const response = await fetch("/api/auth/session");
+      const response = await fetch("/api/auth/session", {
+        credentials: "include",
+      });
       if (response.ok) {
         const sessionData = await response.json();
         if (sessionData.success && sessionData.session?.actorId) {
           setCurrentManagerUUID(sessionData.session.actorId);
-          console.log("✅ Dashboard - Current manager UUID:", sessionData.session.actorId);
+          console.log(
+            "✅ Dashboard - Current manager UUID:",
+            sessionData.session.actorId
+          );
         }
       }
     } catch (error) {
@@ -92,8 +93,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
   }, []);
 
   // Dynamic sidebar items based on database statistics
-  const [sidebarItems, setSidebarItems] =
-    useState<SidebarSection[]>(staticSidebarItems);
+  const [sidebarItems, setSidebarItems] = useState<SidebarSection[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
 
   // DevOps modals
@@ -122,16 +122,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
   } = useGitHubData();
 
   // Function to update sidebar statistics from database
-  const updateSidebarStats = async () => {
+  const updateSidebarStats = async (managerUUID?: string) => {
     try {
+      if (!managerUUID) {
+        console.warn(
+          "updateSidebarStats called without managerUUID - skipping update"
+        );
+        return;
+      }
+
       setStatsLoading(true);
-      const stats = await getDatabaseStats();
+      console.debug("updateSidebarStats - requesting stats for:", managerUUID);
+      const stats = await getDatabaseStats(managerUUID);
+      console.debug("updateSidebarStats - received stats:", stats);
       const dynamicItems = generateDynamicSidebarItems(stats);
       setSidebarItems(dynamicItems);
     } catch (error) {
       console.error("Error fetching sidebar statistics:", error);
-      // Fallback to static items if there's an error
-      setSidebarItems(staticSidebarItems);
     } finally {
       setStatsLoading(false);
     }
@@ -139,13 +146,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
 
   // Update stats when component mounts
   useEffect(() => {
-    updateSidebarStats();
+    // No-op: stats will be fetched once currentManagerUUID is set by session fetch
   }, []);
 
+  // When manager UUID is discovered/changed, refresh stats using it
+  useEffect(() => {
+    if (currentManagerUUID) {
+      updateSidebarStats(currentManagerUUID);
+    }
+  }, [currentManagerUUID]);
+
   // Update stats when tasks or workers change (can be triggered by modals)
-  const refreshSidebarStats = () => {
-    updateSidebarStats();
-  };
 
   const toolbarItems = [
     { name: "Add Note", icon: StickyNote, action: () => setShowAddNote(true) },
@@ -316,7 +327,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
         console.log("✅ Task created successfully:", newTask);
         alert("Task created successfully!");
         // Refresh sidebar statistics after successful task creation
-        await updateSidebarStats();
+        await updateSidebarStats(currentManagerUUID);
       } else {
         throw new Error("Failed to create task");
       }
@@ -328,9 +339,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
 
   const handleAddWorker = async (workerData: {
     name: string;
-    pronouns: string;
+    pronouns: string | null;
     jobRole: "UI/UX Designer" | "Developer" | "Manager" | "QA";
     email: string;
+    password?: string;
   }) => {
     try {
       const response = await fetch("/api/workers", {
@@ -346,7 +358,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
         console.log("✅ Worker added successfully:", newWorker);
         alert("Worker added successfully!");
         // Refresh sidebar statistics after successful worker addition
-        await updateSidebarStats();
+        await updateSidebarStats(currentManagerUUID);
       } else {
         throw new Error("Failed to add worker");
       }
@@ -367,6 +379,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
         expanded={sidebarExpanded}
         onToggle={() => setSidebarExpanded(!sidebarExpanded)}
         sidebarItems={sidebarItems}
+        statsLoading={statsLoading}
       />
 
       {/* Main Content */}
@@ -399,7 +412,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
           ) : activeSection === "tasks" ? (
             <TaskManager />
           ) : activeSection === "projects" ? (
-            <Projects />
+            <Projects
+              onOpenWorkflowEditor={() => setShowWorkflowEditor(true)}
+              onOpenInfrastructureEditor={() =>
+                setShowInfrastructureEditor(true)
+              }
+              onOpenContainerEditor={() => setShowContainerEditor(true)}
+            />
           ) : activeSection === "workers" ? (
             <WorkersManagement />
           ) : activeSection === "reports" ? (

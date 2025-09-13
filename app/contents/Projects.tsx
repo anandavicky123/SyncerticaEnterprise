@@ -45,7 +45,12 @@ type TabType =
   | "infrastructure"
   | "container";
 
-const Projects: React.FC<{ className?: string }> = ({ className = "" }) => {
+const Projects: React.FC<{
+  className?: string;
+  onOpenWorkflowEditor?: () => void;
+  onOpenInfrastructureEditor?: () => void;
+  onOpenContainerEditor?: () => void;
+}> = ({ className = "", onOpenWorkflowEditor, onOpenInfrastructureEditor, onOpenContainerEditor }) => {
   const {
     repositories = [],
     workflows = [],
@@ -444,7 +449,10 @@ const Projects: React.FC<{ className?: string }> = ({ className = "" }) => {
               <h3 className="text-lg font-semibold text-gray-900">
                 Workflow Files ({workflows.length})
               </h3>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+              <button
+                onClick={() => onOpenWorkflowEditor && onOpenWorkflowEditor()}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
                 <Plus className="w-4 h-4" />
                 Add Workflow
               </button>
@@ -525,7 +533,10 @@ const Projects: React.FC<{ className?: string }> = ({ className = "" }) => {
               <h3 className="text-lg font-semibold text-gray-900">
                 Infrastructure Files ({infrastructure.length})
               </h3>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+              <button
+                onClick={() => onOpenInfrastructureEditor && onOpenInfrastructureEditor()}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
                 <Plus className="w-4 h-4" />
                 Add Infrastructure
               </button>
@@ -591,7 +602,10 @@ const Projects: React.FC<{ className?: string }> = ({ className = "" }) => {
               <h3 className="text-lg font-semibold text-gray-900">
                 Container Files ({containers.length})
               </h3>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+              <button
+                onClick={() => onOpenContainerEditor && onOpenContainerEditor()}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
                 <Plus className="w-4 h-4" />
                 Add Container
               </button>

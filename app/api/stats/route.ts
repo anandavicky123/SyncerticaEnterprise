@@ -1,12 +1,26 @@
 import { NextResponse } from "next/server";
 import { getDatabase } from "../../../lib/database";
+import { cookies } from "next/headers";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const db = getDatabase();
 
-    // Extract managerDeviceUUID from cookies or session
-    const managerDeviceUUID = "894a6f20-5d46-4d63-9cbe-dd2dd0dcd338"; // TODO: Get this from session
+    // Try to get managerDeviceUUID from query string first, then cookies
+    const url = new URL(request.url);
+    const qsManagerUUID = url.searchParams.get("managerDeviceUUID");
+  const cookieJar = await cookies();
+  const cookieManager = cookieJar.get("managerDeviceUUID")?.value;
+  const managerDeviceUUID = qsManagerUUID || cookieManager || null;
+
+    console.debug("/api/stats - managerDeviceUUID:", managerDeviceUUID);
+
+    if (!managerDeviceUUID) {
+      return NextResponse.json(
+        { error: "Missing managerDeviceUUID" },
+        { status: 400 }
+      );
+    }
 
     // Get all data using the DatabaseManager methods with proper error handling
     const [tasks, workers, projects] = await Promise.all([

@@ -1,6 +1,5 @@
 import {
   Section,
-  SidebarSection,
   DashboardBlocks,
   WebSocketMessage,
   ActivityFeedItem,
@@ -21,54 +20,11 @@ export const sections: Section[] = [
   { id: "reports", name: "Reports", icon: "📈" },
 ];
 
-export const sidebarItems: SidebarSection[] = [
-  {
-    title: "Views",
-    items: [
-      { name: "All", count: 135, icon: "📋" },
-      { name: "Assigned to me", count: 120, icon: "👤" },
-      { name: "Today", count: 5, icon: "📅" },
-      { name: "Checklists & Items", count: 5, icon: "✅" },
-      { name: "Recently completed", count: 8, icon: "✅" },
-      { name: "Expired", count: 2, icon: "⏰" },
-      { name: "Archived", count: 1398, icon: "📦" },
-    ],
-  },
-  {
-    title: "Analytics & Security",
-    items: [
-      { name: "Real-time Dashboard", icon: "📈", count: 12 },
-      { name: "Security Alerts", icon: "🔒", count: 3 },
-      { name: "AWS Monitoring", icon: "☁️", count: 5 },
-      { name: "Performance Metrics", icon: "⚡" },
-    ],
-  },
-  {
-    title: "Projects",
-    items: [
-      {
-        name: "Design",
-        icon: "🎨",
-        expanded: true,
-        subitems: [
-          { name: "3D", icon: "🎲" },
-          { name: "UX/UI", icon: "🎭", count: 10 },
-        ],
-      },
-      { name: "Web development", icon: "💻", count: 0 },
-      { name: "Finances", icon: "💰", count: 2 },
-      { name: "HR", icon: "👥", count: 0 },
-    ],
-  },
-  {
-    title: "Teams",
-    items: [
-      { name: "Designers", icon: "🎨" },
-      { name: "Dev", icon: "💻" },
-      { name: "QA", icon: "🔍", count: 3 },
-    ],
-  },
-];
+// The `sidebarItems` constant was intentionally removed. The sidebar is populated
+// dynamically from RDS via `/api/stats` and the client-side helper in
+// `lib/sidebar-stats-client.ts`. Keeping a static/dummy list here caused brief
+// stale UI and the numbers flashing to incorrect values. If a static fallback is
+// needed, set it explicitly in the Dashboard component instead.
 
 export const dashboardBlocks: DashboardBlocks = {
   overview: [

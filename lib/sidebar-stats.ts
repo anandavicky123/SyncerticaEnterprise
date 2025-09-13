@@ -19,11 +19,14 @@ export interface DatabaseStats {
   };
 }
 
-export async function getDatabaseStats(): Promise<DatabaseStats> {
+export async function getDatabaseStats(
+  managerDeviceUUID: string
+): Promise<DatabaseStats> {
+  if (!managerDeviceUUID) throw new Error("managerDeviceUUID is required");
   const db = getDatabase();
 
-  // Get task statistics
-  const tasks = db.getAllTasks();
+  // Get task statistics (await promises when db methods are async)
+  const tasks = await db.getAllTasks(managerDeviceUUID).catch(() => []);
   const totalTasks = tasks.length;
   const todoTasks = tasks.filter((t) => t.status === "todo").length;
   const doingTasks = tasks.filter((t) => t.status === "doing").length;
@@ -31,7 +34,7 @@ export async function getDatabaseStats(): Promise<DatabaseStats> {
   const blockedTasks = tasks.filter((t) => t.status === "blocked").length;
 
   // Get worker statistics
-  const workers = db.getAllWorkers();
+  const workers = await db.getAllWorkers(managerDeviceUUID).catch(() => []);
   const totalWorkers = workers.length;
   const workersByRole = {
     developers: workers.filter((w) => w.jobRole === "Developer").length,
@@ -41,7 +44,7 @@ export async function getDatabaseStats(): Promise<DatabaseStats> {
   };
 
   // Get project statistics
-  const projects = db.getAllProjects();
+  const projects = await db.getAllProjects(managerDeviceUUID).catch(() => []);
   const totalProjects = projects.length;
   const activeProjects = projects.filter((p) => p.status === "active").length;
   const completedProjects = projects.filter(
@@ -65,7 +68,6 @@ export async function getDatabaseStats(): Promise<DatabaseStats> {
 export function generateDynamicSidebarItems(
   stats: DatabaseStats
 ): SidebarSection[] {
-  const today = new Date();
   const todayTasksCount = 0; // Could be enhanced to filter tasks by due date
 
   return [

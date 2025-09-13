@@ -18,12 +18,21 @@ export interface DatabaseStats {
   };
 }
 
-export async function getDatabaseStats(): Promise<DatabaseStats> {
-  const response = await fetch("/api/stats");
+export async function getDatabaseStats(managerDeviceUUID?: string): Promise<DatabaseStats> {
+  // Server expects managerDeviceUUID; prefer callers to pass it.
+  const url = managerDeviceUUID
+    ? `/api/stats?managerDeviceUUID=${encodeURIComponent(managerDeviceUUID)}`
+    : "/api/stats"; // fallback for backward compatibility
+
+  const response = await fetch(url, { credentials: "include" });
   if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    console.error("getDatabaseStats - failed response:", response.status, body);
     throw new Error("Failed to fetch database statistics");
   }
-  return response.json();
+  const json = await response.json();
+  console.debug("getDatabaseStats - url:", url, "->", json);
+  return json;
 }
 
 export function generateDynamicSidebarItems(
