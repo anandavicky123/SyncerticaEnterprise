@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getInstallations, getInstallationToken } from "@/lib/github-app";
 
 // Simple in-memory cache to avoid hitting GitHub API too frequently
-let infrastructureCache: Map<
+const infrastructureCache: Map<
   string,
   {
     data: any[];
@@ -19,7 +20,31 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const repoName = searchParams.get("repo");
 
-    if (!accessToken) {
+    // Try OAuth first, then GitHub App
+    let authHeaders = null;
+    if (accessToken) {
+      authHeaders = {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      };
+    } else {
+      // Try GitHub App authentication
+      try {
+        const installations = await getInstallations();
+        if (installations.length > 0) {
+          const installationToken = await getInstallationToken(installations[0].id);
+          authHeaders = {
+            Authorization: `token ${installationToken.token}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+          };
+        }
+      } catch {
+        // Failed to get GitHub App authentication
+      }
+    }
+
+    if (!authHeaders) {
       return NextResponse.json(
         { error: "Not authenticated", infrastructure: [] },
         { status: 401 }
@@ -30,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     // If no specific repo, get infrastructure from all repos
     if (!repoName) {
-      return await getAllInfrastructure(accessToken);
+      return await getAllInfrastructure(authHeaders);
     }
 
     // Check cache first
@@ -52,8 +77,7 @@ export async function GET(request: NextRequest) {
       `https://api.github.com/repos/${repoName}/git/trees/HEAD?recursive=1`,
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/vnd.github.v3+json",
+          ...authHeaders,
           "User-Agent": "SyncerticaEnterprise",
         },
       }
@@ -166,7 +190,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function getAllInfrastructure(accessToken: string) {
+async function getAllInfrastructure(authHeaders: any) {
   try {
     console.log("🏗️ Fetching infrastructure from all repositories...");
 
@@ -175,8 +199,7 @@ async function getAllInfrastructure(accessToken: string) {
       "https://api.github.com/user/repos?sort=updated&per_page=100",
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/vnd.github.v3+json",
+          ...authHeaders,
           "User-Agent": "SyncerticaEnterprise",
         },
       }
@@ -199,8 +222,7 @@ async function getAllInfrastructure(accessToken: string) {
           `https://api.github.com/repos/${repo.full_name}/git/trees/HEAD?recursive=1`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/vnd.github.v3+json",
+              ...authHeaders,
               "User-Agent": "SyncerticaEnterprise",
             },
           }

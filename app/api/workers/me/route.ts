@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
         email: true,
         pronouns: true,
         jobRole: true,
+        managerDeviceUUID: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
       email: worker.email,
       pronouns: worker.pronouns || null,
       jobRole: worker.jobRole,
+      managerDeviceUUID: worker.managerDeviceUUID,
       createdAt: worker.createdAt.toISOString(),
       updatedAt: worker.updatedAt.toISOString(),
     });

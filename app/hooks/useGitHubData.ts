@@ -27,6 +27,7 @@ export interface Workflow {
   html_url: string;
   repository: string;
   updated_at: string;
+  workflow_id?: string | number;
 }
 
 export interface Infrastructure {

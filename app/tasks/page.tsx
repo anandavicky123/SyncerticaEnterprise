@@ -30,9 +30,25 @@ export default function TasksPage() {
   );
   const [filter, setFilter] = useState("all");
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
 
   useEffect(() => {
     fetchTasks();
+    // also fetch unread chat count for badge
+    (async () => {
+      try {
+        const res = await fetch("/api/chat", {
+          method: "HEAD",
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setChatUnread(data.unread || 0);
+        }
+      } catch (err) {
+        console.debug("Failed to fetch chat unread count", err);
+      }
+    })();
   }, []);
 
   const fetchTasks = async () => {
@@ -515,7 +531,14 @@ export default function TasksPage() {
         onClick={() => setIsChatOpen(true)}
         className="fixed bottom-6 right-6 bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-full shadow-lg transition-colors z-40"
       >
-        <MessageCircle className="w-6 h-6" />
+        <div className="relative">
+          <MessageCircle className="w-6 h-6" />
+          {chatUnread > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              {chatUnread > 9 ? "9+" : chatUnread}
+            </span>
+          )}
+        </div>
       </button>
 
       {/* Worker Chat Modal */}

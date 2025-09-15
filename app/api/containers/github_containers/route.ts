@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getInstallations, getInstallationToken } from "@/lib/github-app";
 
 // Simple in-memory cache to avoid hitting GitHub API too frequently
 let containerCache: {
@@ -29,33 +30,120 @@ export async function GET() {
     const cookieStore = await cookies();
     const githubToken = cookieStore.get("github_access_token")?.value;
 
-    if (!githubToken) {
-      console.log("❌ No GitHub token found");
+    // Try OAuth first, then GitHub App
+    let authHeaders = null;
+    let installationTokenValue: string | null = null;
+    if (githubToken) {
+      authHeaders = {
+        Authorization: `Bearer ${githubToken}`,
+        Accept: "application/vnd.github.v3+json",
+      };
+    } else {
+      // Try GitHub App authentication
+      try {
+        const installations = await getInstallations();
+        console.debug(
+          `🔍 Installations returned: ${
+            Array.isArray(installations)
+              ? installations
+                  .map((i) => `${i.id}@${i.account?.login}`)
+                  .join(", ")
+              : String(installations)
+          }`
+        );
+        if (installations.length > 0) {
+          const inst = installations[0];
+          console.debug(
+            `🔎 Using installation id=${inst.id} account=${inst.account?.login}`
+          );
+          try {
+            const installationToken = await getInstallationToken(inst.id);
+            installationTokenValue = installationToken.token;
+            console.debug(
+              `🔐 Obtained installation token (masked): ${
+                installationTokenValue
+                  ? installationTokenValue.slice(0, 6) + "..."
+                  : "none"
+              }`
+            );
+            authHeaders = {
+              Authorization: `token ${installationTokenValue}`,
+              Accept: "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+            };
+          } catch (instErr) {
+            console.error(
+              `❌ Failed to retrieve installation token for id=${inst.id}:`,
+              instErr
+            );
+          }
+        }
+      } catch (err) {
+        console.error("❌ Failed to fetch installations for GitHub App:", err);
+      }
+    }
+
+    if (!authHeaders) {
+      console.log("❌ No authentication available");
       return NextResponse.json(
-        { error: "GitHub token not found", containers: [] },
+        { error: "Not authenticated", containers: [] },
         { status: 401 }
       );
     }
 
-    console.log("✅ GitHub token found, fetching repositories...");
+    console.log("✅ Authentication found, fetching repositories...");
 
-    // First, get all repositories
-    const reposResponse = await fetch(
-      "https://api.github.com/user/repos?sort=updated&per_page=100",
-      {
-        headers: {
-          Authorization: `Bearer ${githubToken}`,
-          Accept: "application/vnd.github.v3+json",
-          "User-Agent": "SyncerticaEnterprise",
-        },
+    // First, get all repositories.
+    // If we have an installation token (GitHub App), use the installation endpoint.
+    let repositories: any[] = [];
+    if (installationTokenValue) {
+      const reposResponse = await fetch(
+        "https://api.github.com/installation/repositories?per_page=100",
+        {
+          headers: {
+            Authorization: `token ${installationTokenValue}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "SyncerticaEnterprise",
+          },
+        }
+      );
+
+      if (!reposResponse.ok) {
+        const text = await reposResponse.text().catch(() => "<no body>");
+        console.error(
+          `❌ Installation repos fetch failed: status=${reposResponse.status} body=${text}`
+        );
+        throw new Error(
+          `Failed to fetch repositories: ${reposResponse.status}`
+        );
       }
-    );
 
-    if (!reposResponse.ok) {
-      throw new Error(`Failed to fetch repositories: ${reposResponse.status}`);
+      const data = await reposResponse.json();
+      repositories = data.repositories || [];
+    } else {
+      const reposResponse = await fetch(
+        "https://api.github.com/user/repos?sort=updated&per_page=100",
+        {
+          headers: {
+            ...authHeaders,
+            "User-Agent": "SyncerticaEnterprise",
+          },
+        }
+      );
+
+      if (!reposResponse.ok) {
+        const text = await reposResponse.text().catch(() => "<no body>");
+        console.error(
+          `❌ User repos fetch failed: status=${reposResponse.status} body=${text}`
+        );
+        throw new Error(
+          `Failed to fetch repositories: ${reposResponse.status}`
+        );
+      }
+
+      repositories = await reposResponse.json();
     }
-
-    const repositories = await reposResponse.json();
     console.log(`✅ Found ${repositories.length} repositories`);
 
     const allContainers: any[] = [];
@@ -70,7 +158,7 @@ export async function GET() {
           `https://api.github.com/repos/${repo.full_name}/contents/Dockerfile`,
           {
             headers: {
-              Authorization: `Bearer ${githubToken}`,
+              ...(authHeaders as Record<string, string>),
               Accept: "application/vnd.github.v3+json",
               "User-Agent": "SyncerticaEnterprise",
             },
@@ -106,7 +194,7 @@ export async function GET() {
               `https://api.github.com/repos/${repo.full_name}/contents/${composeFile}`,
               {
                 headers: {
-                  Authorization: `Bearer ${githubToken}`,
+                  ...(authHeaders as Record<string, string>),
                   Accept: "application/vnd.github.v3+json",
                   "User-Agent": "SyncerticaEnterprise",
                 },
@@ -129,8 +217,12 @@ export async function GET() {
               console.log(`📦 Found ${composeFile} in ${repo.full_name}`);
               break; // Only add one compose file per repo
             }
-          } catch (error) {
+          } catch (_error) {
             // Continue if this specific file doesn't exist
+            console.debug(
+              `🟡 compose file check error for ${repo.full_name}:`,
+              _error
+            );
             continue;
           }
         }
@@ -141,7 +233,7 @@ export async function GET() {
             `https://api.github.com/repos/${repo.full_name}/contents/k8s`,
             {
               headers: {
-                Authorization: `Bearer ${githubToken}`,
+                ...(authHeaders as Record<string, string>),
                 Accept: "application/vnd.github.v3+json",
                 "User-Agent": "SyncerticaEnterprise",
               },
@@ -175,8 +267,9 @@ export async function GET() {
               }
             }
           }
-        } catch (error) {
+        } catch (_error) {
           // K8s directory might not exist, continue
+          console.debug(`🟡 k8s check error for ${repo.full_name}:`, _error);
         }
 
         // Check for .dockerignore
@@ -185,7 +278,7 @@ export async function GET() {
             `https://api.github.com/repos/${repo.full_name}/contents/.dockerignore`,
             {
               headers: {
-                Authorization: `Bearer ${githubToken}`,
+                ...(authHeaders as Record<string, string>),
                 Accept: "application/vnd.github.v3+json",
                 "User-Agent": "SyncerticaEnterprise",
               },
@@ -207,8 +300,12 @@ export async function GET() {
             });
             console.log(`📦 Found .dockerignore in ${repo.full_name}`);
           }
-        } catch (error) {
+        } catch (_error) {
           // .dockerignore might not exist, continue
+          console.debug(
+            `🟡 .dockerignore check error for ${repo.full_name}:`,
+            _error
+          );
         }
       } catch (error) {
         console.error(

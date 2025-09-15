@@ -29,6 +29,7 @@ export default function WorkerChatModal({
   onClose,
 }: WorkerChatModalProps) {
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [managerInfo, setManagerInfo] = useState<Worker | null>(null);
   const [activeChat, setActiveChat] = useState<Worker | null>(null);
   const [chats, setChats] = useState<ChatRow[]>([]);
   const [chatMessage, setChatMessage] = useState("");
@@ -51,16 +52,23 @@ export default function WorkerChatModal({
               email: worker.email,
             });
 
+            // If worker has a managerDeviceUUID, expose a manager contact
+            if (worker.managerDeviceUUID) {
+              setManagerInfo({
+                id: `manager:${worker.managerDeviceUUID}`,
+                name: "Manager",
+                email: "manager@local",
+              });
+            }
+
             // Get all workers under the same manager
             const workersRes = await fetch("/api/workers", {
               credentials: "include",
             });
             if (workersRes.ok) {
               const allWorkers = await workersRes.json();
-              // Filter out current worker
-              const coWorkers = allWorkers.filter(
-                (w: Worker) => w.id !== worker.id
-              );
+              // Filter out current worker and keep list as-is; Manager will be rendered separately at top
+              const coWorkers = allWorkers.filter((w: Worker) => w.id !== worker.id);
               setWorkers(coWorkers);
             }
           }
@@ -76,7 +84,8 @@ export default function WorkerChatModal({
     if (activeChat) {
       (async () => {
         try {
-          const res = await fetch(`/api/chat?receiverId=${activeChat.id}`, {
+          // activeChat.id may be in form "manager:<uuid>" or a worker id
+          const res = await fetch(`/api/chat?receiverId=${encodeURIComponent(activeChat.id)}`, {
             credentials: "include",
           });
           if (res.ok) {
@@ -137,38 +146,66 @@ export default function WorkerChatModal({
             <p className="text-sm text-gray-500">Chat with your teammates</p>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {workers.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 text-sm">
-                No co-workers found
-              </div>
-            ) : (
-              workers.map((worker) => (
-                <div
-                  key={worker.id}
-                  onClick={() => handleStartChat(worker)}
-                  className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                    activeChat?.id === worker.id
-                      ? "bg-blue-50 border-l-4 border-l-blue-500"
-                      : ""
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                      {worker.name.charAt(0).toUpperCase()}
+          <div className="flex-1 flex flex-col">
+            {/* Sticky manager contact at top */}
+            {managerInfo && (
+              <div
+                onClick={() => handleStartChat(managerInfo)}
+                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 sticky top-0 bg-white z-10 ${
+                  activeChat?.id === managerInfo.id
+                    ? "bg-blue-50 border-l-4 border-l-blue-500"
+                    : ""
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                    {managerInfo.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-gray-900 truncate">
+                      {managerInfo.name}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 truncate">
-                        {worker.name}
-                      </div>
-                      <div className="text-sm text-gray-500 truncate">
-                        {worker.email}
-                      </div>
+                    <div className="text-sm text-gray-500 truncate">
+                      {managerInfo.email}
                     </div>
                   </div>
                 </div>
-              ))
+              </div>
             )}
+
+            <div className="flex-1 overflow-y-auto">
+              {workers.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 text-sm">
+                  No co-workers found
+                </div>
+              ) : (
+                workers.map((worker) => (
+                  <div
+                    key={worker.id}
+                    onClick={() => handleStartChat(worker)}
+                    className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
+                      activeChat?.id === worker.id
+                        ? "bg-blue-50 border-l-4 border-l-blue-500"
+                        : ""
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                        {worker.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 truncate">
+                          {worker.name}
+                        </div>
+                        <div className="text-sm text-gray-500 truncate">
+                          {worker.email}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
 

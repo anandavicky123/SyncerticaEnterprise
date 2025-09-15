@@ -252,14 +252,49 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
     filename?: string,
     repository?: string
   ) => {
+    if (!repository) {
+      alert("Please select a repository");
+      return;
+    }
+
     try {
-      console.log("Saving workflow:", { content, filename, repository });
-      alert(
-        "Workflow created successfully! (Note: This is a demo - actual GitHub integration would save to repository)"
-      );
+      console.log("Saving workflow to GitHub:", { filename, repository });
+
+      const response = await fetch("/api/workflows/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content,
+          filename,
+          repository,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(
+          `${result.message}\n\nFile saved to: ${result.file.path}\nView on GitHub: ${result.file.url}`
+        );
+      } else {
+        throw new Error(
+          `Failed to save workflow: ${result.error}${
+            result.details ? "\n" + result.details : ""
+          }`
+        );
+      }
     } catch (error) {
       console.error("Error saving workflow:", error);
-      alert("Failed to save workflow. Please try again.");
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert(
+          "Failed to save workflow. Please check your connection and try again."
+        );
+      }
+      throw error; // Re-throw so modal can handle it
     }
   };
 
@@ -269,19 +304,54 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
     repository?: string,
     type?: string
   ) => {
+    if (!repository) {
+      alert("Please select a repository");
+      return;
+    }
+
     try {
-      console.log("Saving infrastructure:", {
-        content,
+      console.log("Saving infrastructure to GitHub:", {
         filename,
         repository,
         type,
       });
-      alert(
-        "Infrastructure created successfully! (Note: This is a demo - actual GitHub integration would save to repository)"
-      );
+
+      const response = await fetch("/api/infrastructure/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content,
+          filename,
+          repository,
+          type,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(
+          `${result.message}\n\nFile saved to: ${result.file.path}\nView on GitHub: ${result.file.url}`
+        );
+      } else {
+        throw new Error(
+          `Failed to save infrastructure file: ${result.error}${
+            result.details ? "\n" + result.details : ""
+          }`
+        );
+      }
     } catch (error) {
       console.error("Error saving infrastructure:", error);
-      alert("Failed to save infrastructure. Please try again.");
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert(
+          "Failed to save infrastructure file. Please check your connection and try again."
+        );
+      }
+      throw error; // Re-throw so modal can handle it
     }
   };
 
@@ -291,14 +361,54 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
     repository?: string,
     type?: string
   ) => {
+    if (!repository) {
+      alert("Please select a repository");
+      return;
+    }
+
     try {
-      console.log("Saving container:", { content, filename, repository, type });
-      alert(
-        "Container configuration created successfully! (Note: This is a demo - actual GitHub integration would save to repository)"
-      );
+      console.log("Saving container to GitHub:", {
+        filename,
+        repository,
+        type,
+      });
+
+      const response = await fetch("/api/containers/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content,
+          filename,
+          repository,
+          type,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(
+          `${result.message}\n\nFile saved to: ${result.file.path}\nView on GitHub: ${result.file.url}`
+        );
+      } else {
+        throw new Error(
+          `Failed to save container file: ${result.error}${
+            result.details ? "\n" + result.details : ""
+          }`
+        );
+      }
     } catch (error) {
       console.error("Error saving container:", error);
-      alert("Failed to save container. Please try again.");
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert(
+          "Failed to save container file. Please check your connection and try again."
+        );
+      }
+      throw error; // Re-throw so modal can handle it
     }
   };
 

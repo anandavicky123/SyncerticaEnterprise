@@ -12,6 +12,7 @@ export async function middleware(request: NextRequest) {
   // Allow public endpoints without authentication
   if (
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/github/webhook") || // Allow GitHub webhook
     pathname === "/" ||
     pathname === "/login"
   ) {

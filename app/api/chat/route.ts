@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database";
 import crypto from "crypto";
+import { putNotification, getNotifications } from "@/lib/dynamodb";
 
 // GET /api/chat?receiverId=...  - returns chats between current user and receiver
 // POST /api/chat - create a chat message { receiverId, content }
@@ -22,33 +23,44 @@ export async function GET(request: NextRequest) {
 
     if (actorType === "worker") {
       // Workers can chat with other workers under same manager
+      // Also allow workers to chat with their manager by passing receiverId in form "manager:<uuid>"
       const currentWorkerId = actorId as string;
 
-      // Verify both sender and receiver are workers under same manager
       const currentWorker = await prisma.worker.findUnique({
         where: { id: currentWorkerId },
         select: { managerDeviceUUID: true },
       });
 
-      const receiverWorker = await prisma.worker.findUnique({
-        where: { id: receiverId },
-        select: { managerDeviceUUID: true },
-      });
-
-      if (!currentWorker || !receiverWorker) {
-        return NextResponse.json(
-          { error: "Worker not found" },
-          { status: 404 }
-        );
+      if (!currentWorker) {
+        return NextResponse.json({ error: "Worker not found" }, { status: 404 });
       }
 
-      if (
-        currentWorker.managerDeviceUUID !== receiverWorker.managerDeviceUUID
-      ) {
-        return NextResponse.json(
-          { error: "Can only chat with workers under same manager" },
-          { status: 403 }
-        );
+      if (receiverId.startsWith("manager:")) {
+        // Manager receiver — verify manager owns this worker
+        const managerId = receiverId.split(":")[1];
+        if (currentWorker.managerDeviceUUID !== managerId) {
+          return NextResponse.json(
+            { error: "Can only chat with your own manager" },
+            { status: 403 }
+          );
+        }
+      } else {
+        // Receiver is a worker — verify both under same manager
+        const receiverWorker = await prisma.worker.findUnique({
+          where: { id: receiverId },
+          select: { managerDeviceUUID: true },
+        });
+
+        if (!receiverWorker) {
+          return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+        }
+
+        if (currentWorker.managerDeviceUUID !== receiverWorker.managerDeviceUUID) {
+          return NextResponse.json(
+            { error: "Can only chat with workers under same manager" },
+            { status: 403 }
+          );
+        }
       }
     } else if (actorType === "manager") {
       // Managers can chat with their workers
@@ -100,11 +112,12 @@ export async function GET(request: NextRequest) {
       SELECT c.id, c.sender_id, c.receiver_id, c.content, c.created_at,
              COALESCE(s.name, 'Manager') as sender_name,
              COALESCE(s.email, 'manager@local') as sender_email,
-             r.name as receiver_name, r.email as receiver_email
+             COALESCE(r.name, 'Manager') as receiver_name,
+             COALESCE(r.email, 'manager@local') as receiver_email
       FROM chats c
       LEFT JOIN workers s ON c.sender_id = s.id
       -- manager records were removed from RDS; don't join managers table
-      JOIN workers r ON c.receiver_id = r.id
+      LEFT JOIN workers r ON c.receiver_id = r.id
       WHERE (c.sender_id = ${currentUserId} AND c.receiver_id = ${receiverId})
          OR (c.sender_id = ${receiverId} AND c.receiver_id = ${currentUserId})
       ORDER BY c.created_at ASC
@@ -136,6 +149,25 @@ export async function GET(request: NextRequest) {
       { error: "Failed to fetch chats" },
       { status: 500 }
     );
+  }
+}
+
+// New endpoint: GET /api/chat/unread-count - returns unread notifications count for current worker
+export async function HEAD(request: NextRequest) {
+  try {
+    const actorType = request.headers.get("x-actor-type");
+    const actorId = request.headers.get("x-actor-id");
+
+    if (actorType !== "worker" || !actorId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const notifications = await getNotifications(actorId, 50);
+    const unread = notifications.filter((n) => n.status === "unread").length;
+    return NextResponse.json({ unread });
+  } catch (error) {
+    console.error("HEAD /api/chat/unread-count error:", error);
+    return NextResponse.json({ unread: 0 });
   }
 }
 
@@ -256,6 +288,22 @@ export async function POST(request: NextRequest) {
       where: { id: receiverId },
       select: { id: true, name: true, email: true },
     });
+
+    // If sender is manager, create a DynamoDB notification for the worker (unread)
+    if (actorType === "manager" && receiver) {
+      try {
+        await putNotification({
+          userId: receiver.id,
+          createdAt: Date.now(),
+          type: "chat",
+          message: `Message from Manager: ${content.substring(0, 120)}`,
+          status: "unread",
+          triggeredBy: `manager:${actorId}`,
+        });
+      } catch (ndErr) {
+        console.error("Failed to enqueue chat notification:", ndErr);
+      }
+    }
 
     return NextResponse.json(
       {

@@ -26,6 +26,7 @@ import {
   Infrastructure,
   Container,
 } from "../hooks/useGitHubData";
+import { getGitHubAppInstallUrl, checkGitHubAppInstallation, getAllPossibleInstallUrls } from "../../lib/github-app-client";
 
 interface Project {
   id: string;
@@ -79,6 +80,188 @@ const Projects: React.FC<{
   const [status, setStatus] = useState("active");
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [appInstalled, setAppInstalled] = useState<boolean>(false);
+  const [checkingInstallation, setCheckingInstallation] = useState<boolean>(false);
+
+  // Modal states
+  const [showProjectSettings, setShowProjectSettings] = useState<string | null>(
+    null
+  );
+  const [showRepoSettings, setShowRepoSettings] = useState<string | null>(null);
+  const [showContentViewer, setShowContentViewer] = useState<{
+    type: "infrastructure" | "container";
+    item: Infrastructure | Container;
+  } | null>(null);
+  const [runningWorkflow, setRunningWorkflow] = useState<string | null>(null);
+
+  // Action handlers
+  const handleProjectSettings = (projectId: string) => {
+    setShowProjectSettings(projectId);
+  };
+
+  const handleRepoSettings = (repoId: string) => {
+    setShowRepoSettings(repoId);
+  };
+
+  const handleRunWorkflow = async (workflow: Workflow) => {
+    try {
+      setRunningWorkflow(workflow.id);
+      console.log("Attempting to run workflow:", workflow);
+
+      // Check if this is a manually triggerable workflow
+      if (
+        !workflow.filename.includes(".yml") &&
+        !workflow.filename.includes(".yaml")
+      ) {
+        alert(
+          "This workflow file format is not supported for manual triggering."
+        );
+        return;
+      }
+
+      // GitHub API accepts either workflow filename or workflow ID
+      // Try using filename first, then fall back to workflow_id if available
+      let workflowIdentifier: string | number = workflow.filename;
+
+      // If workflow_id exists (numeric ID from GitHub), prefer that
+      if (workflow.workflow_id) {
+        workflowIdentifier = workflow.workflow_id;
+      }
+
+      console.log(
+        "Using workflow identifier:",
+        workflowIdentifier,
+        "for workflow:",
+        workflow.name
+      );
+
+      // Try the simplified endpoint approach
+      const response = await fetch("/api/github/workflows", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "trigger",
+          workflowId: workflowIdentifier,
+          filename: workflow.filename,
+          repository: workflow.repository,
+          ref: "main",
+          inputs: {},
+        }),
+      });
+
+      console.log("Response status:", response.status);
+      console.log(
+        "Response headers:",
+        Object.fromEntries(response.headers.entries())
+      );
+
+      // try JSON first, fall back to text
+      let payload: unknown = null;
+      try {
+        payload = await response.json();
+      } catch {
+        try {
+          payload = await response.text();
+        } catch {
+          payload = null;
+        }
+      }
+
+      console.log("API Response payload:", payload);
+
+      if (response.ok) {
+        // success
+        alert(
+          `Workflow "${workflow.name}" has been triggered successfully! Check the Actions tab in GitHub to see the progress.`
+        );
+        await refreshData();
+        return;
+      }
+
+      // Handle common GitHub errors with actionable messages
+      if (response.status === 401) {
+        alert(
+          `Authentication failed (401): Bad credentials.\n\nAction: Ensure your GITHUB_TOKEN is set and valid in your environment (restart dev server after changes).`
+        );
+        return;
+      }
+
+      if (response.status === 403) {
+        // Prefer to read message from payload.details or payload.message
+        const errorObj = payload as { details?: string; message?: string };
+        const ghMessage = errorObj?.details
+          ? errorObj.details
+          : errorObj?.message
+          ? errorObj.message
+          : JSON.stringify(payload);
+        alert(
+          `Permission denied (403): ${ghMessage}\n\nAction: The authenticated user needs admin or write rights on the target repository, or use a token with appropriate scopes (repo + workflow). If using a GitHub App, ensure it's installed on the repository with Actions/workflows write permission.`
+        );
+        return;
+      }
+
+      if (response.status === 404) {
+        alert(
+          `Not found (404): The workflow or repository could not be found.\n\nAction: Verify the repository and filename are correct and the workflow file exists.\nDetails: ${
+            payload && typeof payload === "object"
+              ? JSON.stringify(payload)
+              : payload
+          }`
+        );
+        return;
+      }
+
+      // Fallback: show the raw error payload
+      alert(
+        `Failed to run workflow: ${response.status} ${
+          response.statusText
+        }\n\nDetails: ${
+          payload && typeof payload === "object"
+            ? JSON.stringify(payload)
+            : payload
+        }`
+      );
+    } catch (error) {
+      console.error("Error running workflow:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      alert(
+        `Failed to run workflow: ${errorMessage}\n\nNote: Only workflows with 'workflow_dispatch' trigger can be run manually.`
+      );
+    } finally {
+      setRunningWorkflow(null);
+    }
+  };
+
+  const handleEditWorkflow = (workflow: Workflow) => {
+    // Open workflow in GitHub for editing
+    if (workflow.html_url) {
+      window.open(workflow.html_url, "_blank");
+    } else {
+      alert("Workflow URL not available");
+    }
+  };
+
+  const handleViewContent = (
+    type: "infrastructure" | "container",
+    item: Infrastructure | Container
+  ) => {
+    setShowContentViewer({ type, item });
+  };
+
+  const handleEditInfrastructure = (infra: Infrastructure) => {
+    // Construct GitHub edit URL from repository and path
+    const editUrl = `https://github.com/${infra.repository}/edit/main/${infra.path}`;
+    window.open(editUrl, "_blank");
+  };
+
+  const handleEditContainer = (container: Container) => {
+    // Construct GitHub edit URL from repository and path
+    const editUrl = `https://github.com/${container.repository}/edit/main/${container.path}`;
+    window.open(editUrl, "_blank");
+  };
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -98,7 +281,24 @@ const Projects: React.FC<{
 
   useEffect(() => {
     fetchProjects();
+    checkAppInstallation();
   }, []);
+
+  const checkAppInstallation = async () => {
+    setCheckingInstallation(true);
+    try {
+      const result = await checkGitHubAppInstallation();
+      setAppInstalled(result.installed);
+      
+      if (result.error) {
+        console.warn('GitHub App installation check failed:', result.error);
+      }
+    } catch (error) {
+      console.error('Error checking GitHub App installation:', error);
+    } finally {
+      setCheckingInstallation(false);
+    }
+  };
 
   const createProject = async () => {
     if (!name) return alert("Project name is required");
@@ -134,6 +334,8 @@ const Projects: React.FC<{
       if (refreshGitHubData) {
         await refreshGitHubData();
       }
+      // Also refresh GitHub App installation status
+      await checkAppInstallation();
     } finally {
       setRefreshing(false);
     }
@@ -168,10 +370,12 @@ const Projects: React.FC<{
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              {connectionStatus.connected ? (
+              {connectionStatus.connected || appInstalled ? (
                 <>
                   <CheckCircle className="w-5 h-5 text-green-500" />
-                  <span className="text-green-700 font-medium">Connected</span>
+                  <span className="text-green-700 font-medium">
+                    {appInstalled ? 'GitHub App Installed' : 'Connected'}
+                  </span>
                   {connectionStatus.user && (
                     <span className="text-gray-600">
                       as {connectionStatus.user.login}
@@ -189,15 +393,28 @@ const Projects: React.FC<{
               ) : (
                 <>
                   <XCircle className="w-5 h-5 text-red-500" />
-                  <span className="text-red-700 font-medium">Disconnected</span>
+                  <span className="text-red-700 font-medium">
+                    {checkingInstallation ? 'Checking...' : 'Not Connected'}
+                  </span>
                   <button
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors ml-2"
-                    onClick={() =>
-                      (window.location.href = "/api/github/connect")
-                    }
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors ml-2 disabled:opacity-50"
+                    disabled={checkingInstallation}
+                    onClick={() => {
+                      // Get the installation URL
+                      const installUrl = getGitHubAppInstallUrl();
+                      console.log('GitHub App Installation URL:', installUrl);
+                      
+                      // Also log all possible URLs for debugging
+                      const allUrls = getAllPossibleInstallUrls();
+                      console.log('All possible installation URLs:', allUrls);
+                      
+                      // Open the installation URL
+                      window.open(installUrl, '_blank');
+                    }}
                   >
-                    Connect to GitHub
+                    {checkingInstallation ? 'Checking...' : 'Install GitHub App'}
                   </button>
+                  {/* no dev-only install URL dropdown needed; slug is fixed */}
                 </>
               )}
             </div>
@@ -364,6 +581,7 @@ const Projects: React.FC<{
                         <button
                           className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
                           title="Settings"
+                          onClick={() => handleProjectSettings(project.id)}
                         >
                           <Settings className="w-4 h-4" />
                         </button>
@@ -389,9 +607,9 @@ const Projects: React.FC<{
               <div className="text-center py-12">
                 <Folder className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {connectionStatus.connected
+                  {connectionStatus.connected || appInstalled
                     ? "No repositories found"
-                    : "Connect to GitHub to view repositories"}
+                    : "Install the GitHub App to view repositories"}
                 </p>
               </div>
             ) : (
@@ -435,6 +653,7 @@ const Projects: React.FC<{
                         <button
                           className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
                           title="Settings"
+                          onClick={() => handleRepoSettings(repo.id)}
                         >
                           <Settings className="w-4 h-4" />
                         </button>
@@ -467,65 +686,85 @@ const Projects: React.FC<{
               <div className="text-center py-12">
                 <GitBranch className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {connectionStatus.connected
+                  {connectionStatus.connected || appInstalled
                     ? "No workflow files found"
-                    : "Connect to GitHub to view workflows"}
+                    : "Install the GitHub App to view workflows"}
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
-                {workflows.map((workflow: Workflow) => (
-                  <div
-                    key={workflow.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                          <GitBranch className="w-5 h-5 text-green-500" />
-                          <h4 className="font-medium text-gray-900">
-                            {workflow.filename || workflow.name}
-                          </h4>
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                            {workflow.state || workflow.status}
-                          </span>
+                {workflows.map((workflow: Workflow) => {
+                  // Debug log each workflow
+                  console.log("Workflow data:", {
+                    id: workflow.id,
+                    name: workflow.name,
+                    filename: workflow.filename,
+                    workflow_id: workflow.workflow_id,
+                    path: workflow.path,
+                  });
+
+                  return (
+                    <div
+                      key={workflow.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <GitBranch className="w-5 h-5 text-green-500" />
+                            <h4 className="font-medium text-gray-900">
+                              {workflow.filename || workflow.name}
+                            </h4>
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                              {workflow.state || workflow.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {workflow.repository} • {workflow.path}
+                          </p>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                            <span>
+                              Status: {workflow.conclusion || workflow.status}
+                            </span>
+                            <span>
+                              Updated {formatDate(workflow.updated_at)}
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {workflow.repository} • {workflow.path}
-                        </p>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                          <span>
-                            Status: {workflow.conclusion || workflow.status}
-                          </span>
-                          <span>Updated {formatDate(workflow.updated_at)}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() =>
+                              window.open(workflow.html_url, "_blank")
+                            }
+                            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                            title="View on GitHub"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </button>
+                          <button
+                            className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded disabled:opacity-50"
+                            title="Run Workflow"
+                            onClick={() => handleRunWorkflow(workflow)}
+                            disabled={runningWorkflow === workflow.id}
+                          >
+                            {runningWorkflow === workflow.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Play className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
+                            title="Edit Workflow"
+                            onClick={() => handleEditWorkflow(workflow)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() =>
-                            window.open(workflow.html_url, "_blank")
-                          }
-                          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
-                          title="View on GitHub"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded"
-                          title="Run Workflow"
-                        >
-                          <Play className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
-                          title="Edit Workflow"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -553,9 +792,9 @@ const Projects: React.FC<{
               <div className="text-center py-12">
                 <Cloud className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {connectionStatus.connected
+                  {connectionStatus.connected || appInstalled
                     ? "No infrastructure files found"
-                    : "Connect to GitHub to view infrastructure files"}
+                    : "Install the GitHub App to view infrastructure files"}
                 </p>
               </div>
             ) : (
@@ -584,12 +823,16 @@ const Projects: React.FC<{
                         <button
                           className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
                           title="View Content"
+                          onClick={() =>
+                            handleViewContent("infrastructure", infra)
+                          }
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
                           title="Edit Infrastructure"
+                          onClick={() => handleEditInfrastructure(infra)}
                         >
                           <Edit className="w-4 h-4" />
                         </button>
@@ -622,9 +865,9 @@ const Projects: React.FC<{
               <div className="text-center py-12">
                 <ContainerIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {connectionStatus.connected
+                  {connectionStatus.connected || appInstalled
                     ? "No container files found"
-                    : "Connect to GitHub to view container files"}
+                    : "Install the GitHub App to view container files"}
                 </p>
               </div>
             ) : (
@@ -653,12 +896,16 @@ const Projects: React.FC<{
                         <button
                           className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
                           title="View Content"
+                          onClick={() =>
+                            handleViewContent("container", container)
+                          }
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
                           title="Edit Container"
+                          onClick={() => handleEditContainer(container)}
                         >
                           <Edit className="w-4 h-4" />
                         </button>
@@ -790,6 +1037,141 @@ const Projects: React.FC<{
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Project Settings Modal */}
+      {showProjectSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
+            <h4 className="text-lg font-semibold mb-4">Project Settings</h4>
+            <p className="text-gray-600 mb-4">
+              Project ID: {showProjectSettings}
+            </p>
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  Project settings functionality would be implemented here. This
+                  could include:
+                </p>
+                <ul className="list-disc list-inside text-sm text-gray-600 mt-2">
+                  <li>Edit project details</li>
+                  <li>Manage project status</li>
+                  <li>Configure repository settings</li>
+                  <li>Delete project</li>
+                </ul>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                onClick={() => setShowProjectSettings(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Repository Settings Modal */}
+      {showRepoSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
+            <h4 className="text-lg font-semibold mb-4">Repository Settings</h4>
+            <p className="text-gray-600 mb-4">
+              Repository ID: {showRepoSettings}
+            </p>
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  Repository settings functionality would be implemented here.
+                  This could include:
+                </p>
+                <ul className="list-disc list-inside text-sm text-gray-600 mt-2">
+                  <li>Configure webhooks</li>
+                  <li>Set up branch protection</li>
+                  <li>Manage access permissions</li>
+                  <li>Configure integrations</li>
+                </ul>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                onClick={() => setShowRepoSettings(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Content Viewer Modal */}
+      {showContentViewer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg p-6 w-[800px] max-w-[90vw] mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold">
+                {showContentViewer.type === "infrastructure"
+                  ? "Infrastructure"
+                  : "Container"}{" "}
+                Content
+              </h4>
+              <button
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                onClick={() => setShowContentViewer(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <span className="font-medium">Name:</span>
+                <span>{showContentViewer.item.name}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-medium">Type:</span>
+                <span>{showContentViewer.item.type}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-medium">Path:</span>
+                <span className="text-sm text-gray-600">
+                  {showContentViewer.item.path}
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-medium">Repository:</span>
+                <span className="text-sm text-gray-600">
+                  {showContentViewer.item.repository}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium block mb-2">Content:</span>
+                <pre className="bg-gray-50 p-4 rounded-lg text-sm overflow-x-auto border">
+                  {showContentViewer.item.content || "No content available"}
+                </pre>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                onClick={() => setShowContentViewer(null)}
+              >
+                Close
+              </button>
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={() => {
+                  const editUrl = `https://github.com/${showContentViewer.item.repository}/edit/main/${showContentViewer.item.path}`;
+                  window.open(editUrl, "_blank");
+                }}
+              >
+                Edit on GitHub
+              </button>
+            </div>
           </div>
         </div>
       )}

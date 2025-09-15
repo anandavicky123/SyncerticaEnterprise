@@ -1,31 +1,82 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getInstallations, getInstallationToken } from "@/lib/github-app";
 
 export async function GET() {
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get("github_access_token")?.value;
 
-    if (!accessToken) {
+    let repositories = [];
+
+    // Try OAuth first (legacy support)
+    if (accessToken) {
+      try {
+        const response = await fetch(
+          "https://api.github.com/user/repos?per_page=100&sort=updated",
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/vnd.github.v3+json",
+            },
+          }
+        );
+
+        if (response.ok) {
+          repositories = await response.json();
+        }
+      } catch (error) {
+        console.error("OAuth repository fetch failed:", error);
+      }
+    }
+
+    // If OAuth failed or no repositories, try GitHub App
+    if (repositories.length === 0) {
+      try {
+        const installations = await getInstallations();
+
+        for (const installation of installations) {
+          try {
+            // Get installation token
+            const installationToken = await getInstallationToken(
+              installation.id
+            );
+
+            // Fetch repositories for this installation
+            const response = await fetch(
+              `https://api.github.com/installation/repositories?per_page=100`,
+              {
+                headers: {
+                  Authorization: `token ${installationToken.token}`,
+                  Accept: "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                },
+              }
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              repositories.push(...(data.repositories || []));
+            }
+          } catch (error) {
+            console.error(
+              `Failed to fetch repos for installation ${installation.id}:`,
+              error
+            );
+          }
+        }
+      } catch (error) {
+        console.error("GitHub App repository fetch failed:", error);
+        return NextResponse.json(
+          { error: "Not authenticated" },
+          { status: 401 }
+        );
+      }
+    }
+
+    if (repositories.length === 0) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
-
-    // Get user repositories
-    const response = await fetch(
-      "https://api.github.com/user/repos?per_page=100&sort=updated",
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/vnd.github.v3+json",
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch repositories");
-    }
-
-    const repositories = await response.json();
 
     // Process repositories to include our required information
     const processedRepos = await Promise.all(
@@ -47,15 +98,15 @@ export async function GET() {
         }) => {
           const hasWorkflow = await checkForWorkflows(
             repo.full_name,
-            accessToken
+            accessToken || null
           );
           const hasTerraform = await checkForTerraform(
             repo.full_name,
-            accessToken
+            accessToken || null
           );
           const hasDockerfile = await checkForDockerfile(
             repo.full_name,
-            accessToken
+            accessToken || null
           );
 
           return {
@@ -84,7 +135,7 @@ export async function GET() {
               terraform: hasTerraform,
               dockerfile: hasDockerfile,
             },
-            connectionType: "GitHub OAuth",
+            connectionType: accessToken ? "GitHub OAuth" : "GitHub App",
             url: repo.html_url,
             cloneUrl: repo.clone_url,
           };
@@ -107,19 +158,48 @@ export async function GET() {
 
 async function checkForWorkflows(
   repoFullName: string,
-  accessToken: string
+  accessToken: string | null
 ): Promise<boolean> {
   try {
-    const response = await fetch(
-      `https://api.github.com/repos/${repoFullName}/contents/.github/workflows`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/vnd.github.v3+json",
-        },
+    let response;
+
+    if (accessToken) {
+      // Try OAuth first
+      response = await fetch(
+        `https://api.github.com/repos/${repoFullName}/contents/.github/workflows`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        }
+      );
+    }
+
+    if (!response || !response.ok) {
+      // Try GitHub App
+      try {
+        const installations = await getInstallations();
+        for (const installation of installations) {
+          const installationToken = await getInstallationToken(installation.id);
+          response = await fetch(
+            `https://api.github.com/repos/${repoFullName}/contents/.github/workflows`,
+            {
+              headers: {
+                Authorization: `token ${installationToken.token}`,
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+              },
+            }
+          );
+          if (response.ok) break;
+        }
+      } catch (error) {
+        console.error("GitHub App workflow check failed:", error);
       }
-    );
-    return response.ok;
+    }
+
+    return response?.ok || false;
   } catch {
     return false;
   }
@@ -127,20 +207,52 @@ async function checkForWorkflows(
 
 async function checkForTerraform(
   repoFullName: string,
-  accessToken: string
+  accessToken: string | null
 ): Promise<boolean> {
   try {
-    const response = await fetch(
-      `https://api.github.com/search/code?q=filename:*.tf+repo:${repoFullName}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/vnd.github.v3+json",
-        },
+    let response;
+
+    if (accessToken) {
+      // Try OAuth first
+      response = await fetch(
+        `https://api.github.com/search/code?q=filename:*.tf+repo:${repoFullName}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        }
+      );
+    }
+
+    if (!response || !response.ok) {
+      // Try GitHub App
+      try {
+        const installations = await getInstallations();
+        for (const installation of installations) {
+          const installationToken = await getInstallationToken(installation.id);
+          response = await fetch(
+            `https://api.github.com/search/code?q=filename:*.tf+repo:${repoFullName}`,
+            {
+              headers: {
+                Authorization: `token ${installationToken.token}`,
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+              },
+            }
+          );
+          if (response.ok) break;
+        }
+      } catch (error) {
+        console.error("GitHub App terraform check failed:", error);
       }
-    );
-    const data = await response.json();
-    return data.total_count > 0;
+    }
+
+    if (response?.ok) {
+      const data = await response.json();
+      return data.total_count > 0;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -148,19 +260,48 @@ async function checkForTerraform(
 
 async function checkForDockerfile(
   repoFullName: string,
-  accessToken: string
+  accessToken: string | null
 ): Promise<boolean> {
   try {
-    const response = await fetch(
-      `https://api.github.com/repos/${repoFullName}/contents/Dockerfile`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/vnd.github.v3+json",
-        },
+    let response;
+
+    if (accessToken) {
+      // Try OAuth first
+      response = await fetch(
+        `https://api.github.com/repos/${repoFullName}/contents/Dockerfile`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        }
+      );
+    }
+
+    if (!response || !response.ok) {
+      // Try GitHub App
+      try {
+        const installations = await getInstallations();
+        for (const installation of installations) {
+          const installationToken = await getInstallationToken(installation.id);
+          response = await fetch(
+            `https://api.github.com/repos/${repoFullName}/contents/Dockerfile`,
+            {
+              headers: {
+                Authorization: `token ${installationToken.token}`,
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+              },
+            }
+          );
+          if (response.ok) break;
+        }
+      } catch (error) {
+        console.error("GitHub App dockerfile check failed:", error);
       }
-    );
-    return response.ok;
+    }
+
+    return response?.ok || false;
   } catch {
     return false;
   }

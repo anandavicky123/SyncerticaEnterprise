@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getInstallations, getInstallationToken } from "@/lib/github-app";
 
 // Simple in-memory cache to avoid hitting GitHub API too frequently
-let workflowCache: Map<
+const workflowCache: Map<
   string,
   {
     data: any[];
@@ -20,7 +21,31 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get("github_access_token")?.value;
 
-    if (!accessToken) {
+    // Try OAuth first, then GitHub App
+    let authHeaders = null;
+    if (accessToken) {
+      authHeaders = {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      };
+    } else {
+      // Try GitHub App authentication
+      try {
+        const installations = await getInstallations();
+        if (installations.length > 0) {
+          const installationToken = await getInstallationToken(installations[0].id);
+          authHeaders = {
+            Authorization: `token ${installationToken.token}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+          };
+        }
+      } catch (error) {
+        console.error('GitHub App authentication failed:', error);
+      }
+    }
+
+    if (!authHeaders) {
       return NextResponse.json(
         { error: "Not authenticated", workflows: [] },
         { status: 401 }
@@ -31,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     // If no specific repo, get workflows from all repos
     if (!repo) {
-      return await getAllWorkflows(accessToken);
+      return await getAllWorkflows(authHeaders);
     }
 
     // Check cache first
@@ -53,8 +78,7 @@ export async function GET(request: NextRequest) {
       `https://api.github.com/repos/${repo}/contents/.github/workflows`,
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/vnd.github.v3+json",
+          ...authHeaders,
           "User-Agent": "SyncerticaEnterprise",
         },
       }
@@ -84,8 +108,7 @@ export async function GET(request: NextRequest) {
         `https://api.github.com/repos/${repo}/actions/workflows`,
         {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/vnd.github.v3+json",
+            ...authHeaders,
             "User-Agent": "SyncerticaEnterprise",
           },
         }
@@ -98,7 +121,7 @@ export async function GET(request: NextRequest) {
           `⚙️ Found ${workflowRuns.length} workflow definitions via Actions API`
         );
       }
-    } catch (error) {
+    } catch {
       console.log(
         "⚠️ Could not fetch workflow runs (repo might not have Actions enabled)"
       );
@@ -191,7 +214,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function getAllWorkflows(accessToken: string) {
+async function getAllWorkflows(authHeaders: any) {
   try {
     console.log("⚙️ Fetching workflows from all repositories...");
 
@@ -200,8 +223,7 @@ async function getAllWorkflows(accessToken: string) {
       "https://api.github.com/user/repos?sort=updated&per_page=100",
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/vnd.github.v3+json",
+          ...authHeaders,
           "User-Agent": "SyncerticaEnterprise",
         },
       }
@@ -225,8 +247,7 @@ async function getAllWorkflows(accessToken: string) {
           `https://api.github.com/repos/${repo.full_name}/contents/.github/workflows`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/vnd.github.v3+json",
+              ...authHeaders,
               "User-Agent": "SyncerticaEnterprise",
             },
           }
