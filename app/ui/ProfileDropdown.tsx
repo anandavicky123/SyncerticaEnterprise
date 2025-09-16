@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import SettingsModal from "./SettingsModal";
+import ProfileModal from "./ProfileModal";
 import { User, Settings, LogOut, ChevronDown } from "lucide-react";
 import { User as UserType } from "../shared/types/dashboard";
 import Tooltip from "./Tooltip";
-import { useLocalization } from "../shared/localization";
 
 interface ProfileDropdownProps {
   user: UserType;
@@ -16,9 +16,27 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [managerName, setManagerName] = useState<string | null>(null);
+  const [managerEmail, setManagerEmail] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const fetchManagerData = async () => {
+    try {
+      const res = await fetch("/api/manager/profile");
+      if (res.ok) {
+        const data = await res.json();
+        setManagerName(data.name || null);
+        setManagerEmail(data.email || null);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
+    // Fetch manager profile info for profile modal
+    fetchManagerData();
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef.current &&
@@ -34,7 +52,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
     };
   }, []);
 
-  const getRoleColor = (role: string) => {
+  const getRoleColor = (role: string = "") => {
     switch (role) {
       case "admin":
         return "bg-red-100 text-red-800";
@@ -46,11 +64,22 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
         return "bg-gray-100 text-gray-800";
     }
   };
-  const { t } = useLocalization();
+  // Localization removed; inline English strings from locales/en.json
+
+  const t_profile = "Profile";
+  const t_settings = "Settings";
+  const t_logout = "Logout";
+
+  // Safely compute role label (user.role may be undefined)
+  const roleValue = user.role ?? "";
+  const roleLabel =
+    roleValue.length > 0
+      ? roleValue.charAt(0).toUpperCase() + roleValue.slice(1)
+      : "";
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <Tooltip content={t("profile") + " menu"}>
+      <Tooltip content={t_profile + " menu"}>
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors min-w-0"
@@ -67,7 +96,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
                 user.role
               )}`}
             >
-              {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+              {roleLabel}
             </div>
           </div>
           <ChevronDown
@@ -97,24 +126,26 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
                     user.role
                   )}`}
                 >
-                  {user.role.charAt(0).toUpperCase() + user.role.slice(1)} -{" "}
-                  {user.department}
+                  {roleLabel} - {user.department}
                 </div>
               </div>
             </div>
           </div>
 
           <div className="p-2">
-            <button className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+            <button
+              className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              onClick={() => setProfileOpen(true)}
+            >
               <User className="w-4 h-4" />
-              <span>{t("profile")}</span>
+              <span>{t_profile}</span>
             </button>
             <button
               className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               onClick={() => setSettingsOpen(true)}
             >
               <Settings className="w-4 h-4" />
-              <span>{t("settings")}</span>
+              <span>{t_settings}</span>
             </button>
           </div>
 
@@ -127,7 +158,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
               className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             >
               <LogOut className="w-4 h-4" />
-              <span>{t("logout")}</span>
+              <span>{t_logout}</span>
             </button>
           </div>
         </div>
@@ -136,6 +167,13 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+      <ProfileModal
+        isOpen={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        initialName={managerName}
+        initialEmail={managerEmail}
+        onSaveSuccess={fetchManagerData}
       />
     </div>
   );

@@ -13,20 +13,6 @@ export async function GET() {
           ? "✅ Present"
           : "❌ Missing",
       },
-      gitlab: {
-        applicationId: process.env.NEXT_PUBLIC_GITLAB_APPLICATION_ID
-          ? "✅ Present"
-          : "❌ Missing",
-        secret: process.env.GITLAB_SECRET ? "✅ Present" : "❌ Missing",
-      },
-      bitbucket: {
-        clientId: process.env.NEXT_PUBLIC_BITBUCKET_CLIENT_ID
-          ? "✅ Present"
-          : "❌ Missing",
-        clientSecret: process.env.BITBUCKET_CLIENT_SECRET
-          ? "✅ Present"
-          : "❌ Missing",
-      },
     };
 
     return NextResponse.json({

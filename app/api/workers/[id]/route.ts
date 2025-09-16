@@ -1,6 +1,6 @@
 "use server";
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/database";
 import { z } from "zod";
 
@@ -11,13 +11,10 @@ const updateWorkerSchema = z.object({
   email: z.string().email("Invalid email"),
 });
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(req: Request, context: any) {
+  const { params } = context;
   try {
     const actorType = req.headers.get("x-actor-type");
-    const actorId = req.headers.get("x-actor-id");
 
     if (actorType !== "manager") {
       return NextResponse.json(

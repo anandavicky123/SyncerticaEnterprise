@@ -26,6 +26,7 @@ export async function createOrGetManager(
 ): Promise<any> {
   try {
     // Try to find existing manager
+
     let manager = await prisma.manager.findUnique({
       where: { deviceUUID },
     });
@@ -38,7 +39,11 @@ export async function createOrGetManager(
           name: name || "Manager",
         },
       });
-
+      console.log("[auth.createOrGetManager] Created new manager:", {
+        deviceUUID,
+        name: manager.name,
+        email: manager.email,
+      });
       // Log manager creation
       await createAuditLog(
         "manager",
@@ -48,6 +53,12 @@ export async function createOrGetManager(
         deviceUUID,
         { name: manager.name }
       );
+    } else {
+      console.log("[auth.createOrGetManager] Found existing manager:", {
+        deviceUUID,
+        name: manager.name,
+        email: manager.email,
+      });
     }
 
     // Create session

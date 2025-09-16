@@ -45,6 +45,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -54,12 +55,21 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
       try {
         // Try to fetch from server (manager settings)
         const res = await fetch("/api/manager/settings", {
-          credentials: "include"
+          credentials: "include",
         });
         if (res.ok) {
-          const data = await res.json();
-          setSettings((prev) => ({ ...prev, ...data }));
+          const data = (await res.json()) as Partial<UserSettings>;
+          // Normalize legacy/server formats to frontend expected values
+          const normalized: Partial<UserSettings> = { ...data };
+          if (typeof normalized.dateFormat === "string") {
+            normalized.dateFormat = normalized.dateFormat.replaceAll("-", "/");
+          }
+          if (normalized.timeFormat === "24h") {
+            normalized.timeFormat = "24";
+          }
+          setSettings((prev) => ({ ...prev, ...normalized }));
           setError(null);
+          setHasLoaded(true);
           return;
         } else {
           throw new Error(`Failed to load settings: ${res.statusText}`);
@@ -77,6 +87,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
             setError("Failed to parse saved settings");
           }
         }
+        setHasLoaded(true);
       } finally {
         setIsLoading(false);
       }
@@ -86,7 +97,10 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   // Persist settings to server when they change (debounced could be added)
+  // Only run after initial load to prevent overwriting server settings
   useEffect(() => {
+    if (!hasLoaded) return; // Skip auto-save during initial load
+
     const save = async () => {
       try {
         await fetch("/api/manager/settings", {
@@ -95,16 +109,16 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(settings),
         });
-  } catch {
+      } catch {
         // fallback to localStorage
         localStorage.setItem("userSettings", JSON.stringify(settings));
       }
     };
     save();
-  }, [settings]);
+  }, [settings, hasLoaded]);
 
   const updateSettings = (newSettings: Partial<UserSettings>) => {
-  setSettings((prev) => ({ ...prev, ...newSettings }));
+    setSettings((prev) => ({ ...prev, ...newSettings }));
   };
 
   const formatDate = (date: Date): string => {
@@ -136,7 +150,14 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({
 
   return (
     <SettingsContext.Provider
-      value={{ settings, isLoading, error, updateSettings, formatDate, formatTime }}
+      value={{
+        settings,
+        isLoading,
+        error,
+        updateSettings,
+        formatDate,
+        formatTime,
+      }}
     >
       {children}
     </SettingsContext.Provider>

@@ -220,7 +220,6 @@ export class DatabaseManager {
           name: "Default Manager",
           dateFormat: "YYYY-MM-DD",
           timeFormat: "24h",
-          language: "en",
         },
       });
     }
@@ -521,5 +520,5 @@ export class DatabaseManager {
 // Export the singleton instance getter
 export const getDatabase = () => DatabaseManager.getInstance();
 
-// Export the class for type usage
-export type { DatabaseManager };
+// Export the class value so other scripts can call DatabaseManager.getInstance()
+// DatabaseManager class is exported where it's declared above.

@@ -20,7 +20,6 @@ import StickyNoteComponent from "./StickyNoteComponent";
 import AddNoteModal from "./AddNoteModal";
 import RealtimeNotifications from "./RealtimeNotifications";
 import DataVisualizationDashboard from "../contents/DataVisualizationDashboard";
-import SecurityDashboard from "../contents/SecurityDashboard";
 import TaskManager from "../contents/TaskManager";
 import Projects from "../contents/Projects";
 import WorkersManagement from "../workers/management";
@@ -517,7 +516,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
           {activeSection === "overview" ? (
             <DataVisualizationDashboard />
           ) : activeSection === "security" ? (
-            <SecurityDashboard />
+            <DataVisualizationDashboard />
           ) : activeSection === "tasks" ? (
             <TaskManager />
           ) : activeSection === "projects" ? (

@@ -19,7 +19,6 @@ async function setupInitialData() {
           name: "Demo Manager",
           dateFormat: "YYYY-MM-DD",
           timeFormat: "24",
-          language: "en",
         },
       });
       console.log("Demo manager created successfully");

@@ -14,7 +14,6 @@ async function main() {
       name: "Test Manager",
       dateFormat: "YYYY-MM-DD",
       timeFormat: "24h",
-      language: "en",
     },
   });
 

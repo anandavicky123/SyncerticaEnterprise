@@ -75,10 +75,4 @@ coverage/
 next-env.d.ts
 
 clean-secrets.py
-app/api/auth/
-app/hooks/useAuth.ts
-app/hooks/useLogout.ts
-app/lib/cognito.ts
-lib/cognito.ts
-lib/cognito-openid.ts
-lib/aws-*.ts
+.vercel

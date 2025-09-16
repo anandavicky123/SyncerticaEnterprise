@@ -9,9 +9,7 @@ const nextConfig: NextConfig = {
   },
   env: {
     NEXT_PUBLIC_GITHUB_CLIENT_ID: process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID,
-    NEXT_PUBLIC_GITLAB_CLIENT_ID: process.env.NEXT_PUBLIC_GITLAB_CLIENT_ID,
-    NEXT_PUBLIC_BITBUCKET_CLIENT_ID:
-      process.env.NEXT_PUBLIC_BITBUCKET_CLIENT_ID,
+    // GitLab and Bitbucket removed — only GitHub is supported now
     NEXT_PUBLIC_BASE_URL:
       process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000",
   },

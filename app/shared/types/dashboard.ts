@@ -1,11 +1,13 @@
+import React from "react";
+
 export interface SidebarItem {
   name: string;
   count?: number;
-  icon: string;
+  icon?: string;
   expanded?: boolean;
   subitems?: Array<{
     name: string;
-    icon: string;
+    icon?: string;
     count?: number;
   }>;
 }
@@ -18,12 +20,12 @@ export interface SidebarSection {
 export interface Section {
   id: string;
   name: string;
-  icon: string;
+  icon?: string;
 }
 
 export interface ToolbarItem {
   name: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string }>;
   action: () => void;
   disabled?: boolean;
 }
@@ -45,7 +47,7 @@ export interface DashboardBlock {
   id: string;
   type: "metric" | "chart" | "pie" | "line" | "comparison";
   title: string;
-  value?: string;
+  value?: string | number;
   change?: string;
   changeType?: "positive" | "negative";
   period?: string;
@@ -53,7 +55,7 @@ export interface DashboardBlock {
   data?: Array<{
     name: string;
     value: number;
-    color: string;
+    color?: string;
   }>;
   forecast?: string;
 }
@@ -66,12 +68,12 @@ export interface DashboardBlocks {
 export interface WebSocketMessage {
   id: string;
   type: "notification" | "activity" | "alert" | "task_update";
-  title: string;
+  title?: string;
   message: string;
   timestamp: string;
   userId?: string;
   severity?: "low" | "medium" | "high" | "critical";
-  read: boolean;
+  read?: boolean;
 }
 
 export interface ActivityFeedItem {
@@ -79,7 +81,7 @@ export interface ActivityFeedItem {
   userId: string;
   userName: string;
   action: string;
-  target: string;
+  target?: string;
   timestamp: string;
   type:
     | "login"
@@ -93,46 +95,12 @@ export interface OnlineUser {
   id: string;
   name: string;
   avatar?: string;
-  status: "online" | "away" | "busy";
-  lastSeen: string;
+  status?: "online" | "away" | "busy";
+  lastSeen?: string;
 }
 
 // Data Visualization Types
 
-// Security Dashboard Types
-export interface SecurityMetric {
-  id: string;
-  name: string;
-  value: string | number;
-  status: "good" | "warning" | "critical";
-  description: string;
-  icon: string;
-}
-
-export interface SecurityAlert {
-  id: string;
-  title: string;
-  description: string;
-  severity: "high" | "medium" | "low";
-  timestamp: string;
-}
-
-export interface ComplianceStatus {
-  id: string;
-  name: string;
-  status: "compliant" | "non-compliant";
-  description: string;
-  percentage: number;
-}
-
-export interface AuditLog {
-  id: string;
-  timestamp: string;
-  action: string;
-  user: string;
-  resource: string;
-  status: "success" | "warning" | "error";
-}
 export interface ChartData {
   labels: string[];
   datasets: Array<{
@@ -149,69 +117,257 @@ export interface MetricCard {
   id: string;
   title: string;
   value: string | number;
-  change: number;
-  changeType: "increase" | "decrease";
-  period: string;
-  icon: string;
-  color: string;
+  change?: number;
+  changeType?: "increase" | "decrease";
+  period?: string;
+  icon?: string;
+  color?: string;
 }
 
 export interface DashboardMetrics {
-  totalUsers: number;
-  activeTasks: number;
-  completedTasks: number;
-  systemUptime: string;
-  avgResponseTime: number;
-  errorRate: number;
+  totalUsers?: number;
+  activeTasks?: number;
+  completedTasks?: number;
+  systemUptime?: string;
+  avgResponseTime?: number;
+  errorRate?: number;
 }
 
-// Security Dashboard Types
-export interface SecurityAlert {
-  id: string;
-  title: string;
-  description: string;
-  severity: "low" | "medium" | "high" | "critical";
-  timestamp: string;
-  status: "active" | "investigating" | "resolved";
-  category:
-    | "authentication"
-    | "authorization"
-    | "data_breach"
-    | "suspicious_activity"
-    | "compliance";
-  affectedUsers?: number;
-  source: string;
-}
-
+// Security / Compliance Types (unified, forgiving shapes to match constants)
 export interface SecurityMetric {
   id: string;
   name: string;
-  value: number;
-  maxValue: number;
-  unit: string;
-  status: "good" | "warning" | "critical";
-  description: string;
+  value: number | string;
+  maxValue?: number;
+  unit?: string;
+  status?: "good" | "warning" | "critical";
+  description?: string;
+  icon?: string;
+}
+
+export interface SecurityAlert {
+  id: string;
+  title: string;
+  description?: string;
+  severity: "low" | "medium" | "high" | "critical";
+  timestamp: string;
+  status?: "active" | "investigating" | "resolved";
+  category?: string;
+  affectedUsers?: number;
+  source?: string;
 }
 
 export interface ComplianceStatus {
-  framework: string;
+  // support both { id,name,description,percentage,status } and simpler frameworks
+  id?: string;
+  name?: string;
+  description?: string;
+  framework?: string;
   percentage: number;
-  status: "compliant" | "partial" | "non_compliant";
-  lastAudit: string;
-  nextAudit: string;
+  status: "compliant" | "non-compliant" | "partial" | "non_compliant";
+  lastAudit?: string;
+  nextAudit?: string;
 }
 
 export interface AuditLog {
   id: string;
   timestamp: string;
+  action?: string;
+  // support both user string and userId/userName pairs
+  user?: string;
+  userId?: string;
+  userName?: string;
+  resource?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  // support result/status variants
+  result?: "success" | "failure" | string;
+  status?: "success" | "warning" | "error" | string;
+  details?: string;
+}
+
+// Authentication & Authorization Types
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role?: "admin" | "employee" | "manager" | "viewer";
+  avatar?: string;
+  department?: string;
+  lastLogin?: string;
+  cognitoId?: string;
+  permissions?: string[];
+}
+
+export interface AuthState {
+  isAuthenticated: boolean;
+  user: User | null;
+  token: string | null;
+  refreshToken: string | null;
+  isLoading?: boolean;
+  error?: string | null;
+}
+
+// AI Assistant Types
+export interface ChatMessage {
+  id: string;
+  type: "user" | "assistant" | "system";
+  content: string;
+  timestamp: string;
+  metadata?: {
+    confidence?: number;
+    source?: "aws_q" | "sagemaker" | "bedrock";
+    functionCalls?: string[];
+  };
+}
+
+export interface AICapability {
+  id: string;
+  name: string;
+  description?: string;
+  status?: "active" | "training" | "inactive";
+  accuracy?: number;
+  lastTrained?: string;
+}
+
+// Task Management Types
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: "todo" | "doing" | "done" | "blocked";
+  priority: "low" | "medium" | "high" | "critical";
+  assignedTo?: string;
+  assignedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  dueDate?: string;
+  tags?: string[];
+  attachments?: string[];
+  estimatedHours?: number;
+  actualHours?: number;
+  stepFunctionArn?: string;
+}
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
   userId: string;
   userName: string;
-  action: string;
-  resource: string;
-  ipAddress: string;
-  userAgent: string;
-  result: "success" | "failure";
-  details?: string;
+  content: string;
+  timestamp: string;
+  type?: "comment" | "status_change" | "assignment";
+}
+
+// DevOps & CI/CD Types
+export interface Pipeline {
+  id: string;
+  name: string;
+  status?: "running" | "success" | "failed" | "pending";
+  lastRun?: string;
+  duration?: number;
+  branch?: string;
+  commit?: string;
+  author?: string;
+  stages?: PipelineStage[];
+}
+
+export interface PipelineStage {
+  id: string;
+  name: string;
+  status?: "running" | "success" | "failed" | "pending" | "skipped";
+  duration?: number;
+  logs?: string[];
+  artifacts?: string[];
+}
+
+export interface Repository {
+  id?: string;
+  name: string;
+  url?: string;
+  lastCommit?: string;
+  author?: string;
+  branch?: string;
+  language?: string;
+  size?: string;
+  source?: string;
+  lastUpdated?: string;
+  status?: string;
+  detectedFiles?: {
+    dockerfile?: boolean;
+    workflow?: boolean;
+    terraform?: boolean;
+  };
+  connectionType?: string;
+  description?: string;
+  infraStatus?: "deployed" | "deploying" | "failed" | "not-deployed";
+  infraResources?: number;
+  infraCost?: string;
+}
+
+// Infrastructure types
+export interface CloudFormationStack {
+  id: string;
+  name: string;
+  status?:
+    | "CREATE_COMPLETE"
+    | "UPDATE_COMPLETE"
+    | "CREATE_IN_PROGRESS"
+    | "UPDATE_IN_PROGRESS"
+    | "DELETE_COMPLETE"
+    | "ROLLBACK_COMPLETE";
+  region?: string;
+  resources?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  template?: string;
+  parameters?: Record<string, string>;
+}
+
+export interface AWSResource {
+  id: string;
+  type?: string;
+  name?: string;
+  status?: "active" | "stopped" | "pending" | "terminated";
+  region?: string;
+  cost?: number;
+  tags?: Record<string, string>;
+}
+
+export interface CloudWatchMetric {
+  name: string;
+  value: number;
+  unit?: string;
+  timestamp: string;
+  dimensions?: Record<string, string>;
+}
+
+export interface XRayTrace {
+  id: string;
+  duration?: number;
+  responseTime?: number;
+  status?: "success" | "error" | "throttled";
+  services?: string[];
+  annotations?: Record<string, string>;
+  timestamp?: string;
+}
+
+export interface LogEntry {
+  id: string;
+  timestamp: string;
+  level?: "info" | "warn" | "error" | "debug";
+  message?: string;
+  service?: string;
+  traceId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface GitHubRepository {
+  name: string;
+  full_name?: string;
+  description?: string;
+  private?: boolean;
+  html_url?: string;
 }
 
 // Authentication & Authorization Types

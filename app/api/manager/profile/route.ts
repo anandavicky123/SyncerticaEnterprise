@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// This route now only handles manager preferences (dateFormat/timeFormat).
-// Name/email are handled in a separate `profile` route.
+// Route to handle manager profile (name + email) separately from preferences.
 
 export async function GET(req: NextRequest) {
   const managerDeviceUUID =
@@ -19,8 +18,8 @@ export async function GET(req: NextRequest) {
     const manager = await prisma.manager.findUnique({
       where: { deviceUUID: managerDeviceUUID },
       select: {
-        dateFormat: true,
-        timeFormat: true,
+        name: true,
+        email: true,
       },
     });
 
@@ -28,19 +27,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "not found" }, { status: 404 });
 
     console.log(
-      "[manager/settings GET] prefs for",
+      "[manager/profile GET] profile for",
       managerDeviceUUID,
       "->",
       manager
     );
 
-    const response: any = {};
-    if (manager.dateFormat) response.dateFormat = manager.dateFormat;
-    if (manager.timeFormat) response.timeFormat = manager.timeFormat;
-
-    return NextResponse.json(response);
+    return NextResponse.json({
+      name: manager.name ?? null,
+      email: manager.email ?? null,
+    });
   } catch (error) {
-    console.error("Error reading manager settings:", error);
+    console.error("Error reading manager profile:", error);
     return NextResponse.json({ error: "server error" }, { status: 500 });
   }
 }
@@ -58,29 +56,32 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { dateFormat, timeFormat } = body;
+    const { name, email } = body;
     const prisma = (await import("../../../../lib/database")).prisma;
 
     const updateData: any = {};
-    if (typeof dateFormat !== "undefined") updateData.dateFormat = dateFormat;
-    if (typeof timeFormat !== "undefined") updateData.timeFormat = timeFormat;
+    if (typeof name !== "undefined") updateData.name = name;
+    if (typeof email !== "undefined") updateData.email = email;
 
-    if (Object.keys(updateData).length > 0) {
-      console.log(
-        "[manager/settings PUT] updating prefs for",
-        managerDeviceUUID,
-        "->",
-        updateData
-      );
-      await prisma.manager.update({
-        where: { deviceUUID: managerDeviceUUID },
-        data: updateData,
-      });
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ success: true });
     }
+
+    console.log(
+      "[manager/profile PUT] updating profile for",
+      managerDeviceUUID,
+      "->",
+      updateData
+    );
+
+    await prisma.manager.update({
+      where: { deviceUUID: managerDeviceUUID },
+      data: updateData,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error updating manager settings:", error);
+    console.error("Error updating manager profile:", error);
     return NextResponse.json({ error: "server error" }, { status: 500 });
   }
 }

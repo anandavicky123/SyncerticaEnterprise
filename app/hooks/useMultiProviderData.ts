@@ -14,7 +14,7 @@ export interface Repository {
   stargazers_count: number;
   forks_count: number;
   updated_at: string;
-  provider: "github" | "gitlab" | "bitbucket";
+  provider: "github";
 }
 
 interface GitHubRepository {
@@ -33,36 +33,7 @@ interface GitHubRepository {
   updated_at: string;
 }
 
-interface GitLabRepository {
-  id: string;
-  name: string;
-  path_with_namespace: string;
-  description: string;
-  visibility: string;
-  web_url: string;
-  http_url_to_repo: string;
-  ssh_url_to_repo: string;
-  default_branch: string;
-  languages?: Record<string, number>;
-  star_count: number;
-  forks_count: number;
-  last_activity_at: string;
-}
-
-interface BitbucketRepository {
-  uuid: string;
-  name: string;
-  full_name: string;
-  description: string;
-  is_private: boolean;
-  links: {
-    html: { href: string };
-    clone: Array<{ name: string; href: string }>;
-  };
-  mainbranch?: { name: string };
-  language: string;
-  updated_on: string;
-}
+// GitLab and Bitbucket support has been removed; related interfaces removed.
 
 interface WorkflowResponse {
   id: string | number;
@@ -96,7 +67,7 @@ export interface Workflow {
   status: string;
   conclusion: string;
   html_url: string;
-  provider: "github" | "gitlab" | "bitbucket";
+  provider: "github";
   repository: string;
 }
 
@@ -106,14 +77,12 @@ export interface Infrastructure {
   type: string;
   path: string;
   content: string;
-  provider: "github" | "gitlab" | "bitbucket";
+  provider: "github";
   repository: string;
 }
 
 export interface ConnectionStatus {
   github: boolean;
-  gitlab: boolean;
-  bitbucket: boolean;
 }
 
 export interface Statistics {
@@ -135,8 +104,6 @@ export const useMultiProviderData = () => {
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState<ConnectionStatus>({
     github: false,
-    gitlab: false,
-    bitbucket: false,
   });
   const [statistics, setStatistics] = useState<Statistics>({
     totalRepositories: 0,
@@ -292,14 +259,17 @@ export const useMultiProviderData = () => {
   const fetchWithTimeout = useCallback((url: string, timeout?: number) => {
     // Default timeouts based on API type
     let defaultTimeout = 15000; // 15 seconds for data APIs (repositories, workflows, infrastructure)
-    
-    if (url.includes('/status/')) {
+
+    if (url.includes("/status/")) {
       defaultTimeout = 3000; // 3 seconds for status checks
     }
-    
+
     const actualTimeout = timeout || defaultTimeout;
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(`Request timeout for ${url}`)), actualTimeout)
+      setTimeout(
+        () => reject(new Error(`Request timeout for ${url}`)),
+        actualTimeout
+      )
     );
     return Promise.race([fetch(url), timeoutPromise]);
   }, []);
@@ -308,58 +278,29 @@ export const useMultiProviderData = () => {
   const checkConnections = useCallback(async () => {
     console.log("🔍 FAST connection check starting...");
     try {
-      const connectionPromises = [
-        fetchWithTimeout("/api/status/github_status", 3000), // 3 second timeout for status
-        fetchWithTimeout("/api/status/gitlab_status", 3000),
-        fetchWithTimeout("/api/status/bitbucket_status", 3000),
-      ];
-
-      const [githubRes, gitlabRes, bitbucketRes] = await Promise.allSettled(
-        connectionPromises
-      );
-
-      const parseJsonSafely = async (
-        response: PromiseSettledResult<unknown>
-      ) => {
-        try {
-          if (
-            response.status === "fulfilled" &&
-            response.value &&
-            typeof response.value === "object" &&
-            "ok" in response.value &&
-            (response.value as Response).ok
-          ) {
-            const responseText = await (response.value as Response).text();
-            return JSON.parse(responseText);
+      // Only check GitHub connection status now
+      try {
+        const response = await fetchWithTimeout(
+          "/api/status/github_status",
+          3000
+        );
+        let githubConnected = false;
+        if (response && (response as Response).ok) {
+          try {
+            const text = await (response as Response).text();
+            const parsed = JSON.parse(text);
+            githubConnected = !!parsed.connected;
+          } catch (e) {
+            console.error("Failed to parse GitHub status response:", e);
           }
-          return { connected: false };
-        } catch (error) {
-          console.error("Failed to parse JSON response:", error);
-          return { connected: false };
         }
-      };
 
-      const [githubData, gitlabData, bitbucketData] = await Promise.all([
-        parseJsonSafely(githubRes),
-        parseJsonSafely(gitlabRes),
-        parseJsonSafely(bitbucketRes),
-      ]);
-
-      console.log("📊 Connection status:", {
-        github: githubData.connected,
-        gitlab: gitlabData.connected,
-        bitbucket: bitbucketData.connected,
-      });
-
-      const newConnectionState = {
-        github: githubData.connected,
-        gitlab: gitlabData.connected,
-        bitbucket: bitbucketData.connected,
-      };
-
-      setConnected(newConnectionState);
-      // Save for fast future startups
-      saveLastKnownConnections(newConnectionState);
+        const newConnectionState = { github: githubConnected };
+        setConnected(newConnectionState);
+        saveLastKnownConnections(newConnectionState);
+      } catch (error) {
+        console.error("💥 Error checking GitHub connection:", error);
+      }
     } catch (error) {
       console.error("💥 Error checking connections:", error);
       // On error, maintain any cached connection state if available
@@ -378,8 +319,8 @@ export const useMultiProviderData = () => {
       setError(null);
 
       try {
-        // Track provider counts for statistics
-        const providerCounts = { github: 0, gitlab: 0, bitbucket: 0 };
+        // Track provider counts for statistics (only GitHub supported)
+        const providerCounts = { github: 0 };
 
         // Fetch GitHub repositories
         if (connected.github) {
@@ -412,129 +353,11 @@ export const useMultiProviderData = () => {
           }
         }
 
-        // Fetch GitLab repositories
-        if (connected.gitlab) {
-          console.log("🚀 Fetching GitLab repositories from hook...");
-          try {
-            const response = (await fetchWithTimeout(
-              "/api/repositories/gitlab_repositories"
-            )) as Response;
-            console.log(
-              "📡 GitLab repositories response status:",
-              response.status
-            );
-            if (response.ok) {
-              const gitlabRepos: GitLabRepository[] = await response.json();
-              console.log("✅ GitLab repos received:", gitlabRepos.length);
-              console.log(
-                "📋 First GitLab repo structure:",
-                JSON.stringify(gitlabRepos[0], null, 2)
-              );
+        // GitLab support removed — skipping GitLab repositories
 
-              const transformedRepos = gitlabRepos.map(
-                (repo: GitLabRepository) => {
-                  console.log(`🔄 Transforming GitLab repo: ${repo.name}`);
-                  return {
-                    id: repo.id,
-                    name: repo.name,
-                    full_name: repo.path_with_namespace,
-                    description: repo.description,
-                    private: repo.visibility === "private",
-                    html_url: repo.web_url,
-                    clone_url: repo.http_url_to_repo,
-                    ssh_url: repo.ssh_url_to_repo,
-                    default_branch: repo.default_branch,
-                    language: Object.keys(repo.languages || {})[0] || "Unknown",
-                    stargazers_count: repo.star_count,
-                    forks_count: repo.forks_count,
-                    updated_at: repo.last_activity_at,
-                    provider: "gitlab" as const,
-                  };
-                }
-              );
+        // Bitbucket support removed — skipping Bitbucket repositories
 
-              console.log(
-                "✅ Transformed GitLab repos:",
-                transformedRepos.length
-              );
-
-              providerCounts.gitlab = transformedRepos.length;
-
-              // Update repositories immediately as they arrive
-              setRepositories((prev) => {
-                // Filter out existing GitLab repos to avoid duplicates
-                const filtered = prev.filter(
-                  (repo) => repo.provider !== "gitlab"
-                );
-                return [...filtered, ...transformedRepos];
-              });
-            } else {
-              const errorText = await response.text();
-              console.log(
-                "❌ GitLab repositories fetch failed:",
-                response.status,
-                errorText
-              );
-            }
-          } catch (error) {
-            console.error("💥 Error fetching GitLab repositories:", error);
-          }
-        } else {
-          console.log("⚠️ GitLab not connected, skipping repository fetch");
-        }
-
-        // Fetch Bitbucket repositories
-        if (connected.bitbucket) {
-          try {
-            const response = (await fetchWithTimeout(
-              "/api/repositories/bitbucket_repositories"
-            )) as Response;
-            if (response.ok) {
-              const bitbucketRepos: BitbucketRepository[] =
-                await response.json();
-              const transformedRepos = bitbucketRepos.map(
-                (repo: BitbucketRepository) => ({
-                  id: repo.uuid,
-                  name: repo.name,
-                  full_name: repo.full_name,
-                  description: repo.description,
-                  private: repo.is_private,
-                  html_url: repo.links.html.href,
-                  clone_url:
-                    repo.links.clone.find((link) => link.name === "https")
-                      ?.href || "",
-                  ssh_url:
-                    repo.links.clone.find((link) => link.name === "ssh")
-                      ?.href || "",
-                  default_branch: repo.mainbranch?.name || "main",
-                  language: repo.language,
-                  stargazers_count: 0, // Bitbucket doesn't provide stars
-                  forks_count: 0, // Would need separate API call
-                  updated_at: repo.updated_on,
-                  provider: "bitbucket" as const,
-                })
-              );
-
-              providerCounts.bitbucket = transformedRepos.length;
-
-              // Update repositories immediately as they arrive
-              setRepositories((prev) => {
-                // Filter out existing Bitbucket repos to avoid duplicates
-                const filtered = prev.filter(
-                  (repo) => repo.provider !== "bitbucket"
-                );
-                return [...filtered, ...transformedRepos];
-              });
-            }
-          } catch (error) {
-            console.error("Error fetching Bitbucket repositories:", error);
-          }
-        }
-
-        const totalRepos =
-          providerCounts.github +
-          providerCounts.gitlab +
-          providerCounts.bitbucket;
+        const totalRepos = providerCounts.github;
         console.log("📊 Final repository count:", totalRepos);
         console.log("📊 Repositories by provider:", providerCounts);
 
@@ -648,9 +471,6 @@ export const useMultiProviderData = () => {
         console.log("✅ Total workflows found:", allWorkflows.length);
         console.log("🔍 Workflows by provider:", {
           github: allWorkflows.filter((w) => w.provider === "github").length,
-          gitlab: allWorkflows.filter((w) => w.provider === "gitlab").length,
-          bitbucket: allWorkflows.filter((w) => w.provider === "bitbucket")
-            .length,
         });
         console.log("📋 Sample workflow data:", allWorkflows.slice(0, 3));
         setWorkflows(allWorkflows);
@@ -782,7 +602,7 @@ export const useMultiProviderData = () => {
         checkConnections().catch((error) => {
           console.error("Connection check failed:", error);
           // Even if connection check fails, try to load with default state
-          setConnected({ github: false, gitlab: false, bitbucket: false });
+          setConnected({ github: false });
         });
       }
     }
@@ -798,7 +618,7 @@ export const useMultiProviderData = () => {
   useEffect(() => {
     console.log("🔍 Connection state changed:", connected);
 
-    if (connected.github || connected.gitlab || connected.bitbucket) {
+    if (connected.github) {
       if (!hasLoadedRepositories) {
         console.log(
           "🏃‍♂️ Connections available - fetching repositories immediately"

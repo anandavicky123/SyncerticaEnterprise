@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useLocalization } from "../shared/localization";
 import { useSettings } from "../shared/contexts/SettingsContext";
 
 const dateFormats = [
@@ -13,22 +12,6 @@ const timeFormats = [
   { value: "24", label: "24 Hour" },
 ];
 
-const languages = [
-  { value: "en", label: "English" },
-  { value: "id", label: "Indonesian" },
-  { value: "ja", label: "Japanese" },
-  { value: "es", label: "Spanish" },
-  { value: "fr", label: "French" },
-  { value: "pt", label: "Portuguese" },
-  { value: "ko", label: "Korean" },
-  { value: "zh-Hant", label: "Chinese (Traditional)" },
-  { value: "zh-Hans", label: "Chinese (Simplified)" },
-  { value: "ar", label: "Modern Standard Arabic" },
-  { value: "it", label: "Italian" },
-  { value: "de", label: "German" },
-  { value: "ru", label: "Russian" },
-];
-
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -38,17 +21,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { settings, isLoading, error, updateSettings } = useSettings();
   const [dateFormat, setDateFormat] = useState(settings.dateFormat);
   const [timeFormat, setTimeFormat] = useState(settings.timeFormat);
-  const [language, setLanguage] = useState(settings.language);
-  const { t, setLanguage: setGlobalLanguage } = useLocalization();
+  const { t } = { t: (s: string) => s } as any;
 
   useEffect(() => {
     setDateFormat(settings.dateFormat);
     setTimeFormat(settings.timeFormat);
-    setLanguage(settings.language);
   }, [settings]);
 
   if (!isOpen) return null;
-  
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -58,14 +39,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
         <div className="bg-white p-6 rounded-lg">
-          <h2 className="text-xl font-bold mb-4">{t("Error loading settings")}</h2>
+          <h2 className="text-xl font-bold mb-4">
+            {t("Error loading settings")}
+          </h2>
           <p className="text-red-600">{error}</p>
-          <button 
+          <button
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             onClick={onClose}
           >
@@ -115,54 +98,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
-              {t("language")}
-            </label>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-700 rounded px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            >
-              {languages.map((l) => (
-                <option key={l.value} value={l.value}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* language removed - settings now only include date/time format */}
         </div>
         <div className="flex justify-end gap-2 mt-6">
           <button
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
           >
-            {t("cancel")}
+            {t("Cancel")}
           </button>
           <button
             onClick={() => {
-              setGlobalLanguage(
-                language as
-                  | "en"
-                  | "id"
-                  | "ja"
-                  | "es"
-                  | "fr"
-                  | "pt"
-                  | "ko"
-                  | "zh-Hant"
-                  | "zh-Hans"
-                  | "ar"
-                  | "it"
-                  | "de"
-                  | "ru"
-              );
-              updateSettings({ dateFormat, timeFormat, language });
+              updateSettings({ dateFormat, timeFormat });
               onClose();
             }}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            {t("save")}
+            {t("Save")}
           </button>
         </div>
       </div>
