@@ -5,10 +5,7 @@ const GITHUB_OWNER = process.env.NEXT_PUBLIC_GITHUB_OWNER || "anandavicky123";
 const GITHUB_REPO =
   process.env.NEXT_PUBLIC_GITHUB_REPO || "SyncerticaEnterprise";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest) {
   try {
     if (!GITHUB_TOKEN) {
       return NextResponse.json(
@@ -16,8 +13,12 @@ export async function POST(
         { status: 401 }
       );
     }
-
-    const workflowId = params.id;
+    // Extract workflow id from the request path. The route is mounted at
+    // /api/github/workflows/[id]/run, so the id will be the segment before '/run'.
+    const url = new URL(request.url);
+    const parts = url.pathname.split("/").filter(Boolean);
+    // Expected parts: ["api","github","workflows", "<id>", "run"]
+    const workflowId = parts[parts.length - 2] || "";
     const body = await request.json().catch(() => ({}));
     const { ref = "main", inputs = {} } = body;
 
