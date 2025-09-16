@@ -278,23 +278,43 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
               </div>
 
               <div className="flex-1 p-4 bg-gray-50 overflow-y-auto">
-                <div className="space-y-3">
+                <div className="flex flex-col gap-3">
                   {chats.length === 0 ? (
                     <div className="text-center text-gray-500 text-sm">
                       Start chatting with {activeChat.name}
                     </div>
                   ) : (
-                    chats.map((c) => (
-                      <div key={c.id} className="p-2 bg-white border rounded">
-                        <div className="text-xs text-gray-500">
-                          {c.sender?.name || "Unknown"} •{" "}
-                          {new Date(c.createdAt).toLocaleString()}
+                    chats.map((c) => {
+                      const isSent = Boolean(c.isFromCurrentUser);
+                      return (
+                        <div
+                          key={c.id}
+                          className={`max-w-[70%] ${
+                            isSent ? "ml-auto" : "mr-auto"
+                          }`}
+                        >
+                          <div
+                            className={`p-3 rounded-lg shadow-sm border ${
+                              isSent
+                                ? "bg-blue-600 text-white border-blue-600"
+                                : "bg-white text-gray-800 border-gray-200"
+                            }`}
+                          >
+                            <div
+                              className={`text-xs ${
+                                isSent ? "text-blue-100" : "text-gray-500"
+                              }`}
+                            >
+                              {isSent ? "You" : c.sender?.name || "Unknown"} •{" "}
+                              {new Date(c.createdAt).toLocaleString()}
+                            </div>
+                            <div className="mt-1 text-sm break-words whitespace-pre-wrap">
+                              {c.content}
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt-1 text-sm text-gray-800">
-                          {c.content}
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>

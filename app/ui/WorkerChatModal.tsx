@@ -116,19 +116,20 @@ export default function WorkerChatModal({
               content: chatMessage,
             }),
           });
-          if (!res.ok) throw new Error("Failed to send message");
-          setChatMessage("");
-          // reload chats
-          const listRes = await fetch(`/api/chat?receiverId=${activeChat.id}`, {
-            credentials: "include",
-          });
-          if (listRes.ok) {
-            const list = await listRes.json();
-            setChats(list);
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            console.error("Send message failed:", res.status, body);
+            alert(body.error || "Failed to send message");
+            return;
           }
+
+          const created = await res.json();
+          // append the new message locally for immediate UX
+          setChats((prev) => [...prev, created]);
+          setChatMessage("");
         } catch (err) {
           console.error("Error sending chat:", err);
-          alert("Failed to send message");
+          alert(err instanceof Error ? err.message : "Failed to send message");
         }
       })();
     }
@@ -295,7 +296,13 @@ export default function WorkerChatModal({
                     type="text"
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                    onKeyDown={(e) => {
+                      // Allow Shift+Enter for newline, Enter to send
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
                     placeholder="Type your message..."
                     className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />

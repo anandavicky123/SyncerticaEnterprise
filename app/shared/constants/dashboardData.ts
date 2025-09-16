@@ -17,7 +17,6 @@ export const sections: Section[] = [
   { id: "tasks", name: "Task Manager", icon: "✅" },
   { id: "projects", name: "Projects", icon: "📋" },
   { id: "workers", name: "Workers", icon: "👥" },
-  { id: "reports", name: "Reports", icon: "📈" },
 ];
 
 // The `sidebarItems` constant was intentionally removed. The sidebar is populated
@@ -94,38 +93,7 @@ export const dashboardBlocks: DashboardBlocks = {
       period: "Always Free Tier",
     },
   ],
-  reports: [
-    {
-      id: "security-score",
-      type: "metric",
-      title: "Report Score",
-      value: "87%",
-      change: "+5%",
-      changeType: "positive",
-      period: "this month",
-    },
-    {
-      id: "active-threats",
-      type: "metric",
-      title: "Active Threats",
-      value: "3",
-      change: "-2",
-      changeType: "positive",
-      period: "from yesterday",
-    },
-    {
-      id: "compliance-status",
-      type: "chart",
-      title: "Compliance Status",
-      chartType: "doughnut",
-    },
-    {
-      id: "security-events",
-      type: "chart",
-      title: "Security Events Timeline",
-      chartType: "line",
-    },
-  ],
+  // reports section intentionally removed to hide the Reports tab from the UI
   cloud: [
     {
       id: "aws-usage",

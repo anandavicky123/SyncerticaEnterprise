@@ -188,33 +188,45 @@ export async function POST(request: NextRequest) {
 
     if (actorType === "worker") {
       // Workers can chat with other workers under same manager
+      // Also allow workers to chat with their manager by passing receiverId in form "manager:<uuid>"
       const currentWorkerId = actorId as string;
 
-      // Verify both sender and receiver exist and are under same manager
+      // Verify sender exists and fetch manager UUID
       const currentWorker = await prisma.worker.findUnique({
         where: { id: currentWorkerId },
         select: { managerDeviceUUID: true },
       });
 
-      const receiverWorker = await prisma.worker.findUnique({
-        where: { id: receiverId },
-        select: { managerDeviceUUID: true },
-      });
-
-      if (!currentWorker || !receiverWorker) {
-        return NextResponse.json(
-          { error: "Worker not found" },
-          { status: 404 }
-        );
+      if (!currentWorker) {
+        return NextResponse.json({ error: "Worker not found" }, { status: 404 });
       }
 
-      if (
-        currentWorker.managerDeviceUUID !== receiverWorker.managerDeviceUUID
-      ) {
-        return NextResponse.json(
-          { error: "Can only chat with workers under same manager" },
-          { status: 403 }
-        );
+      if (receiverId.startsWith("manager:")) {
+        // Sending to manager - validate manager ownership
+        const managerId = receiverId.split(":")[1];
+        if (currentWorker.managerDeviceUUID !== managerId) {
+          return NextResponse.json(
+            { error: "Can only chat with your own manager" },
+            { status: 403 }
+          );
+        }
+      } else {
+        // Receiver is a worker — verify both under same manager
+        const receiverWorker = await prisma.worker.findUnique({
+          where: { id: receiverId },
+          select: { managerDeviceUUID: true },
+        });
+
+        if (!receiverWorker) {
+          return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+        }
+
+        if (currentWorker.managerDeviceUUID !== receiverWorker.managerDeviceUUID) {
+          return NextResponse.json(
+            { error: "Can only chat with workers under same manager" },
+            { status: 403 }
+          );
+        }
       }
     } else if (actorType === "manager") {
       // Managers can chat with their workers
@@ -284,10 +296,21 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    const receiver = await prisma.worker.findUnique({
-      where: { id: receiverId },
-      select: { id: true, name: true, email: true },
-    });
+    // Resolve receiver info if receiver is a worker; manager identifiers won't be present in RDS
+    let receiver: { id: string; name: string; email: string } | null = null;
+    if (!receiverId.startsWith("manager:")) {
+      receiver = await prisma.worker.findUnique({
+        where: { id: receiverId },
+        select: { id: true, name: true, email: true },
+      });
+    } else {
+      // Generic manager identity for responses
+      receiver = {
+        id: receiverId,
+        name: "Manager",
+        email: "manager@local",
+      };
+    }
 
     // If sender is manager, create a DynamoDB notification for the worker (unread)
     if (actorType === "manager" && receiver) {

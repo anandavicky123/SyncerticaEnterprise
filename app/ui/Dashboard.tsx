@@ -24,7 +24,6 @@ import SecurityDashboard from "../contents/SecurityDashboard";
 import TaskManager from "../contents/TaskManager";
 import Projects from "../contents/Projects";
 import WorkersManagement from "../workers/management";
-import Reports from "../contents/Reports";
 import CallChatModal from "./CallChatModal";
 import ProfileDropdown from "./ProfileDropdown";
 import CalendarModal from "./CalendarModal";
@@ -531,8 +530,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
             />
           ) : activeSection === "workers" ? (
             <WorkersManagement />
-          ) : activeSection === "reports" ? (
-            <Reports />
           ) : (
             /* Default dashboard blocks for other sections */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
