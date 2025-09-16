@@ -1,0 +1,14 @@
+{
+  "settings": "設定",
+  "dateFormat": "日付形式",
+  "language": "言語",
+  "save": "保存",
+  "cancel": "キャンセル",
+  "profile": "プロフィール",
+  "logout": "ログアウト",
+  "addEventFor": "イベント追加：",
+  "eventsFor": "イベント：",
+  "noEvents": "この日のイベントはありません。",
+  "today": "今日",
+  "hasEvents": "イベントあり"
+}

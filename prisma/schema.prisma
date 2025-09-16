@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Manager {
+  deviceUUID   String   @id @db.Uuid @map("deviceuuid")
+  name         String
+  dateFormat   String   @default("YYYY-MM-DD") @map("dateformat")
+  timeFormat   String   @default("24")        @map("timeformat")
+  language     String   @default("en")
+  createdAt    DateTime @default(now()) @db.Timestamptz @map("createdat")
+  updatedAt    DateTime @default(now()) @db.Timestamptz @map("updatedat")
+
+  // Relations
+  workers       Worker[]
+  projects      Project[]
+  tasks         Task[]        @relation("TaskAssignedBy")
+  statuses      Status[]
+  notifications Notification[]
+
+  @@map("managers")
+}
+
+model Worker {
+  id                String   @id
+  managerDeviceUUID String   @db.Uuid @map("managerdeviceuuid")
+  name              String
+  pronouns          String?
+  jobRole           String   @map("jobrole")
+  email             String   @unique @db.Citext
+  passwordHash      String   @map("passwordhash")
+  createdAt         DateTime @default(now()) @db.Timestamptz @map("createdat")
+  updatedAt         DateTime @default(now()) @db.Timestamptz @map("updatedat")
+
+  // Relations
+  manager       Manager        @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
+  tasks         Task[]         @relation("TaskAssignedTo")
+  notifications Notification[]
+  sentChats     chats[]        @relation("SentChats")
+  receivedChats chats[]        @relation("ReceivedChats")
+
+  @@map("workers")
+}
+
+model Project {
+  id                String   @id
+  managerDeviceUUID String   @db.Uuid @map("managerdeviceuuid")
+  name              String
+  description       String?
+  repository        String?
+  status            String   @default("active")
+  createdAt         DateTime @default(now()) @db.Timestamptz @map("createdat")
+  updatedAt         DateTime @default(now()) @db.Timestamptz @map("updatedat")
+
+  // Relations
+  manager Manager @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
+  tasks   Task[]
+
+  @@map("projects")
+}
+
+model Task {
+  id              String    @id
+  title           String
+  description     String
+  statusId        Int       @map("statusid")
+  priority        String    @default("medium")
+  assignedTo      String    @map("assignedto")
+  assignedBy      String    @db.Uuid @map("managerdeviceuuid")
+  projectId       String    @map("projectid")
+  dueDate         DateTime? @db.Timestamptz @map("duedate")
+  estimatedHours  Int?      @map("estimatedhours")
+  actualHours     Int?      @map("actualhours")
+  stepFunctionArn String?   @map("stepfunctionarn")
+  tags            String[]
+  createdAt       DateTime  @default(now()) @db.Timestamptz @map("createdat")
+  updatedAt       DateTime  @default(now()) @db.Timestamptz @map("updatedat")
+
+  // Relations
+  worker  Worker  @relation("TaskAssignedTo", fields: [assignedTo], references: [id], onDelete: Cascade)
+  manager Manager @relation("TaskAssignedBy", fields: [assignedBy], references: [deviceUUID], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status  Status  @relation(fields: [statusId], references: [id], onDelete: Cascade)
+
+  dependentTasks    TaskDependency[] @relation("DependentTask")
+  prerequisiteTasks TaskDependency[] @relation("PrerequisiteTask")
+
+  @@map("tasks")
+}
+
+model Status {
+  id                Int      @id @default(autoincrement())
+  managerDeviceUUID String   @db.Uuid @map("managerdeviceuuid")
+  name              String
+  category          String   @map("category")
+
+  // Relations
+  manager Manager @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
+  tasks   Task[]
+
+  @@map("statuses")
+}
+
+model TaskDependency {
+  taskId      String @map("taskid")
+  dependsOnId String @map("dependsonid")
+
+  // Relations
+  task       Task @relation("DependentTask", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn  Task @relation("PrerequisiteTask", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, dependsOnId])
+  @@map("task_dependencies")
+}
+
+model chats {
+  id         String   @id
+  senderId   String   @map("sender_id")
+  receiverId String   @map("receiver_id")
+  content    String
+  createdAt  DateTime @default(now()) @db.Timestamptz @map("created_at")
+
+  // Relations
+  sender   Worker @relation("SentChats", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver Worker @relation("ReceivedChats", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("chats")
+}
+
+model Notification {
+  id                String   @id
+  workerId          String?  @map("workerid")
+  managerDeviceUUID String?  @db.Uuid @map("managerdeviceuuid")
+  message           String
+  read              Boolean  @default(false)
+  createdAt         DateTime @default(now()) @db.Timestamptz @map("createdat")
+
+  // Relations
+  worker  Worker?  @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  manager Manager? @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
+
+  @@map("notifications")
+}
