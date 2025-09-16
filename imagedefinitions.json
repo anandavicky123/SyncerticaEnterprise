@@ -1,6 +1,0 @@
-[
-  {
-    "name": "syncertica-enterprise",
-    "imageUri": "<ECR_REPOSITORY_URI>:latest"
-  }
-]
