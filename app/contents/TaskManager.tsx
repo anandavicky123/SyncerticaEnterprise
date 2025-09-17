@@ -39,7 +39,9 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
     "all" | "todo" | "doing" | "done" | "blocked"
   >("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentManagerUUID, setCurrentManagerUUID] = useState<string>("11111111-1111-1111-1111-111111111111"); // Default fallback
+  const [currentManagerUUID, setCurrentManagerUUID] = useState<string>(
+    "11111111-1111-1111-1111-111111111111"
+  ); // Default fallback
 
   // Fetch current user session to get their device UUID
   const fetchCurrentUser = async () => {
@@ -117,6 +119,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
     dueDate?: string;
     estimatedHours?: number;
     tags: string[];
+    projectId?: string;
   }) => {
     try {
       const response = await fetch("/api/tasks", {
@@ -131,10 +134,22 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
         const newTask = await response.json();
         setTasks((prev) => [newTask, ...prev]);
         console.log("✅ Task created successfully:", newTask);
+        // Notify dashboard/sidebar to refresh stats
+        try {
+          window.dispatchEvent(
+            new CustomEvent("syncertica:stats-changed", {
+              detail: { managerUUID: currentManagerUUID },
+            })
+          );
+        } catch (e) {
+          console.debug("Could not dispatch stats-changed event:", e);
+        }
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error("API Error:", errorData);
-        throw new Error(`Failed to create task: ${errorData.error || response.statusText}`);
+        throw new Error(
+          `Failed to create task: ${errorData.error || response.statusText}`
+        );
       }
     } catch (error) {
       console.error("Error creating task:", error);
@@ -157,6 +172,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
     dueDate?: string;
     estimatedHours?: number;
     tags: string[];
+    projectId?: string;
   }) => {
     try {
       const response = await fetch("/api/tasks", {
@@ -173,6 +189,15 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
           prev.map((task) => (task.id === taskData.id ? updatedTask : task))
         );
         console.log("✅ Task updated successfully:", updatedTask);
+        try {
+          window.dispatchEvent(
+            new CustomEvent("syncertica:stats-changed", {
+              detail: { managerUUID: currentManagerUUID },
+            })
+          );
+        } catch (e) {
+          console.debug("Could not dispatch stats-changed event:", e);
+        }
       } else {
         throw new Error("Failed to update task");
       }
@@ -195,6 +220,15 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
       if (response.ok) {
         setTasks((prev) => prev.filter((task) => task.id !== taskId));
         console.log("✅ Task deleted successfully");
+        try {
+          window.dispatchEvent(
+            new CustomEvent("syncertica:stats-changed", {
+              detail: { managerUUID: currentManagerUUID },
+            })
+          );
+        } catch (e) {
+          console.debug("Could not dispatch stats-changed event:", e);
+        }
       } else {
         throw new Error("Failed to delete task");
       }
@@ -527,6 +561,11 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
                       </div>
                     </div>
                     <p className="text-gray-600 mb-3">{task.description}</p>
+                    {task.projectName && (
+                      <p className="text-sm text-gray-500 mb-1">
+                        Project: {task.projectName}
+                      </p>
+                    )}
                     <div className="flex flex-wrap gap-2 mb-3">
                       {(Array.isArray(task.tags) ? task.tags : []).map(
                         (tag) => (
@@ -542,7 +581,9 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
                     <div className="flex items-center gap-6 text-sm text-gray-500">
                       <div className="flex items-center gap-1">
                         <User className="w-4 h-4" />
-                        <span>{users[task.assignedTo]?.name || "Unknown"}</span>
+                        <span>
+                          {users[task.assignedTo ?? ""]?.name || "Unknown"}
+                        </span>
                       </div>
                       {task.dueDate && (
                         <div className="flex items-center gap-1">

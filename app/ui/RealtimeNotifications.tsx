@@ -110,7 +110,7 @@ const RealtimeNotifications: React.FC<RealtimeNotificationsProps> = ({
     );
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status?: string) => {
     switch (status) {
       case "online":
         return "bg-green-500";

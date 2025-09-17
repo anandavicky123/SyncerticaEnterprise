@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       dueDate,
       estimatedHours,
       tags,
+      projectId,
     } = body;
     // Determine managerDeviceUUID from session headers (only managers can create tasks)
     const actorType = request.headers.get("x-actor-type");
@@ -80,20 +81,34 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getDatabase();
-    const task = await db.createTask(managerdeviceuuid, {
-      title,
-      description,
-      status: status || "todo",
-      priority: priority || "medium",
+    const task = await db.createTask(
       managerdeviceuuid,
-      assignedTo,
-      dueDate,
-      estimatedHours,
-      tags: tags || [],
-      actualHours: 0,
-    });
+      {
+        title,
+        description,
+        status: status || "todo",
+        priority: priority || "medium",
+        managerdeviceuuid,
+        assignedTo,
+        dueDate,
+        estimatedHours,
+        tags: tags || [],
+        actualHours: 0,
+      },
+      projectId
+    );
 
-    return NextResponse.json(task, { status: 201 });
+    // Retrieve project name for response
+    let projectName: string | undefined = undefined;
+    if (task && (task as any).projectId) {
+      const proj = await db.getAllProjects(managerdeviceuuid);
+      const found = proj.find((p) => p.id === (task as any).projectId);
+      projectName = found?.name;
+    }
+    // Attach projectName for client convenience
+    const taskWithProject = { ...(task as any), projectName };
+
+    return NextResponse.json(taskWithProject, { status: 201 });
   } catch (error) {
     console.error("Error creating task:", error);
     return NextResponse.json(

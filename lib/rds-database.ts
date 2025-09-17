@@ -1,17 +1,20 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
-// Initialize Prisma Client
-const prisma = new PrismaClient();
+// Use a singleton Prisma client similar to lib/database.ts to avoid exhausting connections
+const prismaClientSingleton = () => new PrismaClient();
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
-// Types
+// Types (lightweight mirrors of what's used by the app)
 export interface Task {
   id: string;
   title: string;
   description: string;
-  status: "todo" | "doing" | "done" | "blocked";
+  status: string;
   priority: "low" | "medium" | "high" | "critical";
   assignedTo: string;
-  assignedBy: string;
+  managerDeviceUUID?: string;
   createdAt: string;
   updatedAt: string;
   dueDate?: string;
@@ -19,6 +22,8 @@ export interface Task {
   estimatedHours?: number;
   actualHours?: number;
   stepFunctionArn?: string;
+  projectId?: string;
+  projectName?: string;
 }
 
 export interface Worker {
@@ -26,7 +31,7 @@ export interface Worker {
   managerDeviceUUID: string;
   name: string;
   pronouns?: string;
-  jobRole: "UI/UX Designer" | "Developer" | "Manager" | "QA";
+  jobRole: string;
   email: string;
   createdAt: string;
   updatedAt: string;
@@ -37,167 +42,73 @@ export interface Project {
   name: string;
   description?: string;
   repository?: string;
-  status: "active" | "inactive" | "completed";
+  status: string;
   createdAt: string;
   updatedAt: string;
 }
 
-// Type guard functions
-function isWorker(obj: any): obj is Worker {
-  return (
-    obj &&
-    typeof obj.id === "string" &&
-    typeof obj.name === "string" &&
-    typeof obj.jobRole === "string" &&
-    typeof obj.email === "string" &&
-    typeof obj.managerDeviceUUID === "string"
-  );
-}
-
-function isTask(obj: any): obj is Task {
-  return (
-    obj &&
-    typeof obj.id === "string" &&
-    typeof obj.title === "string" &&
-    typeof obj.description === "string" &&
-    typeof obj.status === "string" &&
-    typeof obj.priority === "string" &&
-    typeof obj.assignedTo === "string" &&
-    typeof obj.assignedBy === "string" &&
-    Array.isArray(obj.tags)
-  );
-}
-
-function isProject(obj: any): obj is Project {
-  return (
-    obj &&
-    typeof obj.id === "string" &&
-    typeof obj.name === "string" &&
-    typeof obj.status === "string"
-  );
-}
-
 export class DatabaseManager {
+  private static instance: DatabaseManager;
+
   private constructor() {}
 
-  private static instance: DatabaseManager | null = null;
-
-  static getInstance(): DatabaseManager {
+  public static getInstance(): DatabaseManager {
     if (!DatabaseManager.instance) {
       DatabaseManager.instance = new DatabaseManager();
     }
     return DatabaseManager.instance;
   }
 
-  async seedData(managerDeviceUUID: string): Promise<void> {
-    // Check if workers exist
-    const workerCount = await prisma.worker.count();
-    if (workerCount > 0) return;
-
-    // Seed Workers
-    const workers = [
-      {
-        id: "admin-1",
-        name: "John Admin",
-        pronouns: "he/him",
-        jobRole: "Manager",
-        email: "admin@syncertica.com",
-      },
-      {
-        id: "employee-1",
-        name: "Jane Employee",
-        pronouns: "she/her",
-        jobRole: "Developer",
-        email: "employee@syncertica.com",
-      },
-      {
-        id: "manager-1",
-        name: "Mike Manager",
-        pronouns: "he/him",
-        jobRole: "Manager",
-        email: "manager@syncertica.com",
-      },
-      {
-        id: "designer-1",
-        name: "Alice Johnson",
-        pronouns: "she/her",
-        jobRole: "UI/UX Designer",
-        email: "alice.johnson@syncertica.com",
-      },
-      {
-        id: "qa-1",
-        name: "Diana Lee",
-        pronouns: "she/her",
-        jobRole: "QA",
-        email: "diana.lee@syncertica.com",
-      },
-    ];
-
-    for (const worker of workers) {
-      await prisma.worker.create({
-        data: {
-          ...worker,
-          managerDeviceUUID,
-          // Generate a random password hash - should be properly hashed in production
-          passwordHash: "temp-password-hash",
-        },
-      });
-    }
-  }
-
-  // Worker methods
   async getAllWorkers(managerDeviceUUID: string): Promise<Worker[]> {
     const workers = await prisma.worker.findMany({
       where: { managerDeviceUUID },
-      orderBy: { name: "asc" },
     });
-
-    return workers.map((worker) => ({
-      id: worker.id,
-      name: worker.name,
-      pronouns: worker.pronouns || "",
-      jobRole: worker.jobRole as Worker["jobRole"],
-      email: worker.email,
-      managerDeviceUUID: worker.managerDeviceUUID,
-      createdAt: worker.createdAt.toISOString(),
-      updatedAt: worker.updatedAt.toISOString(),
+    return workers.map((w) => ({
+      id: w.id,
+      name: w.name,
+      pronouns: w.pronouns || "",
+      jobRole: w.jobRole,
+      email: w.email,
+      managerDeviceUUID: w.managerDeviceUUID,
+      createdAt: w.createdAt.toISOString(),
+      updatedAt: w.updatedAt.toISOString(),
     }));
   }
 
   async getWorkerById(id: string): Promise<Worker | null> {
-    const worker = await prisma.worker.findUnique({
-      where: { id },
-    });
-
-    if (!worker) return null;
-
+    const w = await prisma.worker.findUnique({ where: { id } });
+    if (!w) return null;
     return {
-      id: worker.id,
-      name: worker.name,
-      pronouns: worker.pronouns || "",
-      jobRole: worker.jobRole as Worker["jobRole"],
-      email: worker.email,
-      managerDeviceUUID: worker.managerDeviceUUID,
-      createdAt: worker.createdAt.toISOString(),
-      updatedAt: worker.updatedAt.toISOString(),
+      id: w.id,
+      name: w.name,
+      pronouns: w.pronouns || "",
+      jobRole: w.jobRole,
+      email: w.email,
+      managerDeviceUUID: w.managerDeviceUUID,
+      createdAt: w.createdAt.toISOString(),
+      updatedAt: w.updatedAt.toISOString(),
     };
   }
 
   async createWorker(
-    worker: Omit<Worker, "id" | "createdAt" | "updatedAt">
+    worker: Partial<Worker> & { managerDeviceUUID: string }
   ): Promise<Worker> {
     const created = await prisma.worker.create({
       data: {
-        ...worker,
-        passwordHash: "temp-password-hash", // Should be properly hashed in production
+        id: crypto.randomUUID(),
+        name: worker.name!,
+        pronouns: worker.pronouns || null,
+        jobRole: worker.jobRole || "Developer",
+        email: worker.email || "",
+        managerDeviceUUID: worker.managerDeviceUUID,
+        passwordHash: "temp-password-hash",
       },
     });
-
     return {
       id: created.id,
       name: created.name,
       pronouns: created.pronouns || "",
-      jobRole: created.jobRole as Worker["jobRole"],
+      jobRole: created.jobRole,
       email: created.email,
       managerDeviceUUID: created.managerDeviceUUID,
       createdAt: created.createdAt.toISOString(),
@@ -212,138 +123,172 @@ export class DatabaseManager {
     try {
       await prisma.worker.update({
         where: { id },
-        data: updates,
+        data: updates as Prisma.WorkerUpdateInput,
       });
       return true;
-    } catch (error) {
-      console.error("Error updating worker:", error);
+    } catch (err) {
+      console.error("Error updating worker:", err);
       return false;
     }
   }
 
   async deleteWorker(id: string): Promise<boolean> {
     try {
-      await prisma.worker.delete({
-        where: { id },
-      });
+      await prisma.worker.delete({ where: { id } });
       return true;
-    } catch (error) {
-      console.error("Error deleting worker:", error);
+    } catch (err) {
+      console.error("Error deleting worker:", err);
       return false;
     }
   }
 
-  // Task methods
-  async getAllTasks(managerDeviceUUID: string): Promise<Task[]> {
+  async getAllTasks(managerDeviceUUID?: string): Promise<Task[]> {
     const tasks = await prisma.task.findMany({
-      where: { manager: { deviceUUID: managerDeviceUUID } },
+      where: managerDeviceUUID
+        ? { manager: { deviceUUID: managerDeviceUUID } }
+        : undefined,
       orderBy: { createdAt: "desc" },
-      include: {
-        status: true,
-      },
+      include: { status: true, project: true },
     });
-
-    return tasks.map((task) => ({
-      id: task.id,
-      title: task.title,
-      description: task.description,
-      status: task.status.name as Task["status"],
-      priority: task.priority,
-      assignedTo: task.assignedTo,
-      assignedBy: task.assignedBy,
-      createdAt: task.createdAt.toISOString(),
-      updatedAt: task.updatedAt.toISOString(),
-      dueDate: task.dueDate?.toISOString(),
-      tags: task.tags,
-      estimatedHours: task.estimatedHours || undefined,
-      actualHours: task.actualHours || undefined,
-      stepFunctionArn: task.stepFunctionArn || undefined,
+    return tasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      status: t.status?.name || "",
+      priority: t.priority as Task["priority"],
+      assignedTo: t.assignedTo,
+      managerDeviceUUID: t.assignedBy,
+      createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
+      dueDate: t.dueDate?.toISOString(),
+      tags: t.tags,
+      estimatedHours: t.estimatedHours || undefined,
+      actualHours: t.actualHours || undefined,
+      stepFunctionArn: t.stepFunctionArn || undefined,
+      projectId: t.projectId || undefined,
+      projectName: t.project?.name || undefined,
     }));
   }
 
   async getTaskById(id: string): Promise<Task | null> {
-    const task = await prisma.task.findUnique({
+    const t = await prisma.task.findUnique({
       where: { id },
-      include: {
-        status: true,
-      },
+      include: { status: true, project: true },
     });
-
-    if (!task) return null;
-
+    if (!t) return null;
     return {
-      id: task.id,
-      title: task.title,
-      description: task.description,
-      status: task.status.name as Task["status"],
-      priority: task.priority,
-      assignedTo: task.assignedTo,
-      assignedBy: task.assignedBy,
-      createdAt: task.createdAt.toISOString(),
-      updatedAt: task.updatedAt.toISOString(),
-      dueDate: task.dueDate?.toISOString(),
-      tags: task.tags,
-      estimatedHours: task.estimatedHours || undefined,
-      actualHours: task.actualHours || undefined,
-      stepFunctionArn: task.stepFunctionArn || undefined,
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      status: t.status?.name || "",
+      priority: t.priority as Task["priority"],
+      assignedTo: t.assignedTo,
+      managerDeviceUUID: t.assignedBy,
+      createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
+      dueDate: t.dueDate?.toISOString(),
+      tags: t.tags,
+      estimatedHours: t.estimatedHours || undefined,
+      actualHours: t.actualHours || undefined,
+      stepFunctionArn: t.stepFunctionArn || undefined,
+      projectId: t.projectId || undefined,
+      projectName: t.project?.name || undefined,
     };
   }
 
   async createTask(
     managerDeviceUUID: string,
-    task: Omit<Task, "id" | "createdAt" | "updatedAt">
+    task: Partial<Task> & {
+      status: string;
+      assignedTo: string;
+      title: string;
+      description: string;
+      tags: string[];
+    },
+    projectId?: string
   ): Promise<Task> {
-    // Get or create status
-    const status = await prisma.status.findFirstOrCreate({
-      where: {
-        name_managerdeviceuuid: {
-          name: task.status,
-          managerdeviceuuid: managerDeviceUUID,
-        },
-      },
-      create: {
-        name: task.status,
-        managerdeviceuuid: managerDeviceUUID,
-        manager: {
-          connect: {
-            deviceUUID: managerDeviceUUID,
-          },
-        },
-      },
+    // ensure manager exists
+    let manager = await prisma.manager.findUnique({
+      where: { deviceUUID: managerDeviceUUID },
     });
+    if (!manager) {
+      manager = await prisma.manager.create({
+        data: {
+          deviceUUID: managerDeviceUUID,
+          name: "Default Manager",
+          dateFormat: "YYYY-MM-DD",
+          timeFormat: "24h",
+        },
+      });
+    }
+
+    // ensure default project exists
+    let defaultProject = await prisma.project.findFirst({
+      where: { managerDeviceUUID, name: "Default Project" },
+    });
+    if (!defaultProject) {
+      defaultProject = await prisma.project.create({
+        data: {
+          id: crypto.randomUUID(),
+          managerDeviceUUID,
+          name: "Default Project",
+          description: "Auto-created default project",
+          status: "active",
+        },
+      });
+    }
+
+    // get or create status
+    let status = await prisma.status.findFirst({
+      where: { name: task.status, managerDeviceUUID },
+    });
+    if (!status) {
+      // provide a default category to satisfy DB constraints and connect manager
+      status = await prisma.status.create({
+        data: {
+          name: task.status,
+          category: "task_status",
+          manager: { connect: { deviceUUID: managerDeviceUUID } },
+        },
+      });
+    }
+
+    // validate provided projectId belongs to manager
+    let projectToUseId = defaultProject.id;
+    if (projectId) {
+      const projectCheck = await prisma.project.findFirst({
+        where: { id: projectId, managerDeviceUUID },
+      });
+      if (projectCheck) projectToUseId = projectCheck.id;
+    }
 
     const created = await prisma.task.create({
       data: {
-        title: task.title,
-        description: task.description,
-        priority: task.priority,
-        assignedTo: task.assignedTo,
+        id: crypto.randomUUID(),
+        title: task.title!,
+        description: task.description || "",
+        priority: (task.priority as Task["priority"]) || "medium",
+        assignedTo: task.assignedTo!,
         assignedBy: managerDeviceUUID,
         statusId: status.id,
-        tags: task.tags,
+        tags: task.tags || [],
         dueDate: task.dueDate ? new Date(task.dueDate) : null,
         estimatedHours: task.estimatedHours,
         actualHours: task.actualHours,
         stepFunctionArn: task.stepFunctionArn,
-        manager: {
-          connect: {
-            deviceUUID: managerDeviceUUID,
-          },
-        },
+        projectId: projectToUseId,
       },
-      include: {
-        status: true,
-      },
+      include: { status: true, project: true },
     });
 
     return {
       id: created.id,
       title: created.title,
       description: created.description,
-      status: created.status.name as Task["status"],
-      priority: created.priority,
+      status: (created as any).status?.name || "",
+      priority: created.priority as Task["priority"],
       assignedTo: created.assignedTo,
-      assignedBy: created.assignedBy,
+      managerDeviceUUID: created.assignedBy,
       createdAt: created.createdAt.toISOString(),
       updatedAt: created.updatedAt.toISOString(),
       dueDate: created.dueDate?.toISOString(),
@@ -351,119 +296,163 @@ export class DatabaseManager {
       estimatedHours: created.estimatedHours || undefined,
       actualHours: created.actualHours || undefined,
       stepFunctionArn: created.stepFunctionArn || undefined,
+      projectId: created.projectId || undefined,
+      projectName: (created as any).project?.name || undefined,
     };
   }
 
-  async updateTask(
-    id: string,
-    updates: Partial<Omit<Task, "id" | "createdAt">>
-  ): Promise<boolean> {
+  async updateTask(id: string, updates: Partial<Task>): Promise<boolean> {
     try {
+      const existing = await prisma.task.findUnique({
+        where: { id },
+        include: { manager: true },
+      });
+      if (!existing) return false;
+      const managerDeviceUUID = existing.manager.deviceUUID;
+
+      // handle status updates
       if (updates.status) {
-        const task = await prisma.task.findUnique({
-          where: { id },
-          include: { manager: true },
+        let status = await prisma.status.findFirst({
+          where: { name: updates.status, managerDeviceUUID },
         });
-        if (!task) return false;
-
-        // Get or create status
-        const status = await prisma.status.findFirstOrCreate({
-          where: {
-            name_managerdeviceuuid: {
+        if (!status) {
+          status = await prisma.status.create({
+            data: {
               name: updates.status,
-              managerdeviceuuid: task.manager.deviceUUID,
-            },
-          },
-          create: {
-            name: updates.status,
-            managerdeviceuuid: task.manager.deviceUUID,
-            manager: {
-              connect: {
-                deviceUUID: task.manager.deviceUUID,
-              },
-            },
-          },
-        });
-
-        delete updates.status;
-        await prisma.task.update({
-          where: { id },
-          data: {
-            ...updates,
-            statusId: status.id,
-            dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
-          },
-        });
+              category: "task_status",
+              manager: { connect: { deviceUUID: managerDeviceUUID } },
+            } as any,
+          });
+        }
+        // build update payload
+        const data: Prisma.TaskUpdateInput = {
+          ...(updates as unknown as Prisma.TaskUpdateInput),
+          status: { connect: { id: status.id } },
+          dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
+        };
+        await prisma.task.update({ where: { id }, data });
       } else {
-        await prisma.task.update({
-          where: { id },
-          data: {
-            ...updates,
-            dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
-          },
-        });
+        const data: Prisma.TaskUpdateInput = {
+          ...(updates as unknown as Prisma.TaskUpdateInput),
+          dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
+        };
+
+        // validate projectId if present
+        if ((updates as any).projectId !== undefined) {
+          const incoming = (updates as any).projectId;
+          if (!incoming) {
+            let defaultProject = await prisma.project.findFirst({
+              where: { managerDeviceUUID, name: "Default Project" },
+            });
+            if (!defaultProject) {
+              defaultProject = await prisma.project.create({
+                data: {
+                  id: crypto.randomUUID(),
+                  managerDeviceUUID,
+                  name: "Default Project",
+                  description: "Auto-created default project",
+                  status: "active",
+                },
+              });
+            }
+            (data as any).projectId = defaultProject.id;
+          } else {
+            const projectCheck = await prisma.project.findFirst({
+              where: { id: incoming, managerDeviceUUID },
+            });
+            if (projectCheck) (data as any).projectId = projectCheck.id;
+            else {
+              let defaultProject = await prisma.project.findFirst({
+                where: { managerDeviceUUID, name: "Default Project" },
+              });
+              if (!defaultProject) {
+                defaultProject = await prisma.project.create({
+                  data: {
+                    id: crypto.randomUUID(),
+                    managerDeviceUUID,
+                    name: "Default Project",
+                    description: "Auto-created default project",
+                    status: "active",
+                  },
+                });
+              }
+              (data as any).projectId = defaultProject.id;
+            }
+          }
+        }
+
+        await prisma.task.update({ where: { id }, data });
       }
       return true;
-    } catch (error) {
-      console.error("Error updating task:", error);
+    } catch (err) {
+      console.error("Error updating task:", err);
       return false;
     }
   }
 
   async deleteTask(id: string): Promise<boolean> {
     try {
-      await prisma.task.delete({
-        where: { id },
-      });
+      await prisma.task.delete({ where: { id } });
       return true;
-    } catch (error) {
-      console.error("Error deleting task:", error);
+    } catch (err) {
+      console.error("Error deleting task:", err);
       return false;
     }
   }
 
-  // Project methods
   async getAllProjects(managerDeviceUUID: string): Promise<Project[]> {
     const projects = await prisma.project.findMany({
       where: { managerDeviceUUID },
-      orderBy: { name: "asc" },
     });
-
-    return projects.map((project) => ({
-      id: project.id,
-      name: project.name,
-      description: project.description || undefined,
-      repository: project.repository || undefined,
-      status: project.status as Project["status"],
-      createdAt: project.createdAt.toISOString(),
-      updatedAt: project.updatedAt.toISOString(),
+    return projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description || undefined,
+      repository: p.repository || undefined,
+      status: p.status,
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: p.updatedAt.toISOString(),
     }));
   }
 
+  async getProjectById(
+    id: string,
+    managerDeviceUUID?: string
+  ): Promise<Project | null> {
+    const p = await prisma.project.findUnique({ where: { id } });
+    if (!p) return null;
+    if (managerDeviceUUID && p.managerDeviceUUID !== managerDeviceUUID)
+      return null;
+    return {
+      id: p.id,
+      name: p.name,
+      description: p.description || undefined,
+      repository: p.repository || undefined,
+      status: p.status,
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: p.updatedAt.toISOString(),
+    };
+  }
+
   async createProject(
-    project: Omit<Project, "id" | "createdAt" | "updatedAt">,
-    managerDeviceUUID: string
+    project: Partial<Project> & { managerDeviceUUID: string }
   ): Promise<Project> {
     const created = await prisma.project.create({
       data: {
-        name: project.name,
-        description: project.description,
-        repository: project.repository,
-        status: project.status,
-        manager: {
-          connect: {
-            deviceUUID: managerDeviceUUID,
-          },
-        },
+        id: crypto.randomUUID(),
+        name: project.name!,
+        description: project.description || null,
+        repository: project.repository || null,
+        status: project.status || "active",
+        managerDeviceUUID: project.managerDeviceUUID,
       },
     });
-
     return {
       id: created.id,
       name: created.name,
       description: created.description || undefined,
       repository: created.repository || undefined,
-      status: created.status as Project["status"],
+      status: created.status,
       createdAt: created.createdAt.toISOString(),
       updatedAt: created.updatedAt.toISOString(),
     };
@@ -474,7 +463,6 @@ export class DatabaseManager {
   }
 }
 
-// Export the singleton getter
-export const getDatabase = DatabaseManager.getInstance;
+export const getDatabase = () => DatabaseManager.getInstance();
 
 export default DatabaseManager;

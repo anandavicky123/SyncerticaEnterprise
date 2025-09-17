@@ -22,6 +22,7 @@ interface CreateTaskModalProps {
     priority: string;
     dueDate?: string;
     estimatedHours?: number;
+    projectId?: string;
     tags: string[];
   }) => void;
   currentUserId?: string;
@@ -34,12 +35,14 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   currentUserId = "11111111-1111-1111-1111-111111111111",
 }) => {
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     assignedTo: "",
     priority: "medium",
+    projectId: "",
     dueDate: "",
     estimatedHours: "",
     tags: "",
@@ -49,6 +52,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       fetchWorkers();
+      fetchProjects();
     }
   }, [isOpen]);
 
@@ -61,6 +65,18 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       }
     } catch (error) {
       console.error("Error fetching workers:", error);
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch("/api/projects");
+      if (response.ok) {
+        const projectsData = await response.json();
+        setProjects(projectsData);
+      }
+    } catch (error) {
+      console.error("Error fetching projects:", error);
     }
   };
 
@@ -81,6 +97,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         assignedTo: formData.assignedTo,
         managerdeviceuuid: currentUserId,
         priority: formData.priority,
+        projectId: formData.projectId || undefined,
         dueDate: formData.dueDate || undefined,
         estimatedHours: formData.estimatedHours
           ? parseInt(formData.estimatedHours)
@@ -99,6 +116,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         description: "",
         assignedTo: "",
         priority: "medium",
+        projectId: "",
         dueDate: "",
         estimatedHours: "",
         tags: "",
@@ -236,6 +254,30 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </div>
           </div>
 
+          {/* Project (optional) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Project (optional)
+            </label>
+            <select
+              name="projectId"
+              value={formData.projectId}
+              onChange={handleInputChange}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">-- No project --</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Selecting a project is optional. Leave empty to create a
+              standalone task.
+            </p>
+          </div>
+
           {/* Due Date and Estimated Hours Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Due Date */}
@@ -306,6 +348,13 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                       "Unknown"
                     : "Not assigned"}
                 </p>
+                {formData.projectId && (
+                  <p>
+                    <strong>Project:</strong>{" "}
+                    {projects.find((p) => p.id === formData.projectId)?.name ||
+                      "Unknown"}
+                  </p>
+                )}
                 <p>
                   <strong>Priority:</strong>
                   <span

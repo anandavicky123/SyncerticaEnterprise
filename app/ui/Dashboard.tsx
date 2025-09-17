@@ -154,6 +154,32 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
     }
   }, [currentManagerUUID]);
 
+  // Listen for global stats-change events so other components can trigger a refresh
+  useEffect(() => {
+    const handler = (e: Event) => {
+      try {
+        const detail = (e as CustomEvent)?.detail as
+          | { managerUUID?: string }
+          | undefined;
+        const m = detail?.managerUUID || currentManagerUUID;
+        if (m) updateSidebarStats(m);
+      } catch (err) {
+        console.error("Error handling stats-change event:", err);
+      }
+    };
+
+    window.addEventListener(
+      "syncertica:stats-changed",
+      handler as EventListener
+    );
+    return () => {
+      window.removeEventListener(
+        "syncertica:stats-changed",
+        handler as EventListener
+      );
+    };
+  }, [currentManagerUUID]);
+
   // Update stats when tasks or workers change (can be triggered by modals)
 
   const toolbarItems = [

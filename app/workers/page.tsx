@@ -1,7 +1,6 @@
 "use client";
 
-import { type FC } from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 import {
   Plus,
   Trash2,
@@ -31,11 +30,19 @@ interface Worker {
 
 interface WorkersManagementProps {
   className?: string;
+  // Accept Next Page props so this component can be used as a route page
+  params?: Promise<Record<string, any>>;
+  searchParams?: Promise<any>;
 }
 
-export default function WorkersManagement({
+function WorkersManagement({
   className = "",
+  params: _params,
+  searchParams: _searchParams,
 }: WorkersManagementProps) {
+  // Mark Next.js page props as used to satisfy generated type checks
+  void _params;
+  void _searchParams;
   const { showToast } = useToast();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,20 +116,20 @@ export default function WorkersManagement({
     try {
       // Check if we have a valid session before proceeding
       const sessionResponse = await fetch("/api/auth/session", {
-        credentials: "include" // Important: Include cookies
+        credentials: "include", // Important: Include cookies
       });
       const sessionData = await sessionResponse.json();
 
       if (!sessionData || !sessionData.isLoggedIn) {
         showToast({
           message: "Your session has expired. Please log in again.",
-          type: "error"
+          type: "error",
         });
         window.location.href = "/login";
         return;
       }
 
-  if (editingWorker) {
+      if (editingWorker) {
         // Update existing worker
         const response = await fetch(`/api/workers/${editingWorker.id}`, {
           method: "PUT",
@@ -300,7 +307,7 @@ export default function WorkersManagement({
         type: "error",
       });
     }
-  }
+  };
 
   const handleChat = (worker: Worker) => {
     console.log("Starting chat with", worker.name);
@@ -505,5 +512,22 @@ export default function WorkersManagement({
         editingWorker={editingWorker}
       />
     </div>
+  );
+}
+
+// Default page wrapper to satisfy Next's PageProps typing
+export default function Page({
+  params,
+  searchParams,
+}: {
+  params?: Promise<Record<string, any>>;
+  searchParams?: Promise<unknown>;
+}) {
+  return (
+    <WorkersManagement
+      className=""
+      params={params}
+      searchParams={searchParams as Promise<unknown> | undefined}
+    />
   );
 }

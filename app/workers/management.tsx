@@ -153,6 +153,15 @@ export default function WorkersManagement({
           message: "Worker updated successfully",
           type: "success",
         });
+        try {
+          window.dispatchEvent(
+            new CustomEvent("syncertica:stats-changed", {
+              detail: { managerUUID: data.managerDeviceUUID || undefined },
+            })
+          );
+        } catch (e) {
+          console.debug("Could not dispatch stats-changed event:", e);
+        }
       } else {
         const response = await fetch("/api/workers", {
           method: "POST",
@@ -189,6 +198,15 @@ export default function WorkersManagement({
           message: "Worker created successfully",
           type: "success",
         });
+        try {
+          window.dispatchEvent(
+            new CustomEvent("syncertica:stats-changed", {
+              detail: { managerUUID: data.managerDeviceUUID || undefined },
+            })
+          );
+        } catch (e) {
+          console.debug("Could not dispatch stats-changed event:", e);
+        }
       }
 
       setShowAddModal(false);
@@ -242,6 +260,13 @@ export default function WorkersManagement({
         message: "Worker deleted successfully",
         type: "success",
       });
+      try {
+        window.dispatchEvent(
+          new CustomEvent("syncertica:stats-changed", { detail: {} })
+        );
+      } catch (e) {
+        console.debug("Could not dispatch stats-changed event:", e);
+      }
     } catch (error) {
       console.error("Error deleting worker:", error);
       const message =

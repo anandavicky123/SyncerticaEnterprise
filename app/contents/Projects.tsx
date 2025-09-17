@@ -26,7 +26,11 @@ import {
   Infrastructure,
   Container,
 } from "../hooks/useGitHubData";
-import { getGitHubAppInstallUrl, checkGitHubAppInstallation, getAllPossibleInstallUrls } from "../../lib/github-app-client";
+import {
+  getGitHubAppInstallUrl,
+  checkGitHubAppInstallation,
+  getAllPossibleInstallUrls,
+} from "../../lib/github-app-client";
 
 interface Project {
   id: string;
@@ -81,7 +85,8 @@ const Projects: React.FC<{
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [appInstalled, setAppInstalled] = useState<boolean>(false);
-  const [checkingInstallation, setCheckingInstallation] = useState<boolean>(false);
+  const [checkingInstallation, setCheckingInstallation] =
+    useState<boolean>(false);
 
   // Modal states
   const [showProjectSettings, setShowProjectSettings] = useState<string | null>(
@@ -289,12 +294,12 @@ const Projects: React.FC<{
     try {
       const result = await checkGitHubAppInstallation();
       setAppInstalled(result.installed);
-      
+
       if (result.error) {
-        console.warn('GitHub App installation check failed:', result.error);
+        console.warn("GitHub App installation check failed:", result.error);
       }
     } catch (error) {
-      console.error('Error checking GitHub App installation:', error);
+      console.error("Error checking GitHub App installation:", error);
     } finally {
       setCheckingInstallation(false);
     }
@@ -321,6 +326,13 @@ const Projects: React.FC<{
       setDescription("");
       setRepository("");
       setStatus("active");
+      try {
+        window.dispatchEvent(
+          new CustomEvent("syncertica:stats-changed", { detail: {} })
+        );
+      } catch (e) {
+        console.debug("Could not dispatch stats-changed event:", e);
+      }
     } catch (err) {
       console.error("Create project failed", err);
       alert("Failed to create project");
@@ -374,7 +386,7 @@ const Projects: React.FC<{
                 <>
                   <CheckCircle className="w-5 h-5 text-green-500" />
                   <span className="text-green-700 font-medium">
-                    {appInstalled ? 'GitHub App Installed' : 'Connected'}
+                    {appInstalled ? "GitHub App Installed" : "Connected"}
                   </span>
                   {connectionStatus.user && (
                     <span className="text-gray-600">
@@ -394,7 +406,7 @@ const Projects: React.FC<{
                 <>
                   <XCircle className="w-5 h-5 text-red-500" />
                   <span className="text-red-700 font-medium">
-                    {checkingInstallation ? 'Checking...' : 'Not Connected'}
+                    {checkingInstallation ? "Checking..." : "Not Connected"}
                   </span>
                   <button
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors ml-2 disabled:opacity-50"
@@ -402,17 +414,19 @@ const Projects: React.FC<{
                     onClick={() => {
                       // Get the installation URL
                       const installUrl = getGitHubAppInstallUrl();
-                      console.log('GitHub App Installation URL:', installUrl);
-                      
+                      console.log("GitHub App Installation URL:", installUrl);
+
                       // Also log all possible URLs for debugging
                       const allUrls = getAllPossibleInstallUrls();
-                      console.log('All possible installation URLs:', allUrls);
-                      
+                      console.log("All possible installation URLs:", allUrls);
+
                       // Open the installation URL
-                      window.open(installUrl, '_blank');
+                      window.open(installUrl, "_blank");
                     }}
                   >
-                    {checkingInstallation ? 'Checking...' : 'Install GitHub App'}
+                    {checkingInstallation
+                      ? "Checking..."
+                      : "Install GitHub App"}
                   </button>
                   {/* no dev-only install URL dropdown needed; slug is fixed */}
                 </>

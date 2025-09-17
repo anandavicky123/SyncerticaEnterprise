@@ -45,17 +45,17 @@ interface DataVisualizationDashboardProps {
 const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
   className = "",
 }) => {
-  const getIconComponent = (iconName: string) => {
+  const getIconComponent = (iconName?: string) => {
     const iconMap: { [key: string]: React.ReactNode } = {
       "👥": <Users className="w-6 h-6" />,
       "📋": <Activity className="w-6 h-6" />,
       "⚡": <Server className="w-6 h-6" />,
       "💰": <DollarSign className="w-6 h-6" />,
     };
-    return iconMap[iconName] || <Activity className="w-6 h-6" />;
+    return iconMap[iconName ?? ""] || <Activity className="w-6 h-6" />;
   };
 
-  const getColorClasses = (color: string) => {
+  const getColorClasses = (color?: string) => {
     const colorMap: {
       [key: string]: { bg: string; text: string; icon: string };
     } = {
@@ -76,7 +76,7 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
         icon: "text-purple-600",
       },
     };
-    return colorMap[color] || colorMap.blue;
+    return colorMap[color ?? "blue"] || colorMap.blue;
   };
 
   // Performance metrics chart data
