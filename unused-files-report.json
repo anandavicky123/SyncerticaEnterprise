@@ -1,0 +1,129 @@
+{
+  "generatedAt": "2025-09-17T14:58:30.896Z",
+  "candidates": [
+    {
+      "file": "app/api/containers/github_containers/route_new.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "app/api/infrastructure/github_infrastructure/route_new.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "app/api/workflows/github_workflows/route_new.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "app/hooks/useGitHubActions.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "app/hooks/useMultiProviderData.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "app/hooks/useNotifications.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "app/hooks/useProSubscription.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "app/hooks/useWebSocket.tsx",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "app/lib/mockData.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "app/mockData.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "app/ui/AddBlockModal.tsx",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "app/ui/Authentication.tsx",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "app/ui/WorkflowLogsModal.tsx",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "lib/github-app.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "lib/rds-database.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "lib/sidebar-stats.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "lib/types/reports.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "middleware.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "next-env.d.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "next.config.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "prisma/seed.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "scripts/add-sample-data.js",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "scripts/find-unused-files.js",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "scripts/find-unused-simple.js",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "scripts/fix-worker-passwords.js",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "scripts/inspect-chat-constraints.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "scripts/migrate-tags.js",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "scripts/reset-workers.js",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "scripts/setup-demo-manager.js",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "scripts/test-chat-insert.ts",
+      "reason": "no inbound imports"
+    },
+    {
+      "file": "scripts/test-reports-system.ts",
+      "reason": "no inbound imports"
+    }
+  ]
+}
