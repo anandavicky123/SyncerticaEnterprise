@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database";
 import crypto from "crypto";
 import { putNotification, getNotifications } from "@/lib/dynamodb";
+import { createWorkerMessageNotification } from "@/lib/notifications";
 
 // GET /api/chat?receiverId=...  - returns chats between current user and receiver
 // POST /api/chat - create a chat message { receiverId, content }
@@ -32,7 +33,10 @@ export async function GET(request: NextRequest) {
       });
 
       if (!currentWorker) {
-        return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Worker not found" },
+          { status: 404 }
+        );
       }
 
       if (receiverId.startsWith("manager:")) {
@@ -52,10 +56,15 @@ export async function GET(request: NextRequest) {
         });
 
         if (!receiverWorker) {
-          return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+          return NextResponse.json(
+            { error: "Worker not found" },
+            { status: 404 }
+          );
         }
 
-        if (currentWorker.managerDeviceUUID !== receiverWorker.managerDeviceUUID) {
+        if (
+          currentWorker.managerDeviceUUID !== receiverWorker.managerDeviceUUID
+        ) {
           return NextResponse.json(
             { error: "Can only chat with workers under same manager" },
             { status: 403 }
@@ -198,7 +207,10 @@ export async function POST(request: NextRequest) {
       });
 
       if (!currentWorker) {
-        return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Worker not found" },
+          { status: 404 }
+        );
       }
 
       if (receiverId.startsWith("manager:")) {
@@ -218,10 +230,15 @@ export async function POST(request: NextRequest) {
         });
 
         if (!receiverWorker) {
-          return NextResponse.json({ error: "Worker not found" }, { status: 404 });
+          return NextResponse.json(
+            { error: "Worker not found" },
+            { status: 404 }
+          );
         }
 
-        if (currentWorker.managerDeviceUUID !== receiverWorker.managerDeviceUUID) {
+        if (
+          currentWorker.managerDeviceUUID !== receiverWorker.managerDeviceUUID
+        ) {
           return NextResponse.json(
             { error: "Can only chat with workers under same manager" },
             { status: 403 }
@@ -317,14 +334,38 @@ export async function POST(request: NextRequest) {
       try {
         await putNotification({
           userId: receiver.id,
-          createdAt: Date.now(),
-          type: "chat",
+          type: "worker_message",
           message: `Message from Manager: ${content.substring(0, 120)}`,
           status: "unread",
           triggeredBy: `manager:${actorId}`,
         });
       } catch (ndErr) {
         console.error("Failed to enqueue chat notification:", ndErr);
+      }
+    }
+
+    // If sender is worker and receiver is manager, create a DynamoDB notification for the manager
+    if (actorType === "worker" && receiverId.startsWith("manager:")) {
+      try {
+        const managerId = receiverId.split(":")[1];
+        const workerInfo = await prisma.worker.findUnique({
+          where: { id: actorId as string },
+          select: { name: true },
+        });
+
+        if (workerInfo) {
+          await createWorkerMessageNotification(
+            managerId,
+            actorId as string,
+            workerInfo.name,
+            content
+          );
+          console.log(
+            `Created worker message notification for manager ${managerId}`
+          );
+        }
+      } catch (ndErr) {
+        console.error("Failed to create worker->manager notification:", ndErr);
       }
     }
 

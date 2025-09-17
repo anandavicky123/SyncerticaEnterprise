@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDatabase } from "../../../lib/database";
+import { createTaskUpdateNotification } from "../../../lib/notifications";
 
 // GET /api/tasks - Get all tasks
 export async function GET(request: NextRequest) {
@@ -131,11 +132,51 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Get actor information from headers
+    const actorType = request.headers.get("x-actor-type");
+    const actorId = request.headers.get("x-actor-id");
+
     const db = getDatabase();
+
+    // Get the current task before update to check if status changed
+    const currentTask = await db.getTaskById(id);
+    if (!currentTask) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
     const success = await db.updateTask(id, updates);
 
     if (!success) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    // If a worker updated the task status, create a notification for the manager
+    if (
+      actorType === "worker" &&
+      actorId &&
+      updates.status &&
+      updates.status !== currentTask.status
+    ) {
+      try {
+        // Get worker information
+        const worker = await db.getWorkerById(actorId);
+        if (worker) {
+          await createTaskUpdateNotification(
+            worker.managerDeviceUUID,
+            actorId,
+            id,
+            worker.name,
+            currentTask.title,
+            updates.status
+          );
+          console.log(
+            `Created task update notification for manager ${worker.managerDeviceUUID}`
+          );
+        }
+      } catch (notifError) {
+        console.error("Failed to create task update notification:", notifError);
+        // Don't fail the task update if notification fails
+      }
     }
 
     const updatedTask = await db.getTaskById(id);

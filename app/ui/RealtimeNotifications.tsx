@@ -9,16 +9,7 @@ import {
   CheckCircle,
   AlertTriangle,
 } from "lucide-react";
-import {
-  WebSocketMessage,
-  ActivityFeedItem,
-  OnlineUser,
-} from "../shared/types/dashboard";
-import {
-  mockNotifications,
-  mockActivityFeed,
-  mockOnlineUsers,
-} from "../shared/constants/dashboardData";
+import { WebSocketMessage } from "../shared/types/dashboard";
 import Tooltip from "./Tooltip";
 
 interface RealtimeNotificationsProps {
@@ -28,57 +19,60 @@ interface RealtimeNotificationsProps {
 const RealtimeNotifications: React.FC<RealtimeNotificationsProps> = ({
   className = "",
 }) => {
-  const [notifications, setNotifications] =
-    useState<WebSocketMessage[]>(mockNotifications);
-  const [activityFeed, setActivityFeed] =
-    useState<ActivityFeedItem[]>(mockActivityFeed);
-  const [onlineUsers] = useState<OnlineUser[]>(mockOnlineUsers);
+  const [notifications, setNotifications] = useState<WebSocketMessage[]>([]);
+  // activityFeed and onlineUsers removed — notifications only
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Simulate real-time updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Simulate new notification
-      if (Math.random() > 0.8) {
-        const newNotification: WebSocketMessage = {
-          id: Date.now().toString(),
-          type: Math.random() > 0.5 ? "notification" : "activity",
-          title: "Real-time Update",
-          message: `Simulated AWS ${
-            Math.random() > 0.5 ? "Lambda" : "DynamoDB"
-          } event at ${new Date().toLocaleTimeString()}`,
-          timestamp: new Date().toISOString(),
-          severity: Math.random() > 0.7 ? "high" : "medium",
-          read: false,
+    // Poll notifications from server every 8 seconds
+    let mounted = true;
+
+    async function fetchNotifications() {
+      try {
+        const res = await fetch("/api/notifications");
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // Map Dynamo items to WebSocketMessage-compatible shape
+        type NotificationFromServer = {
+          notifId: string;
+          type: string;
+          message?: string;
+          workerId?: string;
+          taskId?: string;
+          createdAt: string;
+          status: string;
         };
 
-        setNotifications((prev) => [newNotification, ...prev.slice(0, 9)]);
+        const mapped: WebSocketMessage[] = (
+          data as NotificationFromServer[]
+        ).map((n) => ({
+          id: n.notifId,
+          type: n.type === "worker_message" ? "message" : "notification",
+          title: undefined,
+          message: n.message || "",
+          timestamp: n.createdAt,
+          userId: n.workerId,
+          severity: n.type === "task_update" ? "high" : "low",
+          read: n.status === "read",
+        }));
+
+        if (mounted) {
+          setNotifications(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to fetch notifications:", err);
       }
+    }
 
-      // Simulate activity feed updates
-      if (Math.random() > 0.9) {
-        const actions = [
-          "deployed to AWS",
-          "updated configuration",
-          "completed task",
-          "joined meeting",
-        ];
-        const newActivity: ActivityFeedItem = {
-          id: Date.now().toString(),
-          userId: `user-${Math.floor(Math.random() * 5)}`,
-          userName: `User ${Math.floor(Math.random() * 5) + 1}`,
-          action: actions[Math.floor(Math.random() * actions.length)],
-          target: "AWS Environment",
-          timestamp: new Date().toISOString(),
-          type: "task_completed",
-        };
-
-        setActivityFeed((prev) => [newActivity, ...prev.slice(0, 9)]);
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 8000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   // Update unread count
@@ -103,25 +97,22 @@ const RealtimeNotifications: React.FC<RealtimeNotificationsProps> = ({
   };
 
   const markAsRead = (id: string) => {
+    // Optimistic update
     setNotifications((prev) =>
       prev.map((notification) =>
         notification.id === id ? { ...notification, read: true } : notification
       )
     );
+
+    // Update server
+    fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notifId: id }),
+    }).catch((err) => console.error("Failed to mark notif read:", err));
   };
 
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case "online":
-        return "bg-green-500";
-      case "away":
-        return "bg-yellow-500";
-      case "busy":
-        return "bg-red-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
+  // No online users feature in this simplified notifications panel
 
   return (
     <div className={`relative ${className}`}>
@@ -162,93 +153,47 @@ const RealtimeNotifications: React.FC<RealtimeNotificationsProps> = ({
           </div>
 
           <div className="max-h-80 overflow-y-auto">
-            {/* Notifications Tab */}
+            {/* Notifications list only (messages and task updates) */}
             <div className="p-4">
               <h4 className="text-sm font-medium text-gray-700 mb-3">
                 Notifications
               </h4>
               <div className="space-y-3">
-                {notifications.slice(0, 5).map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      notification.read
-                        ? "bg-gray-50 border-gray-200"
-                        : "bg-blue-50 border-blue-200 hover:bg-blue-100"
-                    }`}
-                    onClick={() => markAsRead(notification.id)}
-                  >
-                    <div className="flex items-start gap-3">
-                      {getSeverityIcon(notification.severity || "low")}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {notification.title}
-                        </p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {new Date(
-                            notification.timestamp
-                          ).toLocaleTimeString()}
-                        </p>
+                {notifications
+                  .filter(
+                    (n) => n.type === "message" || n.type === "notification"
+                  )
+                  .slice(0, 10)
+                  .map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                        notification.read
+                          ? "bg-gray-50 border-gray-200"
+                          : "bg-blue-50 border-blue-200 hover:bg-blue-100"
+                      }`}
+                      onClick={() => markAsRead(notification.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        {getSeverityIcon(notification.severity || "low")}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {notification.type === "message"
+                              ? "New message"
+                              : "Task update"}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {new Date(
+                              notification.timestamp
+                            ).toLocaleTimeString()}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Activity Feed */}
-            <div className="p-4 border-t border-gray-200">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">
-                Recent Activity
-              </h4>
-              <div className="space-y-3">
-                {activityFeed.slice(0, 3).map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                      {activity.userName.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900">
-                        <span className="font-medium">{activity.userName}</span>{" "}
-                        {activity.action}{" "}
-                        <span className="font-medium">{activity.target}</span>
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {new Date(activity.timestamp).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Online Users */}
-            <div className="p-4 border-t border-gray-200">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">
-                Online Users
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {onlineUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex items-center gap-2 bg-gray-50 rounded-lg p-2"
-                  >
-                    <div className="relative">
-                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                        {user.name.charAt(0)}
-                      </div>
-                      <div
-                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(
-                          user.status
-                        )}`}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-700">{user.name}</span>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           </div>

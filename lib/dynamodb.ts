@@ -5,6 +5,7 @@ import {
   PutCommand,
   GetCommand,
   DeleteCommand,
+  UpdateCommand,
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { v4 as uuidv4 } from "uuid";
@@ -113,7 +114,7 @@ export interface AuditLog {
   action: string;
   entity: string;
   entityId?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export async function createAuditLog(
@@ -122,7 +123,7 @@ export async function createAuditLog(
   action: string,
   entity: string,
   entityId?: string,
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): Promise<void> {
   const logId = uuidv4();
   const createdAt = new Date().toISOString();
@@ -292,21 +293,59 @@ export async function queryProjectReports(
 }
 
 // c) Notifications & Alerts
-export interface NotificationItem {
-  userId: string; // PK
-  createdAt: number; // SK
-  type: string;
-  message: string;
-  status: "unread" | "read";
+// Legacy NotificationItem removed in favor of single-table 'Notifications' schema
+export interface NotificationWriteItem {
+  // userId can be 'manager:<uuid>' to target manager, or plain worker id for workers
+  userId: string;
+  notifId?: string;
+  type: string; // e.g. 'task_update' | 'worker_message' | 'chat'
+  message?: string;
+  status?: "unread" | "read";
   triggeredBy?: string;
+  taskId?: string;
+  workerId?: string;
 }
 
-export async function putNotification(item: NotificationItem) {
+/**
+ * Put a notification into the single DynamoDB table named 'Notifications'.
+ * It will write an item with PK = 'MANAGER#<uuid>' for manager targets (userId like 'manager:<uuid>')
+ * or PK = 'USER#<id>' for worker targets.
+ */
+export async function putNotification(item: NotificationWriteItem) {
   try {
+    const notifId = item.notifId || uuidv4();
+    const createdAt = new Date().toISOString();
+    let pk: string;
+    const attributes: Record<string, any> = {
+      notifId,
+      type: item.type,
+      message: item.message,
+      status: item.status || "unread",
+      createdAt,
+      triggeredBy: item.triggeredBy,
+      taskId: item.taskId,
+      workerId: item.workerId,
+    };
+
+    if (item.userId && item.userId.startsWith("manager:")) {
+      const managerUUID = item.userId.split(":")[1];
+      pk = `MANAGER#${managerUUID}`;
+      attributes.managerUUID = managerUUID;
+    } else {
+      pk = `USER#${item.userId}`;
+      attributes.userId = item.userId;
+    }
+
+    const sk = `NOTIF#${createdAt}#${notifId}`;
+
     await docClient.send(
       new PutCommand({
-        TableName: "notifications",
-        Item: item,
+        TableName: "Notifications",
+        Item: {
+          PK: pk,
+          SK: sk,
+          ...attributes,
+        },
       })
     );
   } catch (error) {
@@ -314,24 +353,101 @@ export async function putNotification(item: NotificationItem) {
   }
 }
 
+export interface DynamoNotificationItem {
+  PK: string;
+  SK: string;
+  notifId: string;
+  type: "task_update" | "worker_message" | string;
+  message?: string;
+  status: "unread" | "read";
+  createdAt: string;
+  managerUUID?: string;
+  userId?: string;
+  workerId?: string;
+  taskId?: string;
+  triggeredBy?: string;
+}
+
+/**
+ * Get notifications for a manager or worker. If userId starts with 'manager:' it will query PK=MANAGER#<uuid>,
+ * otherwise it will query PK=USER#<userId>.
+ */
 export async function getNotifications(
   userId: string,
   limit: number = 50
-): Promise<NotificationItem[]> {
+): Promise<DynamoNotificationItem[]> {
   try {
+    let pk: string;
+    if (userId.startsWith("manager:")) {
+      const managerUUID = userId.split(":")[1];
+      pk = `MANAGER#${managerUUID}`;
+    } else {
+      pk = `USER#${userId}`;
+    }
+
     const result = await docClient.send(
       new QueryCommand({
-        TableName: "notifications",
-        KeyConditionExpression: "userId = :uid",
-        ExpressionAttributeValues: { ":uid": userId },
+        TableName: "Notifications",
+        KeyConditionExpression: "PK = :pk",
+        ExpressionAttributeValues: { ":pk": pk },
         Limit: limit,
         ScanIndexForward: false,
       })
     );
-    return (result.Items as NotificationItem[]) || [];
+    return (result.Items as DynamoNotificationItem[]) || [];
   } catch (error) {
     console.error("Error getting notifications:", error);
     return [];
+  }
+}
+
+// New helpers for Notifications table which uses a partition key format MANAGER#<managerUUID>
+export async function queryManagerNotifications(
+  managerUUID: string,
+  limit: number = 20
+): Promise<DynamoNotificationItem[]> {
+  try {
+    const pk = `MANAGER#${managerUUID}`;
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: "Notifications",
+        KeyConditionExpression: "PK = :pk",
+        ExpressionAttributeValues: { ":pk": pk },
+        Limit: limit,
+        ScanIndexForward: false,
+      })
+    );
+
+    return (result.Items as DynamoNotificationItem[]) || [];
+  } catch (error) {
+    console.error("Error querying manager notifications:", error);
+    return [];
+  }
+}
+
+export async function markNotificationRead(
+  managerUUID: string,
+  notifId: string
+): Promise<boolean> {
+  try {
+    // We need to find the SK for this notifId. For simplicity, query for items with PK and filter client-side.
+    const items = await queryManagerNotifications(managerUUID, 100);
+    const item = items.find((i) => i.notifId === notifId);
+    if (!item) return false;
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Notifications",
+        Key: { PK: item.PK, SK: item.SK },
+        UpdateExpression: "SET #s = :read",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: { ":read": "read" },
+      })
+    );
+    return true;
+  } catch (error) {
+    console.error("Error marking notification read:", error);
+    return false;
   }
 }
 
