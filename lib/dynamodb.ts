@@ -451,6 +451,37 @@ export async function markNotificationRead(
   }
 }
 
+/**
+ * Mark a notification as read for a generic user identifier.
+ * userId may be 'manager:<uuid>' or a plain worker id.
+ */
+export async function markNotificationReadForUser(
+  userId: string,
+  notifId: string
+): Promise<boolean> {
+  try {
+    // Reuse getNotifications which understands 'manager:' prefix
+    const items = await getNotifications(userId, 200);
+    const item = items.find((i) => i.notifId === notifId);
+    if (!item) return false;
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Notifications",
+        Key: { PK: item.PK, SK: item.SK },
+        UpdateExpression: "SET #s = :read",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: { ":read": "read" },
+      })
+    );
+
+    return true;
+  } catch (error) {
+    console.error("Error marking notification read for user:", error);
+    return false;
+  }
+}
+
 // d) Performance Metrics
 export interface PerformanceMetric {
   entityType: string;

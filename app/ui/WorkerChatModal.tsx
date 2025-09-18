@@ -68,7 +68,9 @@ export default function WorkerChatModal({
             if (workersRes.ok) {
               const allWorkers = await workersRes.json();
               // Filter out current worker and keep list as-is; Manager will be rendered separately at top
-              const coWorkers = allWorkers.filter((w: Worker) => w.id !== worker.id);
+              const coWorkers = allWorkers.filter(
+                (w: Worker) => w.id !== worker.id
+              );
               setWorkers(coWorkers);
             }
           }
@@ -85,9 +87,12 @@ export default function WorkerChatModal({
       (async () => {
         try {
           // activeChat.id may be in form "manager:<uuid>" or a worker id
-          const res = await fetch(`/api/chat?receiverId=${encodeURIComponent(activeChat.id)}`, {
-            credentials: "include",
-          });
+          const res = await fetch(
+            `/api/chat?receiverId=${encodeURIComponent(activeChat.id)}`,
+            {
+              credentials: "include",
+            }
+          );
           if (res.ok) {
             const list = await res.json();
             setChats(list);
@@ -139,7 +144,18 @@ export default function WorkerChatModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-3/4 flex">
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl h-3/4 flex">
+        {/* Global close button so modal can be closed without selecting a chat.
+            Hide it when an active chat is selected to avoid duplicate close buttons. */}
+        {!activeChat && (
+          <button
+            onClick={onClose}
+            aria-label="Close chat modal"
+            className="absolute top-3 right-3 p-2 hover:bg-gray-200 rounded-full z-20"
+          >
+            <X className="w-4 h-4 text-gray-600" />
+          </button>
+        )}
         {/* Left sidebar - Workers list */}
         <div className="w-1/3 border-r border-gray-200 flex flex-col">
           <div className="p-4 border-b border-gray-200 bg-gray-50">

@@ -40,31 +40,14 @@ export default function TasksPage() {
     // also fetch unread chat count for badge
     (async () => {
       try {
-        // Try a lightweight unread endpoint first, fall back to /api/chat GET
-        let res = await fetch("/api/chat/unread", { credentials: "include" });
-        if (!res.ok) {
-          res = await fetch("/api/chat", { credentials: "include" });
-        }
-
-        let unread = 0;
+        // Query DynamoDB-backed unread notifications for current actor
+        const res = await fetch("/api/notifications/unread", {
+          credentials: "include",
+        });
         if (res.ok) {
-          const contentType = res.headers.get("content-type") || "";
-          if (contentType.includes("application/json")) {
-            const data = await res.json().catch(() => null);
-            if (data) {
-              // support { unread: number } or an array of messages
-              unread =
-                typeof data.unread === "number"
-                  ? data.unread
-                  : Array.isArray(data)
-                  ? data.length
-                  : 0;
-            }
-          } else if (res.status === 204) {
-            unread = 0;
-          }
+          const data = await res.json().catch(() => ({ unread: 0 }));
+          setChatUnread(typeof data.unread === "number" ? data.unread : 0);
         }
-        setChatUnread(unread);
       } catch (err) {
         console.debug("Failed to fetch chat unread count", err);
       }
@@ -192,11 +175,40 @@ export default function TasksPage() {
                 </h1>
                 {/* Chat button placed immediately to the right of the heading */}
                 <button
-                  onClick={() => setIsChatOpen(true)}
+                  onClick={async () => {
+                    // Optimistically clear unread badge for immediate feedback
+                    setIsChatOpen(true);
+                    setChatUnread(0);
+
+                    try {
+                      await fetch("/api/notifications/mark-all-read", {
+                        method: "POST",
+                        credentials: "include",
+                      });
+                    } catch (err) {
+                      console.debug("Failed to mark notifications read:", err);
+                      // If server call fails, re-fetch authoritative unread count
+                      try {
+                        const r = await fetch("/api/notifications/unread", {
+                          credentials: "include",
+                        });
+                        if (r.ok) {
+                          const d = await r.json().catch(() => ({ unread: 0 }));
+                          setChatUnread(
+                            typeof d.unread === "number" ? d.unread : 0
+                          );
+                        }
+                      } catch (e) {
+                        console.debug(
+                          "Failed to refresh unread after mark-fail",
+                          e
+                        );
+                      }
+                    }
+                  }}
                   aria-label="Open chat"
                   className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <MessageCircle className="w-6 h-6" />
                   {chatUnread > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                       {chatUnread > 9 ? "9+" : chatUnread}
@@ -269,7 +281,35 @@ export default function TasksPage() {
               </h1>
               {/* Chat button placed immediately to the right of the heading */}
               <button
-                onClick={() => setIsChatOpen(true)}
+                onClick={async () => {
+                  setIsChatOpen(true);
+                  setChatUnread(0);
+
+                  try {
+                    await fetch("/api/notifications/mark-all-read", {
+                      method: "POST",
+                      credentials: "include",
+                    });
+                  } catch (err) {
+                    console.debug("Failed to mark notifications read:", err);
+                    try {
+                      const r = await fetch("/api/notifications/unread", {
+                        credentials: "include",
+                      });
+                      if (r.ok) {
+                        const d = await r.json().catch(() => ({ unread: 0 }));
+                        setChatUnread(
+                          typeof d.unread === "number" ? d.unread : 0
+                        );
+                      }
+                    } catch (e) {
+                      console.debug(
+                        "Failed to refresh unread after mark-fail",
+                        e
+                      );
+                    }
+                  }
+                }}
                 aria-label="Open chat"
                 className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               >
