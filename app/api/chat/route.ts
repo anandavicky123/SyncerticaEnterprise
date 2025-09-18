@@ -369,6 +369,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // If sender is worker and receiver is another worker, create a notification for the receiver
+    if (actorType === "worker" && !receiverId.startsWith("manager:")) {
+      try {
+        await putNotification({
+          userId: receiverId,
+          type: "chat",
+          message: content.substring(0, 120),
+          status: "unread",
+          triggeredBy: actorId as string,
+        });
+      } catch (ndErr) {
+        console.error("Failed to create worker->worker notification:", ndErr);
+      }
+    }
+
     return NextResponse.json(
       {
         id: chat.id,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Phone, MessageCircle, X, User, Video } from "lucide-react";
 import { User as UserType } from "../shared/types/dashboard";
 
@@ -33,19 +33,26 @@ interface ChatRow {
 interface CallChatModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentUser: UserType;
+  currentUser: UserType | null;
+  // Optional: when provided, auto-select this member on open
+  initialMemberId?: string;
+  initialMode?: "chat" | "call";
 }
 
 const CallChatModal: React.FC<CallChatModalProps> = ({
   isOpen,
   onClose,
   currentUser,
+  initialMemberId,
+  initialMode,
 }) => {
   const [activeChat, setActiveChat] = useState<TeamMember | null>(null);
   const [activeCall, setActiveCall] = useState<TeamMember | null>(null);
   const [chatMessage, setChatMessage] = useState("");
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [chats, setChats] = useState<ChatRow[]>([]);
+  // Track if we've already auto-selected a member for this open cycle to avoid re-running
+  const autoInitRef = useRef<string | null>(null);
 
   // Fetch team members (workers) for the current managerDeviceUUID (middleware will scope by headers)
   useEffect(() => {
@@ -59,7 +66,7 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
         if (!mounted) return;
         // Map to TeamMember shape; keep status "offline" as default
         const mapped: TeamMember[] = data
-          .filter((w: WorkerRow) => w.name !== currentUser.name)
+          .filter((w: WorkerRow) => w.name !== (currentUser?.name || ""))
           .map((w: WorkerRow) => ({
             id: w.id,
             name: w.name,
@@ -95,7 +102,36 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
     return () => {
       mounted = false;
     };
-  }, [isOpen, currentUser.name]);
+  }, [isOpen, currentUser?.name]);
+
+  // If an initial member and mode are provided, auto-start chat/call once
+  // the teamMembers list is loaded. Guard against re-runs when teamMembers
+  // changes (e.g., unread badge updates) to avoid clearing chats after load.
+  useEffect(() => {
+    if (!isOpen || !initialMemberId || !teamMembers || teamMembers.length === 0)
+      return;
+
+    // Prevent re-initializing for the same member during this open cycle
+    if (autoInitRef.current === initialMemberId) return;
+
+    const member = teamMembers.find((m) => m.id === initialMemberId);
+    if (!member) return;
+
+    if (initialMode === "call") {
+      handleStartCall(member);
+    } else {
+      handleStartChat(member);
+    }
+
+    autoInitRef.current = initialMemberId;
+  }, [isOpen, initialMemberId, initialMode, teamMembers]);
+
+  // Reset the initialization guard when modal is closed
+  useEffect(() => {
+    if (!isOpen) {
+      autoInitRef.current = null;
+    }
+  }, [isOpen]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -126,6 +162,8 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
   };
 
   const handleStartChat = (member: TeamMember) => {
+    // Clear current messages immediately to avoid showing a previous conversation
+    setChats([]);
     setActiveChat(member);
     // Mark notifications from this sender as read (manager marking worker messages as read)
     (async () => {
@@ -145,21 +183,6 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
       }
     })();
     setActiveCall(null);
-    setChats([]);
-    // Load existing chats with this member
-    (async () => {
-      try {
-        const res = await fetch(`/api/chat?receiverId=${member.id}`, {
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error("Failed to fetch chats");
-        const chatData = await res.json();
-        setChats(chatData);
-      } catch (err) {
-        console.error(err);
-        setChats([]);
-      }
-    })();
   };
 
   const handleStartCall = (member: TeamMember) => {

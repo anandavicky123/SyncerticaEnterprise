@@ -14,6 +14,7 @@ import {
   Shield,
   Settings,
 } from "lucide-react";
+import CallChatModal from "../ui/CallChatModal";
 import AddWorkerModal from "../ui/AddWorkerModal";
 import { useToast } from "../shared/contexts/ToastContext";
 
@@ -41,6 +42,16 @@ export default function WorkersManagement({
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showCallChat, setShowCallChat] = useState(false);
+  const [modalMemberId, setModalMemberId] = useState<string | undefined>(
+    undefined
+  );
+  const [modalMode, setModalMode] = useState<"chat" | "call">("chat");
+  const [managerProfile, setManagerProfile] = useState<{
+    id: string;
+    name: string;
+    email: string;
+  } | null>(null);
 
   const fetchWorkers = useCallback(async () => {
     try {
@@ -91,6 +102,26 @@ export default function WorkersManagement({
   useEffect(() => {
     fetchWorkers();
   }, [fetchWorkers]);
+
+  // Load manager profile for passing into CallChatModal (optional)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/manager/profile", {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setManagerProfile({
+          id: data.id || "manager",
+          name: data.name,
+          email: data.email,
+        });
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }, []);
 
   const handleAddWorker = async (workerData: {
     name: string;
@@ -281,13 +312,7 @@ export default function WorkersManagement({
     }
   };
 
-  const handleChat = (worker: Worker) => {
-    console.log("Starting chat with", worker.name);
-  };
-
-  const handleCall = (worker: Worker) => {
-    console.log("Calling", worker.name);
-  };
+  // Chat and Call are handled by opening the CallChatModal with the selected member.
 
   // Calculate statistics
   const totalWorkers = workers.length;
@@ -470,14 +495,22 @@ export default function WorkersManagement({
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleChat(worker)}
+                      onClick={() => {
+                        setModalMemberId(worker.id);
+                        setModalMode("chat");
+                        setShowCallChat(true);
+                      }}
                       className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Chat"
                     >
                       <MessageSquare className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() => handleCall(worker)}
+                      onClick={() => {
+                        setModalMemberId(worker.id);
+                        setModalMode("call");
+                        setShowCallChat(true);
+                      }}
                       className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                       title="Call"
                     >
@@ -512,6 +545,16 @@ export default function WorkersManagement({
         }}
         onAddWorker={handleAddWorker}
         editingWorker={editingWorker}
+      />
+      <CallChatModal
+        isOpen={showCallChat}
+        onClose={() => {
+          setShowCallChat(false);
+          setModalMemberId(undefined);
+        }}
+        currentUser={managerProfile}
+        initialMemberId={modalMemberId}
+        initialMode={modalMode}
       />
     </div>
   );

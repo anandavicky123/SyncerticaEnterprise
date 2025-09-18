@@ -34,6 +34,7 @@ export default function WorkerChatModal({
   const [chats, setChats] = useState<ChatRow[]>([]);
   const [chatMessage, setChatMessage] = useState("");
   const [currentWorker, setCurrentWorker] = useState<Worker | null>(null);
+  const [unreadBySender, setUnreadBySender] = useState<Record<string, number>>({});
 
   // Load current worker info and co-workers
   useEffect(() => {
@@ -81,6 +82,26 @@ export default function WorkerChatModal({
     }
   }, [isOpen]);
 
+  // Load per-contact unread counts for the current worker on open
+  useEffect(() => {
+    if (!isOpen) return;
+    (async () => {
+      try {
+        const ubRes = await fetch("/api/notifications/unread-by-conversation", {
+          credentials: "include",
+        });
+        if (ubRes.ok) {
+          const data = await ubRes.json();
+          // workers endpoint returns { bySender: Record<string, number>, total }
+          const map = (data && data.bySender) || {};
+          setUnreadBySender(map);
+        }
+      } catch (e) {
+        console.debug("Failed to load unread-by-conversation for worker", e);
+      }
+    })();
+  }, [isOpen]);
+
   // Load chats when activeChat changes
   useEffect(() => {
     if (activeChat) {
@@ -106,6 +127,21 @@ export default function WorkerChatModal({
 
   const handleStartChat = (worker: Worker) => {
     setActiveChat(worker);
+    // Mark notifications from this sender as read (worker marking manager/coworker messages as read)
+    (async () => {
+      try {
+        await fetch("/api/notifications/mark-read-sender", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ senderId: worker.id }),
+        });
+        // Optimistically clear local badge for this contact
+        setUnreadBySender((prev) => ({ ...prev, [worker.id]: 0 }));
+      } catch (err) {
+        console.debug("Failed to mark notifications as read for sender", err);
+      }
+    })();
   };
 
   const handleSendMessage = () => {
@@ -175,8 +211,16 @@ export default function WorkerChatModal({
                 }`}
               >
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                    {managerInfo.name.charAt(0).toUpperCase()}
+                  <div className="relative">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                      {managerInfo.name.charAt(0).toUpperCase()}
+                    </div>
+                    {unreadBySender[managerInfo.id] > 0 && (
+                      <span
+                        title={`${unreadBySender[managerInfo.id]} unread`}
+                        className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"
+                      />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-gray-900 truncate">
@@ -207,8 +251,16 @@ export default function WorkerChatModal({
                     }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                        {worker.name.charAt(0).toUpperCase()}
+                      <div className="relative">
+                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                          {worker.name.charAt(0).toUpperCase()}
+                        </div>
+                        {unreadBySender[worker.id] > 0 && (
+                          <span
+                            title={`${unreadBySender[worker.id]} unread`}
+                            className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"
+                          />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-gray-900 truncate">
