@@ -7,7 +7,6 @@ import {
   SecurityAlert,
   SecurityMetric,
   ComplianceStatus,
-  AuditLog,
   MetricCard,
   ChartData,
 } from "../types/dashboard";
@@ -401,40 +400,4 @@ export const mockComplianceStatus: ComplianceStatus[] = [
   },
 ];
 
-export const mockAuditLogs: AuditLog[] = [
-  {
-    id: "audit-1",
-    timestamp: new Date().toISOString(),
-    userId: "user-1",
-    userName: "John Doe",
-    action: "LOGIN",
-    resource: "/dashboard",
-    ipAddress: "192.168.1.50",
-    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-    result: "success",
-  },
-  {
-    id: "audit-2",
-    timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    userId: "user-2",
-    userName: "Jane Smith",
-    action: "FILE_UPLOAD",
-    resource: "/api/files/upload",
-    ipAddress: "192.168.1.75",
-    userAgent: "Mozilla/5.0 (macOS; Intel Mac OS X 10_15_7)",
-    result: "success",
-    details: "Uploaded architecture-diagram.pdf (2.5MB)",
-  },
-  {
-    id: "audit-3",
-    timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    userId: "unknown",
-    userName: "Unknown User",
-    action: "LOGIN_FAILED",
-    resource: "/auth/login",
-    ipAddress: "192.168.1.100",
-    userAgent: "curl/7.68.0",
-    result: "failure",
-    details: "Invalid credentials provided",
-  },
-];
+// Audit logs removed — mock data cleared

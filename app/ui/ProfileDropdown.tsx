@@ -1,4 +1,7 @@
+"use client";
+
 import React, { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import SettingsModal from "./SettingsModal";
 import ProfileModal from "./ProfileModal";
 import { User, Settings, LogOut, ChevronDown } from "lucide-react";
@@ -7,19 +10,18 @@ import Tooltip from "./Tooltip";
 
 interface ProfileDropdownProps {
   user: UserType;
-  onLogout: () => void;
+  // keep onLogout prop for backward compatibility but make it optional
+  onLogout?: () => void;
 }
 
-const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
-  user,
-  onLogout,
-}) => {
+const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [managerName, setManagerName] = useState<string | null>(null);
   const [managerEmail, setManagerEmail] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const fetchManagerData = async () => {
     try {
@@ -152,9 +154,16 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
           <div className="border-t border-gray-200 dark:border-gray-700 p-2">
             <button
               onClick={() => {
-                setIsOpen(false);
-                onLogout();
-              }}
+                  setIsOpen(false);
+                  // Prefer client-side navigation to the login page. If a logout handler
+                  // was provided (for clearing auth state), call it, but still navigate.
+                  try {
+                    if (onLogout) onLogout();
+                  } catch {
+                    // ignore handler errors
+                  }
+                  router.push('/login');
+                }}
               className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             >
               <LogOut className="w-4 h-4" />

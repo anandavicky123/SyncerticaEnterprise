@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import * as argon2 from "argon2";
 import { PrismaClient } from "@prisma/client";
-import { createSession, createAuditLog } from "./dynamodb";
+import { createSession } from "./dynamodb";
 
 const prisma = new PrismaClient();
 
@@ -44,15 +44,7 @@ export async function createOrGetManager(
         name: manager.name,
         email: manager.email,
       });
-      // Log manager creation
-      await createAuditLog(
-        "manager",
-        deviceUUID,
-        "MANAGER_CREATED",
-        "manager",
-        deviceUUID,
-        { name: manager.name }
-      );
+      // Manager creation — audit logging removed
     } else {
       console.log("[auth.createOrGetManager] Found existing manager:", {
         deviceUUID,
@@ -161,15 +153,7 @@ export async function createWorker(
       },
     });
 
-    // Log worker creation
-    await createAuditLog(
-      "manager",
-      managerDeviceUUID,
-      "WORKER_CREATED",
-      "worker",
-      workerId,
-      { email, name, jobRole }
-    );
+    // Worker creation — audit logging removed
 
     return worker;
   } catch (error) {
@@ -191,15 +175,7 @@ export async function authenticateWorker(
 
     if (!worker) {
       console.log("Worker not found with email:", email);
-      // Log failed login attempt
-      await createAuditLog(
-        "worker",
-        "unknown",
-        "LOGIN_FAILED",
-        "worker",
-        undefined,
-        { email, reason: "user_not_found" }
-      );
+      // Failed login attempt (audit logging removed)
       throw new Error("INVALID_CREDENTIALS");
     }
 
@@ -210,30 +186,14 @@ export async function authenticateWorker(
 
     if (!isValidPassword) {
       console.log("Password verification failed for worker:", worker.id);
-      // Log failed login attempt
-      await createAuditLog(
-        "worker",
-        worker.id,
-        "LOGIN_FAILED",
-        "worker",
-        worker.id,
-        { email, reason: "invalid_password" }
-      );
+      // Failed login attempt (audit logging removed)
       throw new Error("INVALID_CREDENTIALS");
     }
 
     // Create session
     const sessionId = await createSession("worker", worker.id);
 
-    // Log successful login
-    await createAuditLog(
-      "worker",
-      worker.id,
-      "LOGIN_SUCCESS",
-      "worker",
-      worker.id,
-      { email }
-    );
+    // Successful login (audit logging removed)
 
     return { worker, sessionId };
   } catch (error) {
@@ -286,15 +246,7 @@ export async function deleteWorker(
       where: { id: workerId },
     });
 
-    // Log worker deletion
-    await createAuditLog(
-      "manager",
-      managerDeviceUUID,
-      "WORKER_DELETED",
-      "worker",
-      workerId,
-      { email: worker.email, name: worker.name }
-    );
+    // Worker deletion (audit logging removed)
   } catch (error) {
     console.error("Error deleting worker:", error);
     throw error;

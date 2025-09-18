@@ -13,6 +13,6 @@ node scripts/setup-dynamodb.js
 
 Write-Host "Verifying table creation..."
 aws dynamodb describe-table --table-name sessions --query 'Table.TableStatus'
-aws dynamodb describe-table --table-name audit_logs --query 'Table.TableStatus'
+# audit_logs verification removed
 
 Write-Host "Setup complete!"

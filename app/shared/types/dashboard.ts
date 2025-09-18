@@ -114,20 +114,6 @@ export interface ComplianceStatus {
   nextAudit?: string;
 }
 
-export interface AuditLog {
-  id: string;
-  timestamp: string;
-  action?: string;
-  user?: string;
-  details?: string;
-  userId?: string;
-  userName?: string;
-  resource?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  result?: string;
-}
-
 export interface ChartData {
   labels: string[];
   datasets: Array<{

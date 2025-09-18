@@ -15,8 +15,6 @@ import {
   Square,
   AlertTriangle,
   MoreHorizontal,
-  MessageSquare,
-  Paperclip,
   Edit,
   Trash2,
 } from "lucide-react";
@@ -623,15 +621,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <MessageSquare className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <Paperclip className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
+                  {/* Only Edit and Delete buttons retained */}
                 </div>
               </div>
             </div>

@@ -32,16 +32,3 @@ export interface ComplianceStatus {
   lastAudit: string;
   nextAudit: string;
 }
-
-export interface AuditLog {
-  id: string;
-  timestamp: string;
-  userId: string;
-  userName: string;
-  action: string;
-  resource: string;
-  ipAddress: string;
-  userAgent: string;
-  result: "success" | "failure";
-  details?: string;
-}

@@ -106,96 +106,6 @@ export async function deleteSession(sessionId: string): Promise<void> {
 // ==============================
 // Audit Logging
 // ==============================
-export interface AuditLog {
-  logId: string;
-  createdAt: string;
-  actorType: "worker" | "manager";
-  actorId: string;
-  action: string;
-  entity: string;
-  entityId?: string;
-  details?: Record<string, unknown>;
-}
-
-export async function createAuditLog(
-  actorType: "worker" | "manager",
-  actorId: string,
-  action: string,
-  entity: string,
-  entityId?: string,
-  details?: Record<string, unknown>
-): Promise<void> {
-  const logId = uuidv4();
-  const createdAt = new Date().toISOString();
-
-  const auditLog: AuditLog = {
-    logId,
-    createdAt,
-    actorType,
-    actorId,
-    action,
-    entity,
-    entityId,
-    details,
-  };
-
-  try {
-    await docClient.send(
-      new PutCommand({
-        TableName: "audit_logs",
-        Item: auditLog,
-      })
-    );
-  } catch (error) {
-    console.error("Error creating audit log:", error);
-  }
-}
-
-export async function getAuditLogs(limit: number = 50): Promise<AuditLog[]> {
-  try {
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: "audit_logs",
-        KeyConditionExpression: "actorType = :actorType", // requires GSI if not partitioned by actorType
-        ExpressionAttributeValues: {
-          ":actorType": "manager", // Example: fetch manager logs
-        },
-        Limit: limit,
-        ScanIndexForward: false, // most recent first
-      })
-    );
-
-    return (result.Items as AuditLog[]) || [];
-  } catch (error) {
-    console.error("Error getting audit logs:", error);
-    return [];
-  }
-}
-
-export async function getAuditLogsByActor(
-  actorId: string,
-  limit: number = 50
-): Promise<AuditLog[]> {
-  try {
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: "audit_logs",
-        IndexName: "ActorIndex", // <-- requires you to create this GSI: actorId as PK
-        KeyConditionExpression: "actorId = :actorId",
-        ExpressionAttributeValues: {
-          ":actorId": actorId,
-        },
-        Limit: limit,
-        ScanIndexForward: false,
-      })
-    );
-
-    return (result.Items as AuditLog[]) || [];
-  } catch (error) {
-    console.error("Error getting audit logs by actor:", error);
-    return [];
-  }
-}
 
 // ==============================
 // Reports: New schema helpers
@@ -316,7 +226,7 @@ export async function putNotification(item: NotificationWriteItem) {
     const notifId = item.notifId || uuidv4();
     const createdAt = new Date().toISOString();
     let pk: string;
-    const attributes: Record<string, any> = {
+    const attributes: Record<string, unknown> = {
       notifId,
       type: item.type,
       message: item.message,

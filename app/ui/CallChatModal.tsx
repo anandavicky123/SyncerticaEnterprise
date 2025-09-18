@@ -9,6 +9,7 @@ interface TeamMember {
   department: string;
   status: "online" | "away" | "busy" | "offline";
   avatar?: string;
+  unread?: number;
 }
 
 interface WorkerRow {
@@ -66,6 +67,25 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
             department: "",
             status: "offline",
           }));
+        // Fetch unread counts grouped by sender/worker for manager
+        try {
+          const ubRes = await fetch(
+            "/api/notifications/unread-by-conversation",
+            {
+              credentials: "include",
+            }
+          );
+          if (ubRes.ok) {
+            const ub = await ubRes.json();
+            // attach badge counts to mapped team members
+            const byWorker: Record<string, number> = ub.byWorker || {};
+            mapped.forEach((m) => {
+              m.unread = byWorker[m.id] || 0;
+            });
+          }
+        } catch (e) {
+          console.debug("Failed to load per-worker unread counts", e);
+        }
         setTeamMembers(mapped);
       } catch (err) {
         console.error("Error loading workers:", err);
@@ -107,6 +127,23 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
 
   const handleStartChat = (member: TeamMember) => {
     setActiveChat(member);
+    // Mark notifications from this sender as read (manager marking worker messages as read)
+    (async () => {
+      try {
+        await fetch("/api/notifications/mark-read-sender", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ senderId: member.id }),
+        });
+        // Optimistically clear local badge
+        setTeamMembers((prev) =>
+          prev.map((p) => (p.id === member.id ? { ...p, unread: 0 } : p))
+        );
+      } catch (err) {
+        console.debug("Failed to mark sender notifications read", err);
+      }
+    })();
     setActiveCall(null);
     setChats([]);
     // Load existing chats with this member
@@ -228,6 +265,15 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
                     {member.status}
                   </div>
                 </div>
+
+                {/* Unread badge for this team member (manager view) */}
+                {member.unread && member.unread > 0 && (
+                  <div className="ml-2 flex items-center">
+                    <div className="bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
+                      {member.unread > 9 ? "9+" : member.unread}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-1">
                   <button

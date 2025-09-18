@@ -144,12 +144,35 @@ const RealtimeNotifications: React.FC<RealtimeNotificationsProps> = ({
             <h3 className="text-lg font-semibold text-gray-900">
               Real-time Updates
             </h3>
-            <button
-              onClick={() => setIsNotificationOpen(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={async () => {
+                  // Optimistically mark all as read locally
+                  setNotifications((prev) =>
+                    prev.map((n) => ({ ...n, read: true }))
+                  );
+                  try {
+                    await fetch("/api/notifications/mark-all-read", {
+                      method: "POST",
+                    });
+                  } catch (err) {
+                    console.error("Failed to mark all read:", err);
+                    // revert if fail by refetching notifications
+                    // (simple approach: toggle panel to force refetch on reopen)
+                    setIsNotificationOpen(false);
+                  }
+                }}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Read All
+              </button>
+              <button
+                onClick={() => setIsNotificationOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           <div className="max-h-80 overflow-y-auto">
