@@ -3,7 +3,7 @@ import { getDatabase } from "@/lib/database";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const actorType = request.headers.get("x-actor-type");
@@ -12,6 +12,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    const resolvedParams = await params;
     const db = getDatabase();
     const managerDeviceUUID =
       actorType === "manager"
@@ -21,7 +22,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const project = await db.getProjectById(params.id, managerDeviceUUID);
+    const project = await db.getProjectById(resolvedParams.id, managerDeviceUUID);
     if (!project)
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(project);
@@ -33,7 +34,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const actorType = request.headers.get("x-actor-type");
@@ -45,9 +46,10 @@ export async function PATCH(
       );
     }
 
+    const resolvedParams = await params;
     const updates = await request.json();
     const db = getDatabase();
-    const updated = await db.updateProject(params.id, updates, actorId);
+    const updated = await db.updateProject(resolvedParams.id, updates, actorId);
     if (!updated)
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(updated);
@@ -59,7 +61,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const actorType = request.headers.get("x-actor-type");
@@ -71,8 +73,9 @@ export async function DELETE(
       );
     }
 
+    const resolvedParams = await params;
     const db = getDatabase();
-    const ok = await db.deleteProject(params.id, actorId);
+    const ok = await db.deleteProject(resolvedParams.id, actorId);
     if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {

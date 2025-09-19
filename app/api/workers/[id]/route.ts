@@ -14,9 +14,12 @@ const updateWorkerSchema = z.object({
   githubUsername: z.string().nullable().optional(),
 });
 
-export async function PUT(req: Request, context: any) {
-  const { params } = context;
+export async function PUT(
+  req: Request, 
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const resolvedParams = await params;
     const actorType = req.headers.get("x-actor-type");
 
     if (actorType !== "manager") {
@@ -48,7 +51,7 @@ export async function PUT(req: Request, context: any) {
     // Update worker
     const worker = await prisma.worker.update({
       where: {
-        id: params.id,
+        id: resolvedParams.id,
       },
       data: updateData,
       select: {

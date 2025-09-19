@@ -130,8 +130,35 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
 
       if (response.ok) {
         const newTask = await response.json();
-        setTasks((prev) => [newTask, ...prev]);
-        console.log("✅ Task created successfully:", newTask);
+        console.log("✅ Task created successfully (response):", newTask);
+        // If the API returned a single task object with an `id`, prepend it.
+        // Otherwise fallback to reloading the authoritative list from server.
+        try {
+          if (newTask && typeof newTask === "object" && "id" in newTask) {
+            setTasks((prev) => [newTask as Task, ...prev]);
+          } else {
+            // Unexpected shape (e.g. { items: [...] } or { success: true })
+            await fetchTasks();
+          }
+
+          // Close the create modal and notify other components
+          setShowCreateTask(false);
+          try {
+            window.dispatchEvent(
+              new CustomEvent("syncertica:stats-changed", {
+                detail: { managerUUID: currentManagerUUID },
+              })
+            );
+          } catch (e) {
+            console.debug("Could not dispatch stats-changed event:", e);
+          }
+        } catch (e) {
+          console.error(
+            "Error handling created task response, reloading list:",
+            e
+          );
+          await fetchTasks();
+        }
         // Notify dashboard/sidebar to refresh stats
         try {
           window.dispatchEvent(
