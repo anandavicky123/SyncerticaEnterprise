@@ -48,6 +48,7 @@ import {
   getDatabaseStats,
   generateDynamicSidebarItems,
 } from "../../lib/sidebar-stats-client";
+import { getGitHubAppInstallUrl } from "../../lib/github-app-client";
 
 interface DashboardProps {
   user: User;
@@ -104,6 +105,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showAddWorker, setShowAddWorker] = useState(false);
 
+  // Sticky notes helpers
   const {
     addStickyNote,
     toggleChecklistItem,
@@ -112,6 +114,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
   } = useStickyNotes(stickyNotes, setStickyNotes);
 
   const { draggedNote, handleMouseDown } = useDragAndDrop(updateNotePosition);
+
   const {
     connectionStatus,
     connectToGitHub,
@@ -216,7 +219,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
       dropdown: [
         {
           label: "Connect to GitHub",
-          action: connectToGitHub,
+          // Projects page opens the GitHub App install URL; mimic that here so behavior is consistent
+          action: () => window.open(getGitHubAppInstallUrl(), "_blank"),
           disabled: connectionStatus.connected,
         },
         {
@@ -228,9 +232,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
         },
         {
           label: "Disconnect",
+          // Projects page uses redirect to /api/github/disconnect which sets cookies and redirects.
+          // Use the same redirect so disconnect behavior matches the Projects UI.
           action: () => {
             console.log("🔌 Toolbar Disconnect clicked");
-            disconnectFromGitHub();
+            window.location.href = "/api/github/disconnect";
           },
           disabled: !connectionStatus.connected,
         },
@@ -299,9 +305,36 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
       const result = await response.json();
 
       if (response.ok) {
-        alert(
-          `${result.message}\n\nFile saved to: ${result.file.path}\nView on GitHub: ${result.file.url}`
-        );
+        // Emit optimistic-create event so UI lists can update instantly
+        try {
+          const createdItem: Record<string, unknown> = {
+            type: "workflow",
+            repository: repository,
+            filename: result.file.path.split("/").pop(),
+            path: result.file.path,
+            id: result.file.sha || `${repository}/${result.file.path}`,
+            name: filename || result.file.path,
+          };
+          window.dispatchEvent(
+            new CustomEvent("syncertica:github-item-created", {
+              detail: createdItem,
+            })
+          );
+        } catch {
+          /* ignore event dispatch errors */
+        }
+
+        // Start background refresh (don't await) and show success notification
+        // asynchronously so the modal can close immediately when this function resolves.
+        refreshData().catch(() => {
+          /* ignore background refresh errors */
+        });
+
+        setTimeout(() => {
+          alert(
+            `${result.message}\n\nFile saved to: ${result.file.path}\nView on GitHub: ${result.file.url}`
+          );
+        }, 0);
       } else {
         throw new Error(
           `Failed to save workflow: ${result.error}${
@@ -316,120 +349,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
       } else {
         alert(
           "Failed to save workflow. Please check your connection and try again."
-        );
-      }
-      throw error; // Re-throw so modal can handle it
-    }
-  };
-
-  const handleSaveInfrastructure = async (
-    content: string,
-    filename?: string,
-    repository?: string,
-    type?: string
-  ) => {
-    if (!repository) {
-      alert("Please select a repository");
-      return;
-    }
-
-    try {
-      console.log("Saving infrastructure to GitHub:", {
-        filename,
-        repository,
-        type,
-      });
-
-      const response = await fetch("/api/infrastructure/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content,
-          filename,
-          repository,
-          type,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        alert(
-          `${result.message}\n\nFile saved to: ${result.file.path}\nView on GitHub: ${result.file.url}`
-        );
-      } else {
-        throw new Error(
-          `Failed to save infrastructure file: ${result.error}${
-            result.details ? "\n" + result.details : ""
-          }`
-        );
-      }
-    } catch (error) {
-      console.error("Error saving infrastructure:", error);
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert(
-          "Failed to save infrastructure file. Please check your connection and try again."
-        );
-      }
-      throw error; // Re-throw so modal can handle it
-    }
-  };
-
-  const handleSaveContainer = async (
-    content: string,
-    filename?: string,
-    repository?: string,
-    type?: string
-  ) => {
-    if (!repository) {
-      alert("Please select a repository");
-      return;
-    }
-
-    try {
-      console.log("Saving container to GitHub:", {
-        filename,
-        repository,
-        type,
-      });
-
-      const response = await fetch("/api/containers/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content,
-          filename,
-          repository,
-          type,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        alert(
-          `${result.message}\n\nFile saved to: ${result.file.path}\nView on GitHub: ${result.file.url}`
-        );
-      } else {
-        throw new Error(
-          `Failed to save container file: ${result.error}${
-            result.details ? "\n" + result.details : ""
-          }`
-        );
-      }
-    } catch (error) {
-      console.error("Error saving container:", error);
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert(
-          "Failed to save container file. Please check your connection and try again."
         );
       }
       throw error; // Re-throw so modal can handle it
@@ -610,17 +529,51 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
       <InfrastructureEditorModal
         isOpen={showInfrastructureEditor}
         onClose={() => setShowInfrastructureEditor(false)}
-        infrastructure={null}
-        mode="create"
-        onSave={handleSaveInfrastructure}
+        item={null}
+        onSaved={async () => {
+          try {
+            const createdItem: Record<string, unknown> = {
+              type: "infrastructure",
+              repository: undefined,
+              path: undefined,
+              id: undefined,
+              name: undefined,
+            };
+            window.dispatchEvent(
+              new CustomEvent("syncertica:github-item-created", {
+                detail: createdItem,
+              })
+            );
+          } catch {}
+          // Start background refresh and close modal immediately so UI doesn't stay stuck
+          refreshData().catch(() => {});
+          setShowInfrastructureEditor(false);
+        }}
       />
 
       <ContainerEditorModal
         isOpen={showContainerEditor}
         onClose={() => setShowContainerEditor(false)}
-        container={null}
-        mode="create"
-        onSave={handleSaveContainer}
+        item={null}
+        onSaved={async () => {
+          try {
+            const createdItem: Record<string, unknown> = {
+              type: "container",
+              repository: undefined,
+              path: undefined,
+              id: undefined,
+              name: undefined,
+            };
+            window.dispatchEvent(
+              new CustomEvent("syncertica:github-item-created", {
+                detail: createdItem,
+              })
+            );
+          } catch {}
+          // Start background refresh and close modal immediately so UI doesn't stay stuck
+          refreshData().catch(() => {});
+          setShowContainerEditor(false);
+        }}
       />
 
       {/* Task and Worker Modals */}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   ExternalLink,
   Plus,
@@ -18,6 +18,7 @@ import {
   Eye,
   ChevronDown,
   Loader2,
+  X,
 } from "lucide-react";
 import {
   useGitHubData,
@@ -26,10 +27,12 @@ import {
   Infrastructure,
   Container,
 } from "../hooks/useGitHubData";
+import WorkflowEditorModal from "../ui/WorkflowEditorModal";
+import InfrastructureEditorModal from "../ui/InfrastructureEditorModal";
+import ContainerEditorModal from "../ui/ContainerEditorModal";
 import {
   getGitHubAppInstallUrl,
   checkGitHubAppInstallation,
-  getAllPossibleInstallUrls,
 } from "../../lib/github-app-client";
 
 interface Project {
@@ -63,13 +66,131 @@ const Projects: React.FC<{
 }) => {
   const {
     repositories = [],
-    workflows = [],
-    infrastructure = [],
-    containers = [],
+    workflows: remoteWorkflows = [],
+    infrastructure: remoteInfrastructure = [],
+    containers: remoteContainers = [],
     connectionStatus = { connected: false, user: null },
     refreshData: refreshGitHubData,
     loading: githubLoading,
   } = useGitHubData();
+
+  // Local copies to support optimistic updates
+  const [workflows, setWorkflows] = useState<Workflow[]>(remoteWorkflows);
+  const [infrastructure, setInfrastructure] =
+    useState<Infrastructure[]>(remoteInfrastructure);
+  const [containers, setContainers] = useState<Container[]>(remoteContainers);
+
+  // Keep local copies in sync when remote data updates
+  useEffect(() => setWorkflows(remoteWorkflows), [remoteWorkflows]);
+  useEffect(
+    () => setInfrastructure(remoteInfrastructure),
+    [remoteInfrastructure]
+  );
+  useEffect(() => setContainers(remoteContainers), [remoteContainers]);
+
+  // refs to hold latest callbacks so toolbar event listeners can call them
+  const refreshDataRef = useRef<((force?: boolean) => Promise<void>) | null>(
+    null
+  );
+  const checkAppInstallationRef = useRef<(() => Promise<void>) | null>(null);
+
+  // Optimistic update listener: when other parts of the app create files,
+  // they dispatch `syncertica:github-item-created` with minimal detail.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      try {
+        const detail = (e as CustomEvent).detail as
+          | Record<string, unknown>
+          | undefined;
+        if (!detail || !detail.type) return;
+        const t = String(detail.type);
+
+        if (t === "workflow") {
+          const newWorkflow: Workflow = {
+            id: String(
+              detail.id ||
+                detail.path ||
+                `${detail.repository}/${detail.filename}`
+            ),
+            name: String(
+              detail.name || detail.filename || detail.path || "new-workflow"
+            ),
+            filename: String(detail.filename || detail.path || ""),
+            path: String(detail.path || detail.filename || ""),
+            state: "active",
+            status: "",
+            conclusion: "",
+            html_url: "",
+            repository: String(detail.repository || ""),
+            updated_at: new Date().toISOString(),
+          };
+          // prepend if not exists
+          setWorkflows((prev) => {
+            const exists = prev.some(
+              (w) => w.path === newWorkflow.path || w.id === newWorkflow.id
+            );
+            if (exists) return prev;
+            return [newWorkflow, ...prev];
+          });
+        }
+
+        if (t === "infrastructure") {
+          const newInfra: Infrastructure = {
+            id: String(
+              detail.id || detail.path || `${detail.repository}/${detail.name}`
+            ),
+            name: String(detail.name || detail.path || "new-infra"),
+            type: "",
+            path: String(detail.path || ""),
+            content: "",
+            repository: String(detail.repository || ""),
+          };
+          setInfrastructure((prev) => {
+            const exists = prev.some(
+              (i) => i.path === newInfra.path || i.id === newInfra.id
+            );
+            if (exists) return prev;
+            return [newInfra, ...prev];
+          });
+        }
+
+        if (t === "container") {
+          const newContainer: Container = {
+            id: String(
+              detail.id || detail.path || `${detail.repository}/${detail.name}`
+            ),
+            name: String(detail.name || detail.path || "new-container"),
+            type: "",
+            path: String(detail.path || ""),
+            content: "",
+            repository: String(detail.repository || ""),
+          };
+          setContainers((prev) => {
+            const exists = prev.some(
+              (c) => c.path === newContainer.path || c.id === newContainer.id
+            );
+            if (exists) return prev;
+            return [newContainer, ...prev];
+          });
+        }
+      } catch (err) {
+        console.error(
+          "Error handling optimistic github-item-created event:",
+          err
+        );
+      }
+    };
+
+    window.addEventListener(
+      "syncertica:github-item-created",
+      handler as EventListener
+    );
+    return () =>
+      window.removeEventListener(
+        "syncertica:github-item-created",
+        handler as EventListener
+      );
+  }, []);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>("projects");
@@ -84,28 +205,59 @@ const Projects: React.FC<{
   const [status, setStatus] = useState("active");
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [appInstalled, setAppInstalled] = useState<boolean>(false);
   const [checkingInstallation, setCheckingInstallation] =
     useState<boolean>(false);
 
   // Modal states
-  const [showProjectSettings, setShowProjectSettings] = useState<string | null>(
-    null
-  );
-  const [showRepoSettings, setShowRepoSettings] = useState<string | null>(null);
+  // replaced by manageAccessRepo modal
   const [showContentViewer, setShowContentViewer] = useState<{
     type: "infrastructure" | "container";
     item: Infrastructure | Container;
   } | null>(null);
   const [runningWorkflow, setRunningWorkflow] = useState<string | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [confirmDeleteProject, setConfirmDeleteProject] =
+    useState<Project | null>(null);
+  const [showWorkflowEditor, setShowWorkflowEditor] = useState<{
+    open: boolean;
+    workflow?: Workflow | null;
+  } | null>(null);
+  const [showInfraEditor, setShowInfraEditor] = useState<{
+    open: boolean;
+    item?: Infrastructure | null;
+  } | null>(null);
+  const [showContainerEditor, setShowContainerEditor] = useState<{
+    open: boolean;
+    item?: Container | null;
+  } | null>(null);
+  const [manageAccessRepo, setManageAccessRepo] = useState<Repository | null>(
+    null
+  );
+  type Collaborator = { id?: number; login: string };
+  type Invitation = { id: number; invitee?: { login: string }; email?: string };
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [loadingCollabs, setLoadingCollabs] = useState(false);
+  type WorkerLite = {
+    id: string;
+    name: string;
+    email: string;
+    githubUsername?: string | null;
+  };
+  const [workers, setWorkers] = useState<WorkerLite[]>([]);
+  const [showAddPersonDropdown, setShowAddPersonDropdown] = useState(false);
+  const [showWorkerSelection, setShowWorkerSelection] = useState(false);
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [selectedWorker, setSelectedWorker] = useState<WorkerLite | null>(null);
+  const [usernameInput, setUsernameInput] = useState("");
 
   // Action handlers
-  const handleProjectSettings = (projectId: string) => {
-    setShowProjectSettings(projectId);
-  };
-
   const handleRepoSettings = (repoId: string) => {
-    setShowRepoSettings(repoId);
+    const repo = repositories.find((r) => r.id === repoId) || null;
+    if (repo) {
+      setManageAccessRepo(repo);
+      fetchCollaborators(repo.full_name);
+    }
   };
 
   const handleRunWorkflow = async (workflow: Workflow) => {
@@ -241,12 +393,7 @@ const Projects: React.FC<{
   };
 
   const handleEditWorkflow = (workflow: Workflow) => {
-    // Open workflow in GitHub for editing
-    if (workflow.html_url) {
-      window.open(workflow.html_url, "_blank");
-    } else {
-      alert("Workflow URL not available");
-    }
+    setShowWorkflowEditor({ open: true, workflow });
   };
 
   const handleViewContent = (
@@ -257,18 +404,14 @@ const Projects: React.FC<{
   };
 
   const handleEditInfrastructure = (infra: Infrastructure) => {
-    // Construct GitHub edit URL from repository and path
-    const editUrl = `https://github.com/${infra.repository}/edit/main/${infra.path}`;
-    window.open(editUrl, "_blank");
+    setShowInfraEditor({ open: true, item: infra });
   };
 
   const handleEditContainer = (container: Container) => {
-    // Construct GitHub edit URL from repository and path
-    const editUrl = `https://github.com/${container.repository}/edit/main/${container.path}`;
-    window.open(editUrl, "_blank");
+    setShowContainerEditor({ open: true, item: container });
   };
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -282,18 +425,12 @@ const Projects: React.FC<{
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchProjects();
-    checkAppInstallation();
   }, []);
 
-  const checkAppInstallation = async () => {
+  const checkAppInstallation = useCallback(async () => {
     setCheckingInstallation(true);
     try {
       const result = await checkGitHubAppInstallation();
-      setAppInstalled(result.installed);
 
       if (result.error) {
         console.warn("GitHub App installation check failed:", result.error);
@@ -303,7 +440,7 @@ const Projects: React.FC<{
     } finally {
       setCheckingInstallation(false);
     }
-  };
+  }, []);
 
   const createProject = async () => {
     if (!name) return alert("Project name is required");
@@ -339,7 +476,158 @@ const Projects: React.FC<{
     }
   };
 
-  const refreshData = async () => {
+  const updateProject = async (projectId: string) => {
+    if (!name) return alert("Project name is required");
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description: description || null,
+          repository: repository || null,
+          status,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const updated: Project = await res.json();
+      setProjectsList((prev) =>
+        prev.map((p) => (p.id === updated.id ? updated : p))
+      );
+      setShowAdd(false);
+      setEditingProject(null);
+      setName("");
+      setDescription("");
+      setRepository("");
+      setStatus("active");
+    } catch (err) {
+      console.error("Update project failed", err);
+      alert("Failed to update project");
+    }
+  };
+
+  const deleteProject = async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setProjectsList((prev) => prev.filter((p) => p.id !== projectId));
+      setConfirmDeleteProject(null);
+    } catch (err) {
+      console.error("Delete project failed", err);
+      alert("Failed to delete project");
+    }
+  };
+
+  const fetchCollaborators = async (fullName: string) => {
+    try {
+      setLoadingCollabs(true);
+      const res = await fetch(
+        `/api/github/collaborators?repo=${encodeURIComponent(fullName)}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setCollaborators(
+          Array.isArray(data.collaborators) ? data.collaborators : []
+        );
+        setInvitations(Array.isArray(data.invitations) ? data.invitations : []);
+      } else {
+        setCollaborators([]);
+        setInvitations([]);
+      }
+    } finally {
+      setLoadingCollabs(false);
+    }
+  };
+
+  const fetchWorkers = async () => {
+    try {
+      const res = await fetch("/api/workers");
+      if (res.ok) {
+        const data = await res.json();
+        const raw: unknown = data;
+        const arr = Array.isArray(raw) ? raw : [];
+        const mapped: WorkerLite[] = arr.reduce<WorkerLite[]>((acc, w) => {
+          const ww = w as {
+            id?: string;
+            name?: string;
+            email?: string;
+            githubUsername?: string | null;
+            github_username?: string | null;
+          };
+          if (!ww || !ww.id || !ww.name || !ww.email) return acc;
+          const githubUsername =
+            ww.githubUsername ?? ww.github_username ?? null;
+          acc.push({
+            id: ww.id,
+            name: ww.name,
+            email: ww.email,
+            githubUsername,
+          });
+          return acc;
+        }, []);
+        setWorkers(mapped);
+      }
+    } finally {
+    }
+  };
+
+  const addCollaborator = async ({
+    repoFullName,
+    username,
+    email,
+  }: {
+    repoFullName: string;
+    username?: string;
+    email?: string;
+  }) => {
+    // check duplicates among collaborators or invitations
+    const already =
+      collaborators.some((c) => (username ? c.login === username : false)) ||
+      invitations.some(
+        (i) =>
+          (username ? i.invitee?.login === username : false) ||
+          (email ? i.email === email : false)
+      );
+    if (already) {
+      alert(
+        "This person is already a collaborator or has a pending invitation."
+      );
+      return;
+    }
+    const res = await fetch("/api/github/collaborators", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repo: repoFullName, username, email }),
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      alert(`Failed to add collaborator: ${res.status} ${txt}`);
+    }
+    await fetchCollaborators(repoFullName);
+  };
+
+  const removeCollaborator = async ({
+    repoFullName,
+    username,
+  }: {
+    repoFullName: string;
+    username: string;
+  }) => {
+    const res = await fetch("/api/github/collaborators", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repo: repoFullName, username }),
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      alert(`Failed to remove collaborator: ${res.status} ${txt}`);
+    }
+    await fetchCollaborators(repoFullName);
+  };
+
+  const refreshData = useCallback(async () => {
     setRefreshing(true);
     try {
       await fetchProjects();
@@ -351,7 +639,119 @@ const Projects: React.FC<{
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [fetchProjects, refreshGitHubData, checkAppInstallation]);
+
+  // keep refs up-to-date for external listeners
+  useEffect(() => {
+    refreshDataRef.current = refreshData;
+    checkAppInstallationRef.current = checkAppInstallation;
+  }, [refreshData, checkAppInstallation]);
+
+  // Initial load: fetch projects and check app installation using stable callbacks
+  useEffect(() => {
+    (async () => {
+      try {
+        await refreshDataRef.current?.();
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
+  // Listen to toolbar actions so toolbar buttons can trigger project-level actions
+  useEffect(() => {
+    const onToolbarClick = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { toolName?: string }
+        | undefined;
+      const name = detail?.toolName || "";
+      if (!name) return;
+      const n = name.toLowerCase();
+      if (n.includes("refresh")) {
+        // Trigger Projects refresh with animation
+        (async () => {
+          setRefreshing(true);
+          try {
+            await refreshDataRef.current?.();
+          } finally {
+            setRefreshing(false);
+          }
+        })();
+      }
+      if (n.includes("disconnect")) {
+        // When toolbar disconnect is clicked, re-check installation and refresh status
+        (async () => {
+          try {
+            // Attempt to call the same disconnect flow the Projects UI uses
+            await fetch("/api/status/github_status", {
+              method: "DELETE",
+              credentials: "include",
+            });
+          } catch {
+            // ignore
+          }
+          // Give browser a moment then refresh project/github state
+          setTimeout(() => {
+            checkAppInstallationRef.current?.();
+            // force a refresh to bypass cooldown so connection status updates immediately
+            refreshDataRef.current?.(true);
+          }, 200);
+        })();
+      }
+    };
+
+    const onToolbarDropdown = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { toolName?: string; itemLabel?: string }
+        | undefined;
+      const name = detail?.toolName || "";
+      const label = detail?.itemLabel || "";
+      const combined = `${name} ${label}`.toLowerCase();
+      if (combined.includes("refresh")) {
+        (async () => {
+          setRefreshing(true);
+          try {
+            await refreshDataRef.current?.();
+          } finally {
+            setRefreshing(false);
+          }
+        })();
+      }
+      if (combined.includes("disconnect")) {
+        (async () => {
+          try {
+            await fetch("/api/status/github_status", {
+              method: "DELETE",
+              credentials: "include",
+            });
+          } catch {}
+          setTimeout(() => {
+            checkAppInstallationRef.current?.();
+            refreshDataRef.current?.(true);
+          }, 200);
+        })();
+      }
+    };
+
+    window.addEventListener(
+      "syncertica:toolbar-click",
+      onToolbarClick as EventListener
+    );
+    window.addEventListener(
+      "syncertica:toolbar-dropdown-click",
+      onToolbarDropdown as EventListener
+    );
+    return () => {
+      window.removeEventListener(
+        "syncertica:toolbar-click",
+        onToolbarClick as EventListener
+      );
+      window.removeEventListener(
+        "syncertica:toolbar-dropdown-click",
+        onToolbarDropdown as EventListener
+      );
+    };
+  }, []);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -382,12 +782,10 @@ const Projects: React.FC<{
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              {connectionStatus.connected || appInstalled ? (
+              {connectionStatus.connected ? (
                 <>
                   <CheckCircle className="w-5 h-5 text-green-500" />
-                  <span className="text-green-700 font-medium">
-                    {appInstalled ? "GitHub App Installed" : "Connected"}
-                  </span>
+                  <span className="text-green-700 font-medium">Connected</span>
                   {connectionStatus.user && (
                     <span className="text-gray-600">
                       as {connectionStatus.user.login}
@@ -399,7 +797,7 @@ const Projects: React.FC<{
                       (window.location.href = "/api/github/disconnect")
                     }
                   >
-                    Disconnect GitHub
+                    Disconnect
                   </button>
                 </>
               ) : (
@@ -411,24 +809,12 @@ const Projects: React.FC<{
                   <button
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors ml-2 disabled:opacity-50"
                     disabled={checkingInstallation}
-                    onClick={() => {
-                      // Get the installation URL
-                      const installUrl = getGitHubAppInstallUrl();
-                      console.log("GitHub App Installation URL:", installUrl);
-
-                      // Also log all possible URLs for debugging
-                      const allUrls = getAllPossibleInstallUrls();
-                      console.log("All possible installation URLs:", allUrls);
-
-                      // Open the installation URL
-                      window.open(installUrl, "_blank");
-                    }}
+                    onClick={() =>
+                      window.open(getGitHubAppInstallUrl(), "_blank")
+                    }
                   >
-                    {checkingInstallation
-                      ? "Checking..."
-                      : "Install GitHub App"}
+                    {checkingInstallation ? "Checking..." : "Connect"}
                   </button>
-                  {/* no dev-only install URL dropdown needed; slug is fixed */}
                 </>
               )}
             </div>
@@ -581,23 +967,26 @@ const Projects: React.FC<{
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {project.repository && (
-                          <button
-                            onClick={() =>
-                              window.open(project.repository!, "_blank")
-                            }
-                            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
-                            title="View Repository"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </button>
-                        )}
                         <button
-                          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
-                          title="Settings"
-                          onClick={() => handleProjectSettings(project.id)}
+                          className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
+                          title="Edit Project"
+                          onClick={() => {
+                            setEditingProject(project);
+                            setShowAdd(true);
+                            setName(project.name);
+                            setDescription(project.description || "");
+                            setRepository(project.repository || "");
+                            setStatus(project.status || "active");
+                          }}
                         >
-                          <Settings className="w-4 h-4" />
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                          title="Delete Project"
+                          onClick={() => setConfirmDeleteProject(project)}
+                        >
+                          <XCircle className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -621,9 +1010,9 @@ const Projects: React.FC<{
               <div className="text-center py-12">
                 <Folder className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {connectionStatus.connected || appInstalled
+                  {connectionStatus.connected
                     ? "No repositories found"
-                    : "Install the GitHub App to view repositories"}
+                    : "Connect GitHub to view repositories"}
                 </p>
               </div>
             ) : (
@@ -666,7 +1055,7 @@ const Projects: React.FC<{
                         </button>
                         <button
                           className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
-                          title="Settings"
+                          title="Manage access permissions"
                           onClick={() => handleRepoSettings(repo.id)}
                         >
                           <Settings className="w-4 h-4" />
@@ -700,9 +1089,9 @@ const Projects: React.FC<{
               <div className="text-center py-12">
                 <GitBranch className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {connectionStatus.connected || appInstalled
+                  {connectionStatus.connected
                     ? "No workflow files found"
-                    : "Install the GitHub App to view workflows"}
+                    : "Connect GitHub to view workflows"}
                 </p>
               </div>
             ) : (
@@ -719,7 +1108,9 @@ const Projects: React.FC<{
 
                   return (
                     <div
-                      key={workflow.id}
+                      key={String(
+                        workflow.id ?? `${workflow.repository}/${workflow.path}`
+                      )}
                       className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center justify-between">
@@ -792,9 +1183,10 @@ const Projects: React.FC<{
                 Infrastructure Files ({infrastructure.length})
               </h3>
               <button
-                onClick={() =>
-                  onOpenInfrastructureEditor && onOpenInfrastructureEditor()
-                }
+                onClick={() => {
+                  if (onOpenInfrastructureEditor) onOpenInfrastructureEditor();
+                  else setShowInfraEditor({ open: true });
+                }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -806,16 +1198,18 @@ const Projects: React.FC<{
               <div className="text-center py-12">
                 <Cloud className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {connectionStatus.connected || appInstalled
+                  {connectionStatus.connected
                     ? "No infrastructure files found"
-                    : "Install the GitHub App to view infrastructure files"}
+                    : "Connect GitHub to view infrastructure files"}
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
                 {infrastructure.map((infra: Infrastructure) => (
                   <div
-                    key={infra.id}
+                    key={String(
+                      infra.id ?? `${infra.repository}/${infra.path}`
+                    )}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
@@ -867,7 +1261,10 @@ const Projects: React.FC<{
                 Container Files ({containers.length})
               </h3>
               <button
-                onClick={() => onOpenContainerEditor && onOpenContainerEditor()}
+                onClick={() => {
+                  if (onOpenContainerEditor) onOpenContainerEditor();
+                  else setShowContainerEditor({ open: true });
+                }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -879,16 +1276,19 @@ const Projects: React.FC<{
               <div className="text-center py-12">
                 <ContainerIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {connectionStatus.connected || appInstalled
+                  {connectionStatus.connected
                     ? "No container files found"
-                    : "Install the GitHub App to view container files"}
+                    : "Connect GitHub to view container files"}
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
                 {containers.map((container: Container) => (
                   <div
-                    key={container.id}
+                    key={String(
+                      container.id ??
+                        `${container.repository}/${container.path}`
+                    )}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
@@ -937,11 +1337,14 @@ const Projects: React.FC<{
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
-            <h4 className="text-lg font-semibold mb-4">Create New Project</h4>
+            <h4 className="text-lg font-semibold mb-4">
+              {editingProject ? "Edit Project" : "Create New Project"}
+            </h4>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                createProject();
+                if (editingProject) updateProject(editingProject.id);
+                else createProject();
               }}
             >
               <div className="space-y-4">
@@ -1035,6 +1438,7 @@ const Projects: React.FC<{
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                   onClick={() => {
                     setShowAdd(false);
+                    setEditingProject(null);
                     setName("");
                     setDescription("");
                     setRepository("");
@@ -1047,7 +1451,7 @@ const Projects: React.FC<{
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Create Project
+                  {editingProject ? "Save Changes" : "Create Project"}
                 </button>
               </div>
             </form>
@@ -1055,66 +1459,301 @@ const Projects: React.FC<{
         </div>
       )}
 
-      {/* Project Settings Modal */}
-      {showProjectSettings && (
+      {/* Manage Access Modal */}
+      {manageAccessRepo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
-            <h4 className="text-lg font-semibold mb-4">Project Settings</h4>
-            <p className="text-gray-600 mb-4">
-              Project ID: {showProjectSettings}
-            </p>
-            <div className="space-y-4">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">
-                  Project settings functionality would be implemented here. This
-                  could include:
-                </p>
-                <ul className="list-disc list-inside text-sm text-gray-600 mt-2">
-                  <li>Edit project details</li>
-                  <li>Manage project status</li>
-                  <li>Configure repository settings</li>
-                  <li>Delete project</li>
-                </ul>
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                onClick={() => setShowProjectSettings(null)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          <div className="bg-white rounded-lg p-6 w-[500px] max-w-[90vw] mx-4 max-h-[80vh] overflow-y-auto">
+            <h4 className="text-lg font-semibold mb-4">
+              Manage Access - {manageAccessRepo.full_name}
+            </h4>
 
-      {/* Repository Settings Modal */}
-      {showRepoSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
-            <h4 className="text-lg font-semibold mb-4">Repository Settings</h4>
-            <p className="text-gray-600 mb-4">
-              Repository ID: {showRepoSettings}
-            </p>
             <div className="space-y-4">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">
-                  Repository settings functionality would be implemented here.
-                  This could include:
-                </p>
-                <ul className="list-disc list-inside text-sm text-gray-600 mt-2">
-                  <li>Configure webhooks</li>
-                  <li>Set up branch protection</li>
-                  <li>Manage access permissions</li>
-                  <li>Configure integrations</li>
-                </ul>
+              {/* Add Person Section */}
+              <div className="border-b pb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-medium">Add Collaborator</span>
+                  <div className="relative">
+                    <button
+                      className="px-3 py-2 text-sm bg-blue-600 text-white rounded flex items-center gap-2 hover:bg-blue-700"
+                      onClick={() =>
+                        setShowAddPersonDropdown(!showAddPersonDropdown)
+                      }
+                    >
+                      Add Person
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+
+                    {showAddPersonDropdown && (
+                      <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                        <button
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 rounded-t-lg"
+                          onClick={() => {
+                            setShowWorkerSelection(true);
+                            setShowEmailInput(false);
+                            setShowAddPersonDropdown(false);
+                            fetchWorkers();
+                          }}
+                        >
+                          From Worker List
+                        </button>
+                        <button
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 rounded-b-lg"
+                          onClick={() => {
+                            setShowEmailInput(true);
+                            setShowWorkerSelection(false);
+                            setShowAddPersonDropdown(false);
+                          }}
+                        >
+                          Other Person (GitHub username)
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Worker Selection Modal */}
+                {showWorkerSelection && (
+                  <div className="bg-gray-50 rounded-lg p-4 border">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="font-medium">Select Worker</h5>
+                      <button
+                        onClick={() => {
+                          setShowWorkerSelection(false);
+                          setSelectedWorker(null);
+                        }}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
+                      <p className="text-sm text-blue-800">
+                        Tip: Ensure the worker&apos;s GitHub username is set on
+                        their profile so we can add them directly.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {workers.map((worker) => (
+                        <div
+                          key={worker.id}
+                          className={`p-2 border rounded cursor-pointer transition-colors ${
+                            selectedWorker?.id === worker.id
+                              ? "bg-blue-50 border-blue-200"
+                              : "hover:bg-gray-100"
+                          }`}
+                          onClick={() => setSelectedWorker(worker)}
+                        >
+                          <div className="font-medium text-sm">
+                            {worker.name}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {worker.email}
+                          </div>
+                        </div>
+                      ))}
+                      {workers.length === 0 && (
+                        <p className="text-sm text-gray-500">
+                          No workers found
+                        </p>
+                      )}
+                    </div>
+
+                    {selectedWorker && (
+                      <div className="mt-3 flex justify-end gap-2">
+                        <button
+                          className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                          onClick={() => {
+                            setShowWorkerSelection(false);
+                            setSelectedWorker(null);
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                          onClick={async () => {
+                            if (!selectedWorker) return;
+                            const username = selectedWorker.githubUsername;
+                            if (username) {
+                              // Use the stored GitHub username directly
+                              setShowWorkerSelection(false);
+                              setSelectedWorker(null);
+                              // call addCollaborator with repo and username
+                              await addCollaborator({
+                                repoFullName: manageAccessRepo!.full_name,
+                                username,
+                              });
+                            } else {
+                              // Warn and show manual input so user can fill the username
+                              alert(
+                                "This worker doesn't have Github Username, please input first"
+                              );
+                              setShowWorkerSelection(false);
+                              setShowEmailInput(true);
+                              // prefill worker email or keep usernameInput empty
+                              setUsernameInput("");
+                            }
+                          }}
+                        >
+                          Add Worker
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Username Input Modal */}
+                {showEmailInput && (
+                  <div className="bg-gray-50 rounded-lg p-4 border">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="font-medium">Add by GitHub Username</h5>
+                      <button
+                        onClick={() => {
+                          setShowEmailInput(false);
+                          setUsernameInput("");
+                        }}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter GitHub username (e.g. octocat)"
+                      value={usernameInput}
+                      onChange={(e) => setUsernameInput(e.target.value)}
+                    />
+
+                    <div className="mt-3 flex justify-end gap-2">
+                      <button
+                        className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                        onClick={() => {
+                          setShowEmailInput(false);
+                          setUsernameInput("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                        onClick={async () => {
+                          const username = usernameInput.trim();
+                          if (!username) return;
+                          await addCollaborator({
+                            repoFullName: manageAccessRepo.full_name,
+                            username,
+                          });
+                          setShowEmailInput(false);
+                          setUsernameInput("");
+                        }}
+                      >
+                        Add Collaborator
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Collaborators List */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-medium">
+                    Collaborators ({collaborators.length})
+                  </span>
+                </div>
+
+                <div className="max-h-60 overflow-y-auto border rounded">
+                  {loadingCollabs ? (
+                    <div className="p-4 text-center">
+                      <p className="text-sm text-gray-500">
+                        Loading collaborators...
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {collaborators.map((c) => (
+                        <div
+                          key={c.id}
+                          className="flex items-center justify-between p-3 hover:bg-gray-50"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-medium text-gray-600">
+                                {c.login.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <span className="text-sm font-medium">
+                              @{c.login}
+                            </span>
+                          </div>
+                          <button
+                            className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
+                            onClick={() =>
+                              removeCollaborator({
+                                repoFullName: manageAccessRepo.full_name,
+                                username: c.login,
+                              })
+                            }
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+
+                      {invitations.map((i) => (
+                        <div
+                          key={i.id}
+                          className="flex items-center justify-between p-3 bg-amber-50"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-amber-200 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-medium text-amber-600">
+                                ⏳
+                              </span>
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium">
+                                {i.invitee?.login || i.email}
+                              </div>
+                              <div className="text-xs text-amber-600">
+                                Waiting for approval
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {collaborators.length === 0 &&
+                        invitations.length === 0 && (
+                          <div className="p-4 text-center">
+                            <p className="text-sm text-gray-500">
+                              No collaborators yet.
+                            </p>
+                          </div>
+                        )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
+
             <div className="flex justify-end gap-3 mt-6">
               <button
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                onClick={() => setShowRepoSettings(null)}
+                onClick={() => {
+                  setManageAccessRepo(null);
+                  setCollaborators([]);
+                  setInvitations([]);
+                  setShowAddPersonDropdown(false);
+                  setShowWorkerSelection(false);
+                  setShowEmailInput(false);
+                  setSelectedWorker(null);
+                  setUsernameInput("");
+                }}
               >
                 Close
               </button>
@@ -1184,6 +1823,104 @@ const Projects: React.FC<{
                 }}
               >
                 Edit on GitHub
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Editors */}
+      {showWorkflowEditor?.open && (
+        <WorkflowEditorModal
+          isOpen={!!showWorkflowEditor?.open}
+          onClose={() => setShowWorkflowEditor(null)}
+          workflow={
+            showWorkflowEditor && showWorkflowEditor.workflow
+              ? {
+                  id: showWorkflowEditor.workflow.id,
+                  filename: showWorkflowEditor.workflow.filename,
+                  repository: showWorkflowEditor.workflow.repository,
+                  content: (
+                    showWorkflowEditor.workflow as unknown as {
+                      content?: string;
+                    }
+                  ).content,
+                }
+              : undefined
+          }
+          mode={"edit"}
+          onSave={async (content, filename, repository) => {
+            if (!filename || !repository) return;
+            // Save through contents API; we need path
+            const wf =
+              showWorkflowEditor && showWorkflowEditor.workflow
+                ? showWorkflowEditor.workflow
+                : null;
+            if (!wf) return;
+            // Fetch sha first
+            const infoRes = await fetch(
+              `/api/github/contents?repo=${encodeURIComponent(
+                repository!
+              )}&path=${encodeURIComponent(wf.path)}`
+            );
+            const info = infoRes.ok ? await infoRes.json() : {};
+            const sha = info.sha;
+            const res = await fetch("/api/github/contents", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                repo: repository,
+                path: wf.path,
+                content: btoa(content),
+                sha,
+                message: `chore(workflow): update ${filename}`,
+              }),
+            });
+            if (!res.ok) alert("Failed to save workflow");
+            await refreshData();
+          }}
+        />
+      )}
+
+      {showInfraEditor?.open && (
+        <InfrastructureEditorModal
+          isOpen={!!showInfraEditor?.open}
+          onClose={() => setShowInfraEditor(null)}
+          item={showInfraEditor?.item || undefined}
+          onSaved={async () => await refreshData()}
+        />
+      )}
+
+      {showContainerEditor?.open && (
+        <ContainerEditorModal
+          isOpen={!!showContainerEditor?.open}
+          onClose={() => setShowContainerEditor(null)}
+          item={showContainerEditor?.item || undefined}
+          onSaved={async () => await refreshData()}
+        />
+      )}
+
+      {/* Confirm Delete Project */}
+      {confirmDeleteProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
+            <h4 className="text-lg font-semibold mb-4">Delete Project</h4>
+            <p className="text-sm text-gray-700">
+              Are you sure you want to delete project &quot;
+              {confirmDeleteProject.name}&quot;? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                onClick={() => setConfirmDeleteProject(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                onClick={() => deleteProject(confirmDeleteProject.id)}
+              >
+                Delete
               </button>
             </div>
           </div>

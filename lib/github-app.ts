@@ -86,7 +86,11 @@ export function generateAppJWT(): string {
 
     // Helper to base64url encode a Buffer
     const base64Url = (buf: Buffer) =>
-      buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+      buf
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/g, "");
 
     const headerB64Url = base64Url(Buffer.from(JSON.stringify(header)));
     const payloadB64Url = base64Url(Buffer.from(JSON.stringify(payload)));
@@ -99,7 +103,10 @@ export function generateAppJWT(): string {
 
     // Sign using the private key; result is base64 which we convert to base64url
     const signatureBase64 = signer.sign(privateKey, "base64");
-    const signature = signatureBase64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    const signature = signatureBase64
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
 
     // Debugging: log iat/exp and a hint if the private key looks malformed
     // Safe debug logging - don't throw from logging
@@ -272,6 +279,91 @@ export async function makeGitHubAppRequest(
     ...options,
     headers,
   });
+}
+
+/**
+ * Uninstall all GitHub App installations for the current app
+ */
+export async function uninstallGitHubApp(): Promise<{
+  success: boolean;
+  message: string;
+  uninstalledCount: number;
+}> {
+  try {
+    const installations = await getInstallations();
+
+    if (installations.length === 0) {
+      return {
+        success: true,
+        message: "No installations found to uninstall",
+        uninstalledCount: 0,
+      };
+    }
+
+    const jwt = generateAppJWT();
+    let uninstalledCount = 0;
+    const errors: string[] = [];
+
+    // Uninstall each installation
+    for (const installation of installations) {
+      try {
+        const response = await fetch(
+          `https://api.github.com/app/installations/${installation.id}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${jwt}`,
+              Accept: "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+            },
+          }
+        );
+
+        if (response.ok || response.status === 404) {
+          // 404 means already uninstalled, which is fine
+          uninstalledCount++;
+          console.log(
+            `✅ Uninstalled app from ${installation.account.login} (installation ${installation.id})`
+          );
+        } else {
+          const errorText = await response.text();
+          const errorMsg = `Failed to uninstall from ${installation.account.login}: ${response.status} ${errorText}`;
+          errors.push(errorMsg);
+          console.error(errorMsg);
+        }
+      } catch (error) {
+        const errorMsg = `Error uninstalling from ${
+          installation.account.login
+        }: ${error instanceof Error ? error.message : "Unknown error"}`;
+        errors.push(errorMsg);
+        console.error(errorMsg);
+      }
+    }
+
+    if (errors.length > 0) {
+      return {
+        success: false,
+        message: `Partially uninstalled: ${uninstalledCount} successful, ${
+          errors.length
+        } failed. Errors: ${errors.join("; ")}`,
+        uninstalledCount,
+      };
+    }
+
+    return {
+      success: true,
+      message: `Successfully uninstalled GitHub App from ${uninstalledCount} installation(s)`,
+      uninstalledCount,
+    };
+  } catch (error) {
+    console.error("Error uninstalling GitHub App:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Unknown error occurred",
+      uninstalledCount: 0,
+    };
+  }
 }
 
 /**

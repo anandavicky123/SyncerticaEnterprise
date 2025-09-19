@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, User, Mail, Briefcase, Lock } from "lucide-react";
+import {
+  X,
+  User,
+  Mail,
+  Briefcase,
+  Lock,
+  Github,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 type JobRole = "UI/UX Designer" | "Developer" | "Manager" | "QA";
 
@@ -9,6 +18,7 @@ interface Worker {
   id: string;
   name: string;
   pronouns: string | null;
+  githubUsername?: string | null;
   jobRole: JobRole;
   email: string;
   createdAt: string;
@@ -21,6 +31,7 @@ interface AddWorkerModalProps {
   onAddWorker: (workerData: {
     name: string;
     pronouns: string | null;
+    githubUsername?: string | null;
     jobRole: JobRole;
     email: string;
     password?: string;
@@ -35,9 +46,11 @@ const AddWorkerModal = ({
   editingWorker = null,
 }: AddWorkerModalProps) => {
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: editingWorker?.name || "",
     pronouns: editingWorker?.pronouns || "",
+    githubUsername: editingWorker?.githubUsername || "",
     jobRole: editingWorker?.jobRole || "Developer",
     email: editingWorker?.email || "",
     password: "",
@@ -48,6 +61,7 @@ const AddWorkerModal = ({
       setFormData({
         name: editingWorker.name,
         pronouns: editingWorker.pronouns || "",
+        githubUsername: editingWorker.githubUsername || "",
         jobRole: editingWorker.jobRole,
         email: editingWorker.email,
         password: "", // Can't edit password, will be handled separately
@@ -56,6 +70,7 @@ const AddWorkerModal = ({
       setFormData({
         name: "",
         pronouns: "",
+        githubUsername: "",
         jobRole: "Developer",
         email: "",
         password: "",
@@ -82,6 +97,7 @@ const AddWorkerModal = ({
       await onAddWorker({
         name: formData.name,
         pronouns: formData.pronouns || null,
+        githubUsername: formData.githubUsername || null,
         jobRole: formData.jobRole as JobRole,
         email: formData.email,
         password: formData.password,
@@ -92,6 +108,7 @@ const AddWorkerModal = ({
         setFormData({
           name: "",
           pronouns: "",
+          githubUsername: "",
           jobRole: "Developer",
           email: "",
           password: "",
@@ -127,7 +144,7 @@ const AddWorkerModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden">
         {/* Header - Fixed */}
         <div className="flex-none p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -144,8 +161,8 @@ const AddWorkerModal = ({
         </div>
 
         {/* Form - Scrollable */}
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1">
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0 scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-gray-300">
             {/* Worker Name */}
             <div className="space-y-2">
               <label
@@ -188,6 +205,30 @@ const AddWorkerModal = ({
                   onChange={handleInputChange}
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="they/them"
+                />
+              </div>
+            </div>
+
+            {/* GitHub Username */}
+            <div className="space-y-2">
+              <label
+                htmlFor="githubUsername"
+                className="block text-sm font-medium text-gray-700"
+              >
+                GitHub Username
+              </label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Github className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  id="githubUsername"
+                  name="githubUsername"
+                  value={formData.githubUsername}
+                  onChange={handleInputChange}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="octocat"
                 />
               </div>
             </div>
@@ -245,32 +286,46 @@ const AddWorkerModal = ({
               </div>
             </div>
 
-            {/* Password - Only show for new workers */}
-            {!editingWorker && (
-              <div className="space-y-2">
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Password
-                </label>
-                <div className="relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    required={!editingWorker}
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="••••••••"
-                  />
+            {/* Password - show for create and edit; required only when creating */}
+            <div className="space-y-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Password
+              </label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
                 </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  name="password"
+                  required={!editingWorker}
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder={
+                    editingWorker
+                      ? "Leave blank to keep current password"
+                      : "••••••••"
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500"
+                  title={showPassword ? "Hide password" : "See password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Footer - Fixed */}

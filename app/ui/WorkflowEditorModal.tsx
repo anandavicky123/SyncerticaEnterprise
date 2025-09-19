@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Save, FileText, Eye, ChevronDown } from "lucide-react";
+import { X, Save, FileText, ChevronDown } from "lucide-react";
 import { useRepositories } from "../hooks/useRepositories";
 
 interface WorkflowEditorModalProps {
@@ -111,15 +111,7 @@ jobs:
     }
   };
 
-  const handlePreview = () => {
-    // Basic YAML validation and preview
-    try {
-      console.log("Workflow preview:", { filename, content });
-      alert("Workflow syntax appears valid!");
-    } catch {
-      alert("Invalid YAML syntax detected!");
-    }
-  };
+  // Preview removed
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -133,13 +125,7 @@ jobs:
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handlePreview}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <Eye className="w-4 h-4" />
-              Preview
-            </button>
+            {/* Preview removed */}
             <button
               onClick={handleSave}
               disabled={saving || !repository}

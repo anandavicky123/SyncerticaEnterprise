@@ -72,7 +72,10 @@ export const useGitHubData = () => {
 
   const checkConnection = useCallback(async () => {
     try {
-      const response = await fetch("/api/status/github_status");
+      // include credentials so the server can read per-browser flags (github_app_disabled)
+      const response = await fetch("/api/status/github_status", {
+        credentials: "include",
+      });
       const data = await response.json();
       setConnectionStatus({
         connected: data.connected,
@@ -86,159 +89,153 @@ export const useGitHubData = () => {
     }
   }, []);
 
-  const refreshData = useCallback(async () => {
-    console.log("🔄 Starting refreshData function");
+  const refreshData = useCallback(
+    async (force = false) => {
+      console.log("🔄 Starting refreshData function");
 
-    // Prevent multiple rapid calls (5 minute cooldown)
-    const now = Date.now();
-    if (now - lastFetchTime < 5 * 60 * 1000 && containers.length > 0) {
-      console.log("⏭️ Skipping refresh, recent data available");
-      return;
-    }
+      // Prevent multiple rapid calls (10 second cooldown)
+      const now = Date.now();
+      if (!force && now - lastFetchTime < 10 * 1000 && containers.length > 0) {
+        console.log("⏭️ Skipping refresh, recent data available");
+        return;
+      }
 
-    setLoading(true);
-    setError(null);
+      setLoading(true);
+      setError(null);
 
-    try {
-      console.log("🔍 Checking GitHub connection...");
-      const isConnected = await checkConnection();
-      console.log("📡 Connection status:", isConnected);
+      try {
+        console.log("🔍 Checking GitHub connection...");
+        const isConnected = await checkConnection();
+        console.log("📡 Connection status:", isConnected);
 
-      if (isConnected) {
-        // Fetch repositories first
-        console.log("📂 Fetching repositories...");
-        const reposResponse = await fetch(
-          "/api/repositories/github_repositories"
-        );
-        console.log("📂 Repositories response status:", reposResponse.status);
-
-        if (reposResponse.ok) {
-          const reposData = await reposResponse.json();
-          const fetchedRepositories = reposData.repositories || [];
-          console.log("📂 Fetched repositories:", fetchedRepositories.length);
-          setRepositories(fetchedRepositories);
-
-          // Fetch containers
-          console.log("📦 Fetching containers...");
-          const containersResponse = await fetch(
-            "/api/containers/github_containers"
+        if (isConnected) {
+          // Fetch repositories first
+          console.log("📂 Fetching repositories...");
+          const reposResponse = await fetch(
+            "/api/repositories/github_repositories"
           );
-          console.log(
-            "📦 Container response status:",
-            containersResponse.status
-          );
+          console.log("📂 Repositories response status:", reposResponse.status);
 
-          if (containersResponse.ok) {
-            const containersData = await containersResponse.json();
-            const fetchedContainers = containersData.containers || [];
-            console.log("📦 Fetched containers:", fetchedContainers.length);
-            setContainers(fetchedContainers);
+          if (reposResponse.ok) {
+            const reposData = await reposResponse.json();
+            const fetchedRepositories = reposData.repositories || [];
+            console.log("📂 Fetched repositories:", fetchedRepositories.length);
+            setRepositories(fetchedRepositories);
+
+            // Fetch containers
+            console.log("📦 Fetching containers...");
+            const containersResponse = await fetch(
+              "/api/containers/github_containers"
+            );
+            console.log(
+              "📦 Container response status:",
+              containersResponse.status
+            );
+
+            if (containersResponse.ok) {
+              const containersData = await containersResponse.json();
+              const fetchedContainers = containersData.containers || [];
+              console.log("📦 Fetched containers:", fetchedContainers.length);
+              setContainers(fetchedContainers);
+            } else {
+              console.error("📦 Container fetch failed");
+              setContainers([]);
+            }
+
+            // Fetch workflows and infrastructure in parallel across repositories
+            console.log(
+              "🔧 Fetching workflows and infrastructure for",
+              fetchedRepositories.length,
+              "repositories (in parallel)"
+            );
+
+            const workflowPromises = fetchedRepositories.map(
+              async (repo: Repository) => {
+                try {
+                  const workflowResponse = await fetch(
+                    `/api/workflows/github_workflows?repo=${repo.full_name}`
+                  );
+                  if (workflowResponse.ok) {
+                    const workflowData = await workflowResponse.json();
+                    return (workflowData.workflows || []).map(
+                      (workflow: Workflow) => ({
+                        ...workflow,
+                        repository: repo.full_name,
+                      })
+                    );
+                  }
+                } catch (error) {
+                  console.error(
+                    `Error fetching workflows for ${repo.full_name}:`,
+                    error
+                  );
+                }
+                return [] as Workflow[];
+              }
+            );
+
+            const infraPromises = fetchedRepositories.map(
+              async (repo: Repository) => {
+                try {
+                  const infraResponse = await fetch(
+                    `/api/infrastructure/github_infrastructure?repo=${repo.full_name}`
+                  );
+                  if (infraResponse.ok) {
+                    const infraData = await infraResponse.json();
+                    return (infraData.infrastructure || []).map(
+                      (infra: Infrastructure) => ({
+                        ...infra,
+                        repository: repo.full_name,
+                      })
+                    );
+                  }
+                } catch (error) {
+                  console.error(
+                    `Error fetching infrastructure for ${repo.full_name}:`,
+                    error
+                  );
+                }
+                return [] as Infrastructure[];
+              }
+            );
+
+            const workflowsByRepo = await Promise.all(workflowPromises);
+            const infraByRepo = await Promise.all(infraPromises);
+
+            const allWorkflows = workflowsByRepo.flat();
+            const allInfrastructure = infraByRepo.flat();
+
+            console.log(`✅ Setting workflows: ${allWorkflows.length} total`);
+            console.log(
+              `✅ Setting infrastructure: ${allInfrastructure.length} total`
+            );
+            setWorkflows(allWorkflows);
+            setInfrastructure(allInfrastructure);
           } else {
-            console.error("📦 Container fetch failed");
+            console.error("📂 Repository fetch failed");
+            setRepositories([]);
             setContainers([]);
+            setWorkflows([]);
+            setInfrastructure([]);
           }
-
-          // Fetch workflows and infrastructure for each repository
-          const allWorkflows: Workflow[] = [];
-          const allInfrastructure: Infrastructure[] = [];
-
-          console.log(
-            "🔧 Fetching workflows and infrastructure for",
-            fetchedRepositories.length,
-            "repositories"
-          );
-
-          for (const repo of fetchedRepositories) {
-            console.log(`⚙️ Fetching workflows for ${repo.full_name}...`);
-            try {
-              const workflowResponse = await fetch(
-                `/api/workflows/github_workflows?repo=${repo.full_name}`
-              );
-              console.log(
-                `⚙️ Workflow response for ${repo.full_name}:`,
-                workflowResponse.status
-              );
-
-              if (workflowResponse.ok) {
-                const workflowData = await workflowResponse.json();
-                const repoWorkflows = (workflowData.workflows || []).map(
-                  (workflow: Workflow) => ({
-                    ...workflow,
-                    repository: repo.full_name,
-                  })
-                );
-                console.log(
-                  `⚙️ Found ${repoWorkflows.length} workflows for ${repo.full_name}`
-                );
-                allWorkflows.push(...repoWorkflows);
-              }
-            } catch (error) {
-              console.error(
-                `Error fetching workflows for ${repo.full_name}:`,
-                error
-              );
-            }
-
-            console.log(`🏗️ Fetching infrastructure for ${repo.full_name}...`);
-            try {
-              const infraResponse = await fetch(
-                `/api/infrastructure/github_infrastructure?repo=${repo.full_name}`
-              );
-              console.log(
-                `🏗️ Infrastructure response for ${repo.full_name}:`,
-                infraResponse.status
-              );
-
-              if (infraResponse.ok) {
-                const infraData = await infraResponse.json();
-                const repoInfrastructure = (infraData.infrastructure || []).map(
-                  (infra: Infrastructure) => ({
-                    ...infra,
-                    repository: repo.full_name,
-                  })
-                );
-                console.log(
-                  `🏗️ Found ${repoInfrastructure.length} infrastructure items for ${repo.full_name}`
-                );
-                allInfrastructure.push(...repoInfrastructure);
-              }
-            } catch (error) {
-              console.error(
-                `Error fetching infrastructure for ${repo.full_name}:`,
-                error
-              );
-            }
-          }
-
-          console.log(`✅ Setting workflows: ${allWorkflows.length} total`);
-          console.log(
-            `✅ Setting infrastructure: ${allInfrastructure.length} total`
-          );
-          setWorkflows(allWorkflows);
-          setInfrastructure(allInfrastructure);
         } else {
-          console.error("📂 Repository fetch failed");
+          console.log("📡 Not connected, clearing all data");
           setRepositories([]);
           setContainers([]);
           setWorkflows([]);
           setInfrastructure([]);
         }
-      } else {
-        console.log("📡 Not connected, clearing all data");
-        setRepositories([]);
-        setContainers([]);
-        setWorkflows([]);
-        setInfrastructure([]);
+      } catch (error) {
+        console.error("Error refreshing data:", error);
+        setError("Failed to refresh data");
+      } finally {
+        setLoading(false);
+        setLastFetchTime(Date.now());
+        console.log("🔄 RefreshData complete");
       }
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-      setError("Failed to refresh data");
-    } finally {
-      setLoading(false);
-      setLastFetchTime(Date.now());
-      console.log("🔄 RefreshData complete");
-    }
-  }, [checkConnection, lastFetchTime, containers.length]);
+    },
+    [checkConnection, lastFetchTime, containers.length]
+  );
 
   const connectToGitHub = useCallback(() => {
     const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
@@ -256,6 +253,7 @@ export const useGitHubData = () => {
     try {
       const response = await fetch("/api/status/github_status", {
         method: "DELETE",
+        credentials: "include",
       });
       if (response.ok) {
         setConnectionStatus({ connected: false });
@@ -263,12 +261,19 @@ export const useGitHubData = () => {
         setWorkflows([]);
         setInfrastructure([]);
         setContainers([]);
+        // Re-run a full refresh so server-side status (including App detection)
+        // is re-evaluated and the UI reflects the persisted disconnect.
+        try {
+          await refreshData();
+        } catch {
+          // ignore refresh errors during disconnect
+        }
       }
     } catch (error) {
       console.error("Error disconnecting from GitHub:", error);
       setError("Failed to disconnect from GitHub");
     }
-  }, []);
+  }, [refreshData]);
 
   useEffect(() => {
     // Only run refreshData once on mount

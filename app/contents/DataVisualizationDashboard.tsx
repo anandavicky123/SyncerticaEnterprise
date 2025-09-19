@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Line, Bar, Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -21,8 +21,11 @@ import {
   Users,
   Server,
   DollarSign,
+  CheckSquare,
+  MessageSquare,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
-import { dashboardMetrics, chartData } from "../shared/constants/dashboardData";
 import { MetricCard } from "../shared/types/dashboard";
 
 // Register Chart.js components
@@ -38,6 +41,41 @@ ChartJS.register(
   ArcElement
 );
 
+interface AnalyticsData {
+  overview: {
+    totalWorkers: number;
+    totalProjects: number;
+    totalTasks: number;
+    totalNotifications: number;
+    completedTasks: number;
+    activeProjects: number;
+    pendingTasks: number;
+    taskCompletionRate: number;
+    recentChats: number;
+    recentTasksCreated: number;
+    recentTasksCompleted: number;
+    taskCompletionChange: number;
+  };
+  trends: {
+    taskCreation: Array<{ date: string; count: number }>;
+    taskCompletion: Array<{ date: string; count: number }>;
+  };
+  workers: Array<{
+    id: string;
+    name: string;
+    taskCount: number;
+    jobRole: string;
+  }>;
+  projectStatuses: Array<{
+    status: string;
+    count: number;
+  }>;
+  taskPriorities: Array<{
+    priority: string;
+    count: number;
+  }>;
+}
+
 interface DataVisualizationDashboardProps {
   className?: string;
 }
@@ -45,6 +83,135 @@ interface DataVisualizationDashboardProps {
 const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
   className = "",
 }) => {
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(
+    null
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [managerUUID, setManagerUUID] = useState<string>("");
+
+  // Fetch manager UUID from session
+  useEffect(() => {
+    const fetchManagerUUID = async () => {
+      try {
+        const response = await fetch("/api/auth/session", {
+          credentials: "include",
+        });
+        if (response.ok) {
+          const sessionData = await response.json();
+          if (sessionData.success && sessionData.session?.actorId) {
+            setManagerUUID(sessionData.session.actorId);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching manager UUID:", error);
+      }
+    };
+    fetchManagerUUID();
+  }, []);
+
+  // Fetch analytics data
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      if (!managerUUID) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `/api/analytics/overview?managerUUID=${managerUUID}`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch analytics data");
+        }
+        const data = await response.json();
+        setAnalyticsData(data);
+      } catch (error) {
+        console.error("Error fetching analytics:", error);
+        setError(
+          error instanceof Error ? error.message : "Failed to load analytics"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, [managerUUID]);
+
+  if (loading) {
+    return (
+      <div className={`space-y-6 ${className}`}>
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
+            <span>Loading analytics...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !analyticsData) {
+    return (
+      <div className={`space-y-6 ${className}`}>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600">Failed to load analytics data</p>
+            <p className="text-gray-500 text-sm mt-2">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const { overview, trends, workers, projectStatuses } = analyticsData;
+
+  // Create metrics cards from real data
+  const dashboardMetrics: MetricCard[] = [
+    {
+      id: "1",
+      title: "Total Workers",
+      value: overview.totalWorkers,
+      change: 0, // Could calculate from historical data
+      changeType: "increase",
+      period: "All time",
+      icon: "👥",
+      color: "blue",
+    },
+    {
+      id: "2",
+      title: "Active Projects",
+      value: overview.activeProjects,
+      change: 0,
+      changeType: "increase",
+      period: "Currently active",
+      icon: "📋",
+      color: "green",
+    },
+    {
+      id: "3",
+      title: "Task Completion Rate",
+      value: `${overview.taskCompletionRate}%`,
+      change: overview.taskCompletionChange,
+      changeType: overview.taskCompletionChange >= 0 ? "increase" : "decrease",
+      period: "Last 30 days",
+      icon: "⚡",
+      color: "yellow",
+    },
+    {
+      id: "4",
+      title: "Total Tasks",
+      value: overview.totalTasks,
+      change: 0,
+      changeType: "increase",
+      period: "All time",
+      icon: "💰",
+      color: "purple",
+    },
+  ];
   const getIconComponent = (iconName?: string) => {
     const iconMap: { [key: string]: React.ReactNode } = {
       "👥": <Users className="w-6 h-6" />,
@@ -79,20 +246,20 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
     return colorMap[color ?? "blue"] || colorMap.blue;
   };
 
-  // Performance metrics chart data
+  // Performance metrics chart data - using real task trends
   const performanceData = {
-    labels: ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"],
+    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
     datasets: [
       {
-        label: "AWS Lambda Invocations",
-        data: [45, 52, 68, 84, 76, 59],
+        label: "Tasks Created",
+        data: trends.taskCreation.slice(-6).map((t) => t.count),
         borderColor: "rgb(59, 130, 246)",
         backgroundColor: "rgba(59, 130, 246, 0.1)",
         tension: 0.4,
       },
       {
-        label: "DynamoDB Operations",
-        data: [38, 45, 55, 70, 65, 48],
+        label: "Tasks Completed",
+        data: trends.taskCompletion.slice(-6).map((t) => t.count),
         borderColor: "rgb(16, 185, 129)",
         backgroundColor: "rgba(16, 185, 129, 0.1)",
         tension: 0.4,
@@ -100,20 +267,13 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
     ],
   };
 
-  // AWS Services usage chart
-  const awsServicesData = {
-    labels: [
-      "Lambda",
-      "DynamoDB",
-      "S3",
-      "CloudWatch",
-      "Cognito",
-      "API Gateway",
-    ],
+  // Worker productivity chart
+  const workerProductivityData = {
+    labels: workers.slice(0, 6).map((w) => w.name),
     datasets: [
       {
-        label: "Usage (Free Tier %)",
-        data: [23, 45, 12, 67, 34, 28],
+        label: "Tasks Assigned",
+        data: workers.slice(0, 6).map((w) => w.taskCount),
         backgroundColor: [
           "rgba(255, 99, 132, 0.8)",
           "rgba(54, 162, 235, 0.8)",
@@ -135,14 +295,32 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
     ],
   };
 
-  // System health doughnut chart
-  const systemHealthData = {
-    labels: ["Healthy", "Warning", "Critical"],
+  // Task completion trend data
+  const taskCompletionTrendData = {
+    labels: trends.taskCompletion
+      .slice(-6)
+      .map((t) =>
+        new Date(t.date).toLocaleDateString("en-US", { month: "short" })
+      ),
     datasets: [
       {
-        data: [85, 12, 3],
-        backgroundColor: ["#10B981", "#F59E0B", "#EF4444"],
-        borderColor: ["#059669", "#D97706", "#DC2626"],
+        label: "Completed Tasks",
+        data: trends.taskCompletion.slice(-6).map((t) => t.count),
+        borderColor: "rgb(34, 197, 94)",
+        backgroundColor: "rgba(34, 197, 94, 0.1)",
+        tension: 0.4,
+      },
+    ],
+  };
+
+  // Project status distribution
+  const projectStatusData = {
+    labels: projectStatuses.map((p) => p.status),
+    datasets: [
+      {
+        data: projectStatuses.map((p) => p.count),
+        backgroundColor: ["#10B981", "#F59E0B", "#EF4444", "#6366F1"],
+        borderColor: ["#059669", "#D97706", "#DC2626", "#4F46E5"],
         borderWidth: 2,
       },
     ],
@@ -240,25 +418,25 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
         <div className="bg-white rounded-lg p-6 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              AWS Services Performance
+              Task Activity Trends
             </h3>
-            <span className="text-sm text-gray-500">Last 24 hours</span>
+            <span className="text-sm text-gray-500">Last 6 months</span>
           </div>
           <div className="h-64">
             <Line data={performanceData} options={chartOptions} />
           </div>
         </div>
 
-        {/* AWS Services Usage */}
+        {/* Worker Productivity */}
         <div className="bg-white rounded-lg p-6 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              AWS Free Tier Usage
+              Worker Productivity
             </h3>
-            <span className="text-sm text-gray-500">Current month</span>
+            <span className="text-sm text-gray-500">Tasks assigned</span>
           </div>
           <div className="h-64">
-            <Bar data={awsServicesData} options={chartOptions} />
+            <Bar data={workerProductivityData} options={chartOptions} />
           </div>
         </div>
 
@@ -271,21 +449,21 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
             <span className="text-sm text-gray-500">Last 6 months</span>
           </div>
           <div className="h-64">
-            <Line data={chartData} options={chartOptions} />
+            <Line data={taskCompletionTrendData} options={chartOptions} />
           </div>
         </div>
 
-        {/* System Health */}
+        {/* Project Status Distribution */}
         <div className="bg-white rounded-lg p-6 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              System Health
+              Project Status Distribution
             </h3>
-            <span className="text-sm text-gray-500">Real-time</span>
+            <span className="text-sm text-gray-500">Current status</span>
           </div>
           <div className="h-64 flex items-center justify-center">
             <div className="w-48 h-48">
-              <Doughnut data={systemHealthData} options={doughnutOptions} />
+              <Doughnut data={projectStatusData} options={doughnutOptions} />
             </div>
           </div>
         </div>
@@ -294,62 +472,71 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
       {/* Project Statistics */}
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Project Statistics
+          Team Statistics
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">94%</div>
-            <div className="text-sm text-gray-600">Success Rate</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {overview.taskCompletionRate}%
+            </div>
+            <div className="text-sm text-gray-600">Task Completion Rate</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">4m 32s</div>
-            <div className="text-sm text-gray-600">Avg Build Time</div>
+            <div className="text-2xl font-bold text-green-600">
+              {overview.totalWorkers}
+            </div>
+            <div className="text-sm text-gray-600">Active Workers</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">3</div>
-            <div className="text-sm text-gray-600">Active Stacks</div>
+            <div className="text-2xl font-bold text-purple-600">
+              {overview.activeProjects}
+            </div>
+            <div className="text-sm text-gray-600">Active Projects</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">$262.01</div>
-            <div className="text-sm text-gray-600">Monthly Cost</div>
+            <div className="text-2xl font-bold text-orange-600">
+              {overview.recentChats}
+            </div>
+            <div className="text-sm text-gray-600">Recent Messages</div>
           </div>
         </div>
 
-        {/* Deployment Status */}
+        {/* Task Status */}
         <div className="mt-6 pt-6 border-t border-blue-200">
           <h4 className="font-medium text-gray-900 mb-3">
-            AWS Deployment Status
+            Task Status Overview
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <h5 className="font-medium text-gray-900 capitalize">
-                    Production
-                  </h5>
-                  <p className="text-sm text-gray-600">Version: v2.1.4</p>
+                  <h5 className="font-medium text-gray-900">Completed Tasks</h5>
+                  <p className="text-sm text-gray-600">
+                    Total: {overview.completedTasks}
+                  </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    Deployed 2 hours ago
+                    {overview.recentTasksCompleted} completed recently
                   </p>
                 </div>
                 <div className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                  deployed
+                  {overview.taskCompletionChange >= 0 ? "+" : ""}
+                  {overview.taskCompletionChange}%
                 </div>
               </div>
             </div>
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <h5 className="font-medium text-gray-900 capitalize">
-                    Staging
-                  </h5>
-                  <p className="text-sm text-gray-600">Version: v2.2.0-beta</p>
+                  <h5 className="font-medium text-gray-900">Pending Tasks</h5>
+                  <p className="text-sm text-gray-600">
+                    Total: {overview.pendingTasks}
+                  </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    Deployed 30 minutes ago
+                    {overview.recentTasksCreated} created recently
                   </p>
                 </div>
                 <div className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                  deploying
+                  active
                 </div>
               </div>
             </div>
@@ -357,57 +544,89 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
         </div>
       </div>
 
-      {/* AWS Cost Optimization Insights */}
+      {/* Worker Productivity Insights */}
       <div className="bg-white rounded-lg p-6 border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          AWS Cost Optimization
+          Team Productivity Insights
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h4 className="font-medium text-green-900">Free Tier Status</h4>
+            <h4 className="font-medium text-green-900">Active Workers</h4>
             <p className="text-sm text-green-700 mt-2">
-              All services are within AWS Always Free limits. No charges
-              incurred this month.
+              {overview.totalWorkers} team members are actively working on{" "}
+              {overview.totalTasks} tasks across {overview.totalProjects}{" "}
+              projects.
             </p>
             <div className="mt-3">
               <div className="w-full bg-green-200 rounded-full h-2">
                 <div
                   className="bg-green-600 h-2 rounded-full"
-                  style={{ width: "45%" }}
+                  style={{
+                    width: `${Math.min(overview.taskCompletionRate, 100)}%`,
+                  }}
                 ></div>
               </div>
               <p className="text-xs text-green-600 mt-1">
-                45% of free tier used
+                {overview.taskCompletionRate}% completion rate
               </p>
             </div>
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-medium text-blue-900">Lambda Efficiency</h4>
+            <h4 className="font-medium text-blue-900">Project Distribution</h4>
             <p className="text-sm text-blue-700 mt-2">
-              Average execution time: 245ms. Memory optimization can reduce
-              costs by 15%.
+              {overview.activeProjects} active projects with an average of{" "}
+              {Math.round(
+                overview.totalTasks / Math.max(overview.activeProjects, 1)
+              )}{" "}
+              tasks per project.
             </p>
             <div className="mt-3 flex items-center text-sm text-blue-600">
-              <TrendingUp className="w-4 h-4 mr-1" />
-              Efficiency Score: 87%
+              <CheckSquare className="w-4 h-4 mr-1" />
+              Project Efficiency:{" "}
+              {overview.activeProjects > 0 ? "Good" : "No active projects"}
             </div>
           </div>
 
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <h4 className="font-medium text-purple-900">
-              Storage Optimization
-            </h4>
+            <h4 className="font-medium text-purple-900">Team Communication</h4>
             <p className="text-sm text-purple-700 mt-2">
-              S3 storage: 1.2GB used. Consider lifecycle policies for long-term
-              savings.
+              {overview.recentChats} recent messages exchanged. Active
+              communication helps maintain productivity.
             </p>
             <div className="mt-3 flex items-center text-sm text-purple-600">
-              <Server className="w-4 h-4 mr-1" />
-              Potential Savings: $0.00 (Free Tier)
+              <MessageSquare className="w-4 h-4 mr-1" />
+              Communication: {overview.recentChats > 10 ? "Active" : "Low"}
             </div>
           </div>
         </div>
+
+        {/* Top Performers */}
+        {workers.length > 0 && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h4 className="font-medium text-gray-900 mb-3">Top Performers</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {workers.slice(0, 3).map((worker, index) => (
+                <div key={worker.id} className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h5 className="font-medium text-gray-900">
+                        {worker.name}
+                      </h5>
+                      <p className="text-sm text-gray-600">{worker.jobRole}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {worker.taskCount} tasks assigned
+                      </p>
+                    </div>
+                    <div className="text-2xl">
+                      {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

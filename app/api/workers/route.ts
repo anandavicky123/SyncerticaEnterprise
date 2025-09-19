@@ -10,6 +10,7 @@ const createWorkerSchema = z.object({
   jobRole: z.enum(["UI/UX Designer", "Developer", "Manager", "QA"]),
   email: z.string().email("Invalid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  githubUsername: z.string().nullable().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
           pronouns: true,
           jobRole: true,
           email: true,
+          github_username: true,
           createdAt: true,
           updatedAt: true,
           managerDeviceUUID: true,
@@ -65,6 +67,7 @@ export async function GET(request: NextRequest) {
           pronouns: true,
           jobRole: true,
           email: true,
+          github_username: true,
           createdAt: true,
           updatedAt: true,
           managerDeviceUUID: true,
@@ -189,16 +192,21 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await hashPassword(validatedData.password);
 
     // Create worker
+    const createData: any = {
+      id: crypto.randomUUID(), // Generate a random UUID for the worker
+      name: validatedData.name,
+      pronouns: validatedData.pronouns,
+      jobRole: validatedData.jobRole,
+      email: validatedData.email,
+      passwordHash: hashedPassword,
+      managerDeviceUUID: actorId!,
+    };
+    if (validatedData.githubUsername !== undefined) {
+      createData.github_username = validatedData.githubUsername ?? null;
+    }
+
     const worker = await prisma.worker.create({
-      data: {
-        id: crypto.randomUUID(), // Generate a random UUID for the worker
-        name: validatedData.name,
-        pronouns: validatedData.pronouns,
-        jobRole: validatedData.jobRole,
-        email: validatedData.email,
-        passwordHash: hashedPassword,
-        managerDeviceUUID: actorId!,
-      },
+      data: createData,
       select: {
         id: true,
         name: true,

@@ -34,6 +34,7 @@ model Worker {
   jobRole           String   @map("jobrole")
   email             String   @unique @db.Citext
   passwordHash      String   @map("passwordhash")
+  github_username   String?  @map("github_username")
   createdAt         DateTime @default(now()) @db.Timestamptz @map("createdat")
   updatedAt         DateTime @default(now()) @db.Timestamptz @map("updatedat")
 

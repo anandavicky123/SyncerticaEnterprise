@@ -117,7 +117,7 @@ export default function WorkersManagement({
           name: data.name,
           email: data.email,
         });
-      } catch (e) {
+      } catch {
         // ignore
       }
     })();
@@ -129,6 +129,7 @@ export default function WorkersManagement({
     jobRole: Worker["jobRole"];
     email: string;
     password?: string;
+    githubUsername?: string | null;
   }) => {
     try {
       const sessionResponse = await fetch("/api/auth/session", {
@@ -146,19 +147,33 @@ export default function WorkersManagement({
       }
 
       if (editingWorker) {
+        // Build update payload and only include password if provided
+        const updatePayload: {
+          id: string;
+          name: string;
+          pronouns: string | null;
+          jobRole: Worker["jobRole"];
+          email: string;
+          password?: string;
+          githubUsername?: string | null;
+        } = {
+          id: editingWorker.id,
+          name: workerData.name,
+          pronouns: workerData.pronouns,
+          jobRole: workerData.jobRole,
+          email: workerData.email,
+        };
+        if (workerData.password) updatePayload.password = workerData.password;
+        if (workerData.githubUsername !== undefined)
+          updatePayload.githubUsername = workerData.githubUsername;
+
         const response = await fetch(`/api/workers/${editingWorker.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({
-            id: editingWorker.id,
-            name: workerData.name,
-            pronouns: workerData.pronouns,
-            jobRole: workerData.jobRole,
-            email: workerData.email,
-          }),
+          body: JSON.stringify(updatePayload),
         });
 
         const data = await response.json();

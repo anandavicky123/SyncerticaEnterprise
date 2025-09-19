@@ -453,8 +453,11 @@ export class DatabaseManager {
         data.dueDate = updates.dueDate ? new Date(updates.dueDate) : undefined;
 
         // Handle project updates: validate project belongs to manager
-        if ((maybeUpdates as any).projectId !== undefined) {
-          const incoming = (maybeUpdates as any).projectId;
+        const mu = maybeUpdates as Partial<Task> & {
+          projectId?: string | null;
+        };
+        if (mu.projectId !== undefined) {
+          const incoming = mu.projectId;
           // If empty/falsy, fall back to default project
           if (!incoming) {
             // ensure default exists
@@ -527,8 +530,11 @@ export class DatabaseManager {
         data2.dueDate = updates.dueDate ? new Date(updates.dueDate) : undefined;
 
         // Handle projectId updates when not changing status
-        if ((maybeUpdates2 as any).projectId !== undefined) {
-          const incoming = (maybeUpdates2 as any).projectId;
+        const mu2 = maybeUpdates2 as Partial<Task> & {
+          projectId?: string | null;
+        };
+        if (mu2.projectId !== undefined) {
+          const incoming = mu2.projectId;
           if (!incoming) {
             let defaultProject = await prisma.project.findFirst({
               where: { managerDeviceUUID, name: "Default Project" },
@@ -657,6 +663,57 @@ export class DatabaseManager {
       createdAt: created.createdAt.toISOString(),
       updatedAt: created.updatedAt.toISOString(),
     };
+  }
+
+  async updateProject(
+    id: string,
+    updates: Partial<Omit<Project, "id" | "createdAt" | "updatedAt">>,
+    managerDeviceUUID: string
+  ): Promise<Project | null> {
+    // Ensure the project belongs to this manager
+    const existing = await prisma.project.findFirst({
+      where: { id, managerDeviceUUID },
+    });
+    if (!existing) return null;
+
+    const data: Record<string, unknown> = {};
+    if (updates.name !== undefined) data.name = updates.name;
+    if (updates.description !== undefined)
+      data.description = updates.description;
+    if (updates.repository !== undefined) data.repository = updates.repository;
+    if (updates.status !== undefined) data.status = updates.status;
+
+    const updated = await prisma.project.update({
+      where: { id },
+      data,
+    });
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      description: updated.description || undefined,
+      repository: updated.repository || undefined,
+      status: updated.status as Project["status"],
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+  }
+
+  async deleteProject(id: string, managerDeviceUUID: string): Promise<boolean> {
+    // Ensure the project belongs to this manager
+    const existing = await prisma.project.findFirst({
+      where: { id, managerDeviceUUID },
+      select: { id: true },
+    });
+    if (!existing) return false;
+
+    try {
+      await prisma.project.delete({ where: { id } });
+      return true;
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      return false;
+    }
   }
 
   async close(): Promise<void> {

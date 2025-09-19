@@ -9,7 +9,7 @@ interface GitHubInstallation {
     id: number;
     type: string;
   };
-  repository_selection: 'all' | 'selected';
+  repository_selection: "all" | "selected";
   permissions: Record<string, string>;
   created_at: string;
   updated_at: string;
@@ -25,17 +25,17 @@ export function getGitHubAppInstallUrl(): string {
   // 2. Click on your app
   // 3. The URL will show: https://github.com/settings/apps/YOUR-APP-SLUG
   // 4. Use that slug below
-  
+
   // Common variations for "Syncertica Enterprise":
   const possibleSlugs = [
-    'syncertica-enterprise',
-    'syncerticaenterprise', 
-    'syncertica',
+    "syncertica-enterprise",
+    "syncerticaenterprise",
+    "syncertica",
   ];
-  
+
   // Use the first one by default - update this when you find the correct slug
   const appSlug = possibleSlugs[0];
-  
+
   return `https://github.com/apps/${appSlug}/installations/new`;
 }
 
@@ -44,13 +44,15 @@ export function getGitHubAppInstallUrl(): string {
  */
 export function getAllPossibleInstallUrls(): string[] {
   const possibleSlugs = [
-    'syncertica-enterprise',
-    'syncerticaenterprise', 
-    'syncertica',
-    'enterprise',
+    "syncertica-enterprise",
+    "syncerticaenterprise",
+    "syncertica",
+    "enterprise",
   ];
-  
-  return possibleSlugs.map(slug => `https://github.com/apps/${slug}/installations/new`);
+
+  return possibleSlugs.map(
+    (slug) => `https://github.com/apps/${slug}/installations/new`
+  );
 }
 
 /**
@@ -62,28 +64,35 @@ export async function checkGitHubAppInstallation(): Promise<{
   error?: string;
 }> {
   try {
-    const response = await fetch('/api/github/app/installations');
-    
+    // Use the unified status endpoint which checks both OAuth and GitHub App connections
+    const response = await fetch("/api/status/github_status", {
+      credentials: "include",
+    });
+
     if (!response.ok) {
       return {
         installed: false,
         installations: [],
-        error: `Failed to check installations: ${response.status}`
+        error: `Failed to check installations: ${response.status}`,
       };
     }
-    
+
     const data = await response.json();
-    
-    return {
-      installed: Array.isArray(data.installations) && data.installations.length > 0,
-      installations: data.installations || [],
-    };
+
+    // If the status endpoint indicates we're connected via app, construct
+    // a single-installation array (the server provides `installation` for the first install)
+    if (data.connected && data.method === "app" && data.installation) {
+      const inst = data.installation as unknown as GitHubInstallation;
+      return { installed: true, installations: [inst] };
+    }
+
+    return { installed: false, installations: [] };
   } catch (error) {
-    console.error('Error checking GitHub App installation:', error);
+    console.error("Error checking GitHub App installation:", error);
     return {
       installed: false,
       installations: [],
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -91,15 +100,18 @@ export async function checkGitHubAppInstallation(): Promise<{
 /**
  * Handle GitHub App installation callback
  */
-export function handleGitHubAppCallback(code: string, installationId?: string): Promise<{ success: boolean; error?: string; data?: unknown }> {
-  return fetch('/api/github/app/callback', {
-    method: 'POST',
+export function handleGitHubAppCallback(
+  code: string,
+  installationId?: string
+): Promise<{ success: boolean; error?: string; data?: unknown }> {
+  return fetch("/api/github/app/callback", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       code,
       installation_id: installationId,
     }),
-  }).then(response => response.json());
+  }).then((response) => response.json());
 }

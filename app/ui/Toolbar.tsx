@@ -62,13 +62,28 @@ const Toolbar: React.FC<ToolbarProps> = ({ toolbarItems }) => {
               }
             >
               <button
-                onClick={
-                  tool.dropdown
-                    ? () => handleDropdownToggle(tool.name)
-                    : tool.disabled
-                    ? undefined
-                    : tool.action
-                }
+                onClick={() => {
+                  if (tool.dropdown) {
+                    handleDropdownToggle(tool.name);
+                    return;
+                  }
+                  if (tool.disabled || !tool.action) return;
+                  try {
+                    tool.action();
+                  } finally {
+                    // Emit a generic toolbar click event so other parts of the app
+                    // (for example: Projects) can react (refresh, status update, etc.)
+                    try {
+                      window.dispatchEvent(
+                        new CustomEvent("syncertica:toolbar-click", {
+                          detail: { toolName: tool.name },
+                        })
+                      );
+                    } catch (e) {
+                      // ignore
+                    }
+                  }
+                }}
                 disabled={tool.disabled && !tool.dropdown}
                 className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors whitespace-nowrap ${
                   tool.disabled && !tool.dropdown
@@ -92,8 +107,26 @@ const Toolbar: React.FC<ToolbarProps> = ({ toolbarItems }) => {
                     <button
                       key={dropdownIndex}
                       onClick={() => {
-                        if (!item.disabled) {
-                          item.action();
+                        if (item.disabled) return;
+                        try {
+                          item.action?.();
+                        } finally {
+                          // allow Projects or other components to react to toolbar dropdown actions
+                          try {
+                            window.dispatchEvent(
+                              new CustomEvent(
+                                "syncertica:toolbar-dropdown-click",
+                                {
+                                  detail: {
+                                    toolName: tool.name,
+                                    itemLabel: item.label,
+                                  },
+                                }
+                              )
+                            );
+                          } catch (e) {
+                            // ignore
+                          }
                           setActiveDropdown(null);
                         }
                       }}

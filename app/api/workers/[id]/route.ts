@@ -3,12 +3,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/database";
 import { z } from "zod";
+import { hashPassword } from "@/lib/auth";
 
 const updateWorkerSchema = z.object({
   name: z.string().min(1, "Name is required"),
   pronouns: z.string().nullable(),
   jobRole: z.enum(["UI/UX Designer", "Developer", "Manager", "QA"]),
   email: z.string().email("Invalid email"),
+  password: z.string().min(8).optional(),
+  githubUsername: z.string().nullable().optional(),
 });
 
 export async function PUT(req: Request, context: any) {
@@ -26,17 +29,28 @@ export async function PUT(req: Request, context: any) {
     const body = await req.json();
     const validatedData = updateWorkerSchema.parse(body);
 
+    const updateData: any = {
+      name: validatedData.name,
+      pronouns: validatedData.pronouns,
+      jobRole: validatedData.jobRole,
+      email: validatedData.email,
+    };
+
+    if (validatedData.password) {
+      const hashed = await hashPassword(validatedData.password);
+      updateData.passwordHash = hashed;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(validatedData, "githubUsername")) {
+      updateData.github_username = validatedData.githubUsername ?? null;
+    }
+
     // Update worker
     const worker = await prisma.worker.update({
       where: {
         id: params.id,
       },
-      data: {
-        name: validatedData.name,
-        pronouns: validatedData.pronouns,
-        jobRole: validatedData.jobRole,
-        email: validatedData.email,
-      },
+      data: updateData,
       select: {
         id: true,
         name: true,
