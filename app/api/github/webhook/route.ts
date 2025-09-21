@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { prisma } from '@/lib/rds-database';
 
 // GitHub webhook events interface
 interface GitHubWebhookEvent {
@@ -187,8 +188,21 @@ async function handleInstallationEvent(data: GitHubWebhookEvent) {
       
     case 'deleted':
       console.log('❌ GitHub App uninstalled');
-      // TODO: Remove installation from database
-      // TODO: Clean up associated data
+      // Remove installation mapping from manager rows where it matches this installation
+      try {
+        if (installation?.id) {
+          const instIdStr = String(installation.id);
+          // Update via Prisma client - clear github fields for managers that have this installation
+          const managerDelegate: any = (prisma as any).manager;
+          await managerDelegate.updateMany({
+            where: { githubAppId: instIdStr },
+            data: { githubAppId: null },
+          });
+          console.log('Cleared github_app fields for managers with installation', instIdStr);
+        }
+      } catch (err) {
+        console.error('Error clearing installation mapping on uninstall:', err);
+      }
       break;
       
     case 'suspend':

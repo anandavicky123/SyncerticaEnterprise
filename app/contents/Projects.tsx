@@ -434,6 +434,45 @@ const Projects: React.FC<{
 
       if (result.error) {
         console.warn("GitHub App installation check failed:", result.error);
+        // If the error indicates all installations are claimed, show a user-friendly message
+        if (result.error.includes("already claimed by other managers")) {
+          console.warn("All GitHub App installations are claimed by other managers");
+        }
+        return;
+      }
+
+      // If we have installations but no persisted ID yet, try to persist it
+      if (result.installed && result.installations.length > 0) {
+        try {
+          // Call our callback endpoint to ensure installation ID is persisted
+          const installationId = result.installations[0].id;
+          const persistResponse = await fetch("/api/github/app/callback", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ installation_id: installationId }),
+          });
+
+          if (persistResponse.ok) {
+            const persistResult = await persistResponse.json();
+            if (persistResult.success) {
+              console.log(`Successfully persisted installation ID ${installationId}`);
+            }
+          } else if (persistResponse.status === 409) {
+            // Installation already persisted to another manager - check the error message
+            const errorResult = await persistResponse.json();
+            if (errorResult.error?.includes("already linked to another manager")) {
+              console.warn("This GitHub App installation is already linked to another manager");
+            } else {
+              console.log("Installation ID already persisted for this manager");
+            }
+          } else {
+            console.warn("Failed to persist installation ID:", persistResponse.status);
+          }
+        } catch (persistError) {
+          console.error("Error persisting installation ID:", persistError);
+          // Don't fail the whole check - just log the error
+        }
       }
     } catch (error) {
       console.error("Error checking GitHub App installation:", error);

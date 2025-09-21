@@ -144,6 +144,31 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
+    // If a worker changed the status, set or clear the updatedAt field so
+    // the RDS `tasks.updatedat` column reflects when the worker marked it completed.
+    // - When a worker marks a task as "done" (Completed), set updatedAt to now.
+    // - When a worker changes away from a completed status, clear updatedAt (set null).
+    try {
+      const actorType = request.headers.get("x-actor-type");
+      // Only mutate updatedAt when a worker (not manager/system) performs the action
+      if (
+        actorType === "worker" &&
+        updates.status &&
+        updates.status !== currentTask.status
+      ) {
+        // UI uses status value "done" for completed. Set timestamp when moving to done,
+        // otherwise clear the timestamp when moving away from done.
+        if (updates.status === "done") {
+          (updates as any).updatedAt = new Date().toISOString();
+        } else {
+          // Explicitly set to null to clear the DB column
+          (updates as any).updatedAt = null;
+        }
+      }
+    } catch (e) {
+      console.debug("Failed to prepare updatedAt on task update", e);
+    }
+
     const success = await db.updateTask(id, updates);
 
     if (!success) {

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getInstallations, getInstallationToken } from "@/lib/github-app";
+import { getSession } from "@/lib/dynamodb";
+import { prisma } from "@/lib/rds-database";
 
 export async function GET() {
   try {
@@ -33,37 +35,71 @@ export async function GET() {
     // If OAuth failed or no repositories, try GitHub App
     if (repositories.length === 0) {
       try {
-        const installations = await getInstallations();
+        // Get current manager's installation ID
+        const sessionId = cookieStore.get("session-id")?.value;
+        let managerInstallationId = null;
 
-        for (const installation of installations) {
-          try {
-            // Get installation token
-            const installationToken = await getInstallationToken(
-              installation.id
-            );
+        if (sessionId) {
+          const session = await getSession(sessionId);
+          if (session && session.actorType === "manager") {
+            const manager = await prisma.manager.findUnique({
+              where: { deviceUUID: session.actorId },
+              select: { githubAppId: true },
+            });
 
-            // Fetch repositories for this installation
-            const response = await fetch(
-              `https://api.github.com/installation/repositories?per_page=100`,
-              {
-                headers: {
-                  Authorization: `token ${installationToken.token}`,
-                  Accept: "application/vnd.github+json",
-                  "X-GitHub-Api-Version": "2022-11-28",
-                },
-              }
-            );
-
-            if (response.ok) {
-              const data = await response.json();
-              repositories.push(...(data.repositories || []));
+            if (manager && manager.githubAppId) {
+              managerInstallationId = manager.githubAppId;
+              console.log(
+                `Using manager-specific installation ID: ${managerInstallationId}`
+              );
             }
-          } catch (error) {
+          }
+        }
+
+        if (!managerInstallationId) {
+          console.log("No installation ID found for current manager");
+          return NextResponse.json(
+            { error: "No GitHub App installation found for this manager" },
+            { status: 401 }
+          );
+        }
+
+        // Only fetch repositories for this manager's specific installation
+        try {
+          // Get installation token for the manager's specific installation
+          const installationToken = await getInstallationToken(
+            parseInt(managerInstallationId)
+          );
+
+          // Fetch repositories for this specific installation only
+          const response = await fetch(
+            `https://api.github.com/installation/repositories?per_page=100`,
+            {
+              headers: {
+                Authorization: `token ${installationToken.token}`,
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+              },
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            repositories = data.repositories || [];
+            console.log(
+              `Fetched ${repositories.length} repositories for installation ${managerInstallationId}`
+            );
+          } else {
             console.error(
-              `Failed to fetch repos for installation ${installation.id}:`,
-              error
+              `Failed to fetch repos for installation ${managerInstallationId}:`,
+              response.status
             );
           }
+        } catch (error) {
+          console.error(
+            `Failed to fetch repos for installation ${managerInstallationId}:`,
+            error
+          );
         }
       } catch (error) {
         console.error("GitHub App repository fetch failed:", error);

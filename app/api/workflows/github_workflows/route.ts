@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getInstallations, getInstallationToken } from "@/lib/github-app";
+import { getManagerGitHubAuthHeaders } from "@/lib/github-manager-auth";
 
 // Simple in-memory cache to avoid hitting GitHub API too frequently
 const workflowCache: Map<
@@ -29,20 +29,8 @@ export async function GET(request: NextRequest) {
         Accept: "application/vnd.github.v3+json",
       };
     } else {
-      // Try GitHub App authentication
-      try {
-        const installations = await getInstallations();
-        if (installations.length > 0) {
-          const installationToken = await getInstallationToken(installations[0].id);
-          authHeaders = {
-            Authorization: `token ${installationToken.token}`,
-            Accept: "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-          };
-        }
-      } catch (error) {
-        console.error('GitHub App authentication failed:', error);
-      }
+      // Use manager-specific GitHub App authentication
+      authHeaders = await getManagerGitHubAuthHeaders();
     }
 
     if (!authHeaders) {
@@ -54,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     console.log("🔍 Workflows API called for repo:", repo);
 
-    // If no specific repo, get workflows from all repos
+    // If no specific repo, get workflows from all repos (manager-specific)
     if (!repo) {
       return await getAllWorkflows(authHeaders);
     }
@@ -216,11 +204,11 @@ export async function GET(request: NextRequest) {
 
 async function getAllWorkflows(authHeaders: any) {
   try {
-    console.log("⚙️ Fetching workflows from all repositories...");
+    console.log("⚙️ Fetching workflows from manager-specific repositories...");
 
-    // First, get all repositories
+    // Get repositories for this manager's installation only
     const reposResponse = await fetch(
-      "https://api.github.com/user/repos?sort=updated&per_page=100",
+      "https://api.github.com/installation/repositories?per_page=100",
       {
         headers: {
           ...authHeaders,
@@ -233,8 +221,9 @@ async function getAllWorkflows(authHeaders: any) {
       throw new Error(`Failed to fetch repositories: ${reposResponse.status}`);
     }
 
-    const repositories = await reposResponse.json();
-    console.log(`✅ Found ${repositories.length} repositories`);
+    const reposData = await reposResponse.json();
+    const repositories = reposData.repositories || [];
+    console.log(`✅ Found ${repositories.length} installation repositories`);
 
     const allWorkflows: any[] = [];
 

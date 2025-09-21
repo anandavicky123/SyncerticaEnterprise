@@ -15,6 +15,22 @@ export async function GET(request: Request) {
       );
     }
 
+    // Ensure manager exists. If not, create a minimal manager record so analytics can proceed.
+    let manager = await prisma.manager.findUnique({
+      where: { deviceUUID: managerUUID },
+    });
+    if (!manager) {
+      console.warn(
+        `Manager with UUID ${managerUUID} not found — creating a new manager record.`
+      );
+      manager = await prisma.manager.create({
+        data: {
+          deviceUUID: managerUUID,
+          // other fields will use schema defaults (dateFormat, timeFormat, createdAt, updatedAt)
+        },
+      });
+    }
+
     // Get basic counts
     const [
       totalWorkers,
@@ -38,11 +54,15 @@ export async function GET(request: Request) {
       prisma.notification.count({
         where: { managerDeviceUUID: managerUUID },
       }),
+      // Count completed tasks with statusId = 3 and non-null updatedAt
+      // This ties completion to the specific status ID and ensures updatedAt
+      // represents the worker's completion action timestamp.
       prisma.task.count({
         where: {
           assignedBy: managerUUID,
-          status: {
-            category: "completed",
+          statusId: 3,
+          updatedAt: {
+            not: null,
           },
         },
       }),
@@ -73,44 +93,71 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    // Get task completion trend (last 6 months)
+    // Get task trends (last 6 months) and aggregate counts per DAY (UTC)
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    const taskTrends = await prisma.task.groupBy({
-      by: ["createdAt"],
+    // Fetch tasks created in the window and aggregate by UTC date string
+    const createdTaskRows = await prisma.task.findMany({
       where: {
         assignedBy: managerUUID,
         createdAt: {
           gte: sixMonthsAgo,
         },
       },
-      _count: {
-        id: true,
+      select: {
+        createdAt: true,
       },
       orderBy: {
         createdAt: "asc",
       },
     });
 
-    const completedTaskTrends = await prisma.task.groupBy({
-      by: ["updatedAt"],
+    const creationCounts: Record<string, number> = {};
+    for (const t of createdTaskRows) {
+      const d = new Date(t.createdAt);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(
+        2,
+        "0"
+      )}-${String(d.getUTCDate()).padStart(2, "0")}`;
+      creationCounts[key] = (creationCounts[key] ?? 0) + 1;
+    }
+
+    const taskTrends = Object.entries(creationCounts)
+      .map(([date, count]) => ({ date, _count: { id: count } }))
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+
+    // Fetch tasks that were completed (statusId = 3) during the window
+    const completedTaskRows = await prisma.task.findMany({
       where: {
         assignedBy: managerUUID,
-        status: {
-          category: "completed",
-        },
+        statusId: 3,
         updatedAt: {
           gte: sixMonthsAgo,
         },
       },
-      _count: {
-        id: true,
+      select: {
+        updatedAt: true,
       },
       orderBy: {
         updatedAt: "asc",
       },
     });
+
+    const completionCounts: Record<string, number> = {};
+    for (const t of completedTaskRows) {
+      if (!t.updatedAt) continue; // skip rows without updatedAt
+      const d = new Date(t.updatedAt);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(
+        2,
+        "0"
+      )}-${String(d.getUTCDate()).padStart(2, "0")}`;
+      completionCounts[key] = (completionCounts[key] ?? 0) + 1;
+    }
+
+    const completedTaskTrends = Object.entries(completionCounts)
+      .map(([date, count]) => ({ date, _count: { id: count } }))
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
 
     // Get worker productivity (tasks per worker)
     const workerProductivity = await prisma.worker.findMany({
@@ -222,11 +269,11 @@ export async function GET(request: Request) {
       },
       trends: {
         taskCreation: taskTrends.map((trend) => ({
-          date: trend.createdAt,
+          date: trend.date,
           count: trend._count.id,
         })),
         taskCompletion: completedTaskTrends.map((trend) => ({
-          date: trend.updatedAt,
+          date: trend.date,
           count: trend._count.id,
         })),
       },
@@ -244,6 +291,21 @@ export async function GET(request: Request) {
         priority: priority.priority,
         count: priority._count.id,
       })),
+      // Debug info to see raw completed task data
+      debugCompletedRows: completedTaskRows.slice(0, 10).map((t, index) => ({
+        index: index,
+        updatedAt: t.updatedAt?.toISOString() || "null",
+      })),
+      debugCompletionCounts: Object.entries(completionCounts).slice(0, 10),
+      debugStatusId3Count: await prisma.task.count({
+        where: {
+          assignedBy: managerUUID,
+          statusId: 3,
+          updatedAt: {
+            not: null,
+          },
+        },
+      }),
     });
   } catch (error) {
     console.error("Error fetching analytics:", error);

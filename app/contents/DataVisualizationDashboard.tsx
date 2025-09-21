@@ -19,8 +19,6 @@ import {
   TrendingDown,
   Activity,
   Users,
-  Server,
-  DollarSign,
   CheckSquare,
   MessageSquare,
   AlertCircle,
@@ -65,6 +63,8 @@ interface AnalyticsData {
     name: string;
     taskCount: number;
     jobRole: string;
+    managerId?: string;
+    managerUUID?: string;
   }>;
   projectStatuses: Array<{
     status: string;
@@ -188,7 +188,7 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
       change: 0,
       changeType: "increase",
       period: "Currently active",
-      icon: "📋",
+      icon: "🎯",
       color: "green",
     },
     {
@@ -208,18 +208,25 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
       change: 0,
       changeType: "increase",
       period: "All time",
-      icon: "💰",
+      icon: "📋",
       color: "purple",
     },
   ];
-  const getIconComponent = (iconName?: string) => {
+  const getIconComponent = (icon?: string | React.ReactNode) => {
+    // Allow passing a React node directly
+    if (icon && typeof icon !== "string") return icon as React.ReactNode;
+
     const iconMap: { [key: string]: React.ReactNode } = {
+      // emoji keys mapped to lucide icons used in the UI
       "👥": <Users className="w-6 h-6" />,
       "📋": <Activity className="w-6 h-6" />,
-      "⚡": <Server className="w-6 h-6" />,
-      "💰": <DollarSign className="w-6 h-6" />,
+      "⚡": <TrendingUp className="w-6 h-6" />,
+      // add mappings for the emojis used in dashboardMetrics
+      "🎯": <CheckSquare className="w-6 h-6" />,
+      "📝": <Activity className="w-6 h-6" />,
     };
-    return iconMap[iconName ?? ""] || <Activity className="w-6 h-6" />;
+
+    return iconMap[(icon as string) ?? ""] || <Activity className="w-6 h-6" />;
   };
 
   const getColorClasses = (color?: string) => {
@@ -246,26 +253,78 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
     return colorMap[color ?? "blue"] || colorMap.blue;
   };
 
-  // Performance metrics chart data - using real task trends
+  // Performance metrics chart data - using createdAt for total (cumulative)
+  // and updatedAt for completed tasks. The X axis will show all days for
+  // the current month (1..28/29/30/31) and each series will be cumulative
+  // counts up to that day.
+  const normalizeToYMD = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  // Build maps from date -> count using UTC-normalized keys
+  const creationMap = new Map<string, number>();
+  for (const t of trends.taskCreation) {
+    const k = normalizeToYMD(t.date);
+    creationMap.set(k, (creationMap.get(k) ?? 0) + Number(t.count));
+  }
+
+  const completionMap = new Map<string, number>();
+  for (const t of trends.taskCompletion) {
+    const k = normalizeToYMD(t.date);
+    completionMap.set(k, (completionMap.get(k) ?? 0) + Number(t.count));
+  }
+
+  // Build labels for the current month using UTC to avoid timezone shifts
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth(); // 0-based
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const performanceDates = Array.from({ length: daysInMonth }, (_, i) => {
+    const day = i + 1;
+    const y = year;
+    const m = String(month + 1).padStart(2, "0");
+    const dd = String(day).padStart(2, "0");
+    return `${y}-${m}-${dd}`;
+  });
+
+  // Build cumulative series for the month
+  const cumulativeCreated: number[] = [];
+  const cumulativeCompleted: number[] = [];
+  let runningCreated = 0;
+  let runningCompleted = 0;
+  for (const d of performanceDates) {
+    runningCreated += creationMap.get(d) ?? 0;
+    runningCompleted += completionMap.get(d) ?? 0;
+    cumulativeCreated.push(runningCreated);
+    cumulativeCompleted.push(runningCompleted);
+  }
+
   const performanceData = {
-    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+    labels: performanceDates.map((d) => String(Number(d.slice(8, 10)))),
     datasets: [
       {
-        label: "Tasks Created",
-        data: trends.taskCreation.slice(-6).map((t) => t.count),
+        label: "Tasks Created (cumulative)",
+        data: cumulativeCreated,
         borderColor: "rgb(59, 130, 246)",
         backgroundColor: "rgba(59, 130, 246, 0.1)",
         tension: 0.4,
       },
       {
-        label: "Tasks Completed",
-        data: trends.taskCompletion.slice(-6).map((t) => t.count),
+        label: "Tasks Completed (cumulative)",
+        data: cumulativeCompleted,
         borderColor: "rgb(16, 185, 129)",
         backgroundColor: "rgba(16, 185, 129, 0.1)",
         tension: 0.4,
       },
     ],
   };
+
+  // Options specific to the performance chart will be built below after
+  // chartOptions is defined so we can extend it safely.
 
   // Worker productivity chart
   const workerProductivityData = {
@@ -295,20 +354,54 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
     ],
   };
 
-  // Task completion trend data
-  const taskCompletionTrendData = {
-    labels: trends.taskCompletion
-      .slice(-6)
-      .map((t) =>
-        new Date(t.date).toLocaleDateString("en-US", { month: "short" })
-      ),
+  // Tasks by team (aggregated by jobRole) — filter by managerUUID when available
+  const filteredWorkers = managerUUID
+    ? workers.filter((w) => {
+        // If the worker object includes a manager identifier, respect it.
+        // Some backends may use `managerId` or `managerUUID`; if neither
+        // exists we include the worker (assume analytics endpoint already scoped).
+        const maybeManagerId = w.managerId ?? w.managerUUID;
+        return maybeManagerId ? maybeManagerId === managerUUID : true;
+      })
+    : workers;
+
+  const teamMap = new Map<string, number>();
+  for (const w of filteredWorkers) {
+    const role = (w.jobRole && w.jobRole.trim()) || "Other";
+    teamMap.set(role, (teamMap.get(role) ?? 0) + (w.taskCount ?? 0));
+  }
+
+  const teamEntries = Array.from(teamMap.entries()).sort((a, b) => b[1] - a[1]);
+
+  const tasksByTeamData = {
+    labels: teamEntries.map(([role]) => role),
     datasets: [
       {
-        label: "Completed Tasks",
-        data: trends.taskCompletion.slice(-6).map((t) => t.count),
-        borderColor: "rgb(34, 197, 94)",
-        backgroundColor: "rgba(34, 197, 94, 0.1)",
-        tension: 0.4,
+        label: "Total Tasks",
+        data: teamEntries.map(([, count]) => count),
+        backgroundColor: teamEntries.map(
+          (_, i) =>
+            [
+              "rgba(99,102,241,0.8)",
+              "rgba(16,185,129,0.8)",
+              "rgba(59,130,246,0.8)",
+              "rgba(244,63,94,0.8)",
+              "rgba(249,115,22,0.8)",
+              "rgba(190,24,93,0.8)",
+            ][i % 6]
+        ),
+        borderColor: teamEntries.map(
+          (_, i) =>
+            [
+              "rgba(79,70,229,1)",
+              "rgba(5,150,105,1)",
+              "rgba(37,99,235,1)",
+              "rgba(190,18,60,1)",
+              "rgba(234,88,12,1)",
+              "rgba(153,27,27,1)",
+            ][i % 6]
+        ),
+        borderWidth: 1,
       },
     ],
   };
@@ -326,6 +419,10 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
     ],
   };
 
+  // Dynamic chart options: no explicit TypeScript type so Chart.js
+  // components can accept this options object for different chart types.
+  // `grace` gives a small margin above the maximum data point so the
+  // axes won't appear capped.
   const chartOptions = {
     responsive: true,
     plugins: {
@@ -333,9 +430,37 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
         position: "top" as const,
       },
     },
+    // Remove rigid upper bounds and allow the chart to scale dynamically.
     scales: {
       y: {
         beginAtZero: true,
+        // allow automatic upper scaling and give a 10% grace above max
+        grace: "10%",
+      },
+    },
+  };
+
+  // Performance-specific options (extend shared chartOptions)
+  const performanceOptions = {
+    ...chartOptions,
+    scales: {
+      ...chartOptions.scales,
+      y: {
+        ...chartOptions.scales.y,
+        ticks: {
+          stepSize: 1,
+          callback: function (value: number | string) {
+            const n = typeof value === "string" ? Number(value) : value;
+            return Number.isFinite(n) ? Math.round(n) : value;
+          },
+        },
+      },
+      x: {
+        // reduce x-label clutter for 30-day series
+        ticks: {
+          autoSkip: true,
+          maxTicksLimit: 10,
+        },
       },
     },
   };
@@ -349,6 +474,12 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
     },
   };
 
+  // Top performers sorted by completed/assigned tasks (descending)
+  const topPerformers = [...workers]
+    .slice()
+    .sort((a, b) => (b.taskCount ?? 0) - (a.taskCount ?? 0))
+    .slice(0, 3);
+
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header */}
@@ -358,7 +489,7 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
             Analytics Dashboard
           </h2>
           <p className="text-gray-600">
-            Real-time insights and AWS usage metrics
+            Statistics and key metrics for your team and projects
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -420,10 +551,10 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
             <h3 className="text-lg font-semibold text-gray-900">
               Task Activity Trends
             </h3>
-            <span className="text-sm text-gray-500">Last 6 months</span>
+            <span className="text-sm text-gray-500">Last 30 days</span>
           </div>
           <div className="h-64">
-            <Line data={performanceData} options={chartOptions} />
+            <Line data={performanceData} options={performanceOptions} />
           </div>
         </div>
 
@@ -444,12 +575,14 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
         <div className="bg-white rounded-lg p-6 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              Task Completion Trend
+              Tasks by Team
             </h3>
-            <span className="text-sm text-gray-500">Last 6 months</span>
+            <span className="text-sm text-gray-500">
+              Current snapshot (by role)
+            </span>
           </div>
           <div className="h-64">
-            <Line data={taskCompletionTrendData} options={chartOptions} />
+            <Bar data={tasksByTeamData} options={chartOptions} />
           </div>
         </div>
 
@@ -606,7 +739,8 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
           <div className="mt-6 pt-6 border-t border-gray-200">
             <h4 className="font-medium text-gray-900 mb-3">Top Performers</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {workers.slice(0, 3).map((worker, index) => (
+              {/* topPerformers is a sorted copy so we don't mutate original workers */}
+              {topPerformers.map((worker, index) => (
                 <div key={worker.id} className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>

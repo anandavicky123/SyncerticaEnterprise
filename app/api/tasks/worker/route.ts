@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
           name: t.managerdeviceuuid ? "Project" : "Unknown",
         },
         createdAt: t.createdAt,
-        updatedAt: t.updatedAt,
+        updatedAt: (t as any).updatedAt ?? null,
       }));
 
     return NextResponse.json(workerTasks);

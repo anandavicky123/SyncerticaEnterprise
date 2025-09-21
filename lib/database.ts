@@ -21,7 +21,7 @@ export interface Task {
   assignedTo: string;
   managerdeviceuuid: string; // This matches the database column name
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
   dueDate?: string;
   tags: string[];
   estimatedHours?: number;
@@ -39,7 +39,6 @@ export interface Worker {
   jobRole: "UI/UX Designer" | "Developer" | "Manager" | "QA";
   email: string;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface Project {
@@ -49,7 +48,6 @@ export interface Project {
   repository?: string;
   status: "active" | "on-hold" | "completed" | "archived";
   createdAt: string;
-  updatedAt: string;
 }
 
 export class DatabaseManager {
@@ -77,7 +75,6 @@ export class DatabaseManager {
       email: worker.email,
       managerDeviceUUID: worker.managerDeviceUUID,
       createdAt: worker.createdAt.toISOString(),
-      updatedAt: worker.updatedAt.toISOString(),
     }));
   }
 
@@ -96,12 +93,11 @@ export class DatabaseManager {
       email: worker.email,
       managerDeviceUUID: worker.managerDeviceUUID,
       createdAt: worker.createdAt.toISOString(),
-      updatedAt: worker.updatedAt.toISOString(),
     };
   }
 
   async createWorker(
-    worker: Omit<Worker, "id" | "createdAt" | "updatedAt">
+    worker: Omit<Worker, "id" | "createdAt">
   ): Promise<Worker> {
     const created = await prisma.worker.create({
       data: {
@@ -119,7 +115,6 @@ export class DatabaseManager {
       email: created.email,
       managerDeviceUUID: created.managerDeviceUUID,
       createdAt: created.createdAt.toISOString(),
-      updatedAt: created.updatedAt.toISOString(),
     };
   }
 
@@ -169,7 +164,6 @@ export class DatabaseManager {
       assignedTo: task.assignedTo,
       managerdeviceuuid: task.assignedBy,
       createdAt: task.createdAt.toISOString(),
-      updatedAt: task.updatedAt.toISOString(),
       dueDate: task.dueDate?.toISOString(),
       tags: task.tags,
       estimatedHours: task.estimatedHours || undefined,
@@ -200,7 +194,6 @@ export class DatabaseManager {
       assignedTo: task.assignedTo,
       managerdeviceuuid: task.assignedBy,
       createdAt: task.createdAt.toISOString(),
-      updatedAt: task.updatedAt.toISOString(),
       dueDate: task.dueDate?.toISOString(),
       tags: task.tags,
       estimatedHours: task.estimatedHours || undefined,
@@ -213,7 +206,7 @@ export class DatabaseManager {
 
   async createTask(
     managerDeviceUUID: string,
-    task: Omit<Task, "id" | "createdAt" | "updatedAt">,
+    task: Omit<Task, "id" | "createdAt">,
     projectId?: string
   ): Promise<Task> {
     // Ensure the manager exists first
@@ -325,20 +318,21 @@ export class DatabaseManager {
       }
     }
 
+    const input = task as any;
     const created = await prisma.task.create({
       data: {
         id: crypto.randomUUID(),
-        title: task.title,
-        description: task.description,
-        priority: task.priority,
-        assignedTo: task.assignedTo,
+        title: input.title,
+        description: input.description,
+        priority: input.priority,
+        assignedTo: input.assignedTo,
         assignedBy: managerDeviceUUID,
         statusId: status.id,
-        tags: task.tags,
-        dueDate: task.dueDate ? new Date(task.dueDate) : null,
-        estimatedHours: task.estimatedHours,
-        actualHours: task.actualHours,
-        stepFunctionArn: task.stepFunctionArn,
+        tags: input.tags || [],
+        dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        estimatedHours: input.estimatedHours ?? null,
+        actualHours: input.actualHours ?? null,
+        stepFunctionArn: input.stepFunctionArn ?? null,
         projectId: projectToUseId,
       },
       include: {
@@ -356,7 +350,6 @@ export class DatabaseManager {
       assignedTo: created.assignedTo,
       managerdeviceuuid: created.assignedBy,
       createdAt: created.createdAt.toISOString(),
-      updatedAt: created.updatedAt.toISOString(),
       dueDate: created.dueDate?.toISOString(),
       tags: created.tags,
       estimatedHours: created.estimatedHours || undefined,
@@ -451,8 +444,24 @@ export class DatabaseManager {
           data.stepFunctionArn = maybeUpdates.stepFunctionArn;
         data.statusId = status.id;
         data.dueDate = updates.dueDate ? new Date(updates.dueDate) : undefined;
+        // If this status represents a completed category, set updatedAt timestamp
+        try {
+          if (
+            status.category &&
+            status.category.toLowerCase() === "completed"
+          ) {
+            data.updatedAt = new Date();
+          }
+        } catch {
+          // ignore if status.category missing
+        }
+        // If caller explicitly provided updatedAt (either timestamp or null), respect it
+        if ((maybeUpdates as any).updatedAt !== undefined) {
+          const incoming = (maybeUpdates as any).updatedAt;
+          if (incoming === null) data.updatedAt = null;
+          else if (incoming) data.updatedAt = new Date(incoming);
+        }
 
-        // Handle project updates: validate project belongs to manager
         const mu = maybeUpdates as Partial<Task> & {
           projectId?: string | null;
         };
@@ -580,6 +589,8 @@ export class DatabaseManager {
           where: { id },
           data: data2,
         });
+        // Respect explicit updatedAt when updating without status
+        // (data2 may already include updatedAt if provided by caller)
       }
       return true;
     } catch (error) {
@@ -590,10 +601,8 @@ export class DatabaseManager {
 
   async deleteTask(id: string): Promise<boolean> {
     try {
-      await prisma.task.delete({
-        where: { id },
-      });
-      return true;
+      const result = await prisma.task.deleteMany({ where: { id } });
+      return result.count > 0;
     } catch (error) {
       console.error("Error deleting task:", error);
       return false;
@@ -613,7 +622,6 @@ export class DatabaseManager {
       repository: project.repository || undefined,
       status: project.status as Project["status"],
       createdAt: project.createdAt.toISOString(),
-      updatedAt: project.updatedAt.toISOString(),
     }));
   }
 
@@ -638,12 +646,11 @@ export class DatabaseManager {
       repository: project.repository || undefined,
       status: project.status as Project["status"],
       createdAt: project.createdAt.toISOString(),
-      updatedAt: project.updatedAt.toISOString(),
     };
   }
 
   async createProject(
-    project: Omit<Project, "id" | "createdAt" | "updatedAt">,
+    project: Omit<Project, "id" | "createdAt">,
     managerDeviceUUID: string
   ): Promise<Project> {
     const created = await prisma.project.create({
@@ -661,13 +668,12 @@ export class DatabaseManager {
       repository: created.repository || undefined,
       status: created.status as Project["status"],
       createdAt: created.createdAt.toISOString(),
-      updatedAt: created.updatedAt.toISOString(),
     };
   }
 
   async updateProject(
     id: string,
-    updates: Partial<Omit<Project, "id" | "createdAt" | "updatedAt">>,
+    updates: Partial<Omit<Project, "id" | "createdAt">>,
     managerDeviceUUID: string
   ): Promise<Project | null> {
     // Ensure the project belongs to this manager
@@ -695,7 +701,6 @@ export class DatabaseManager {
       repository: updated.repository || undefined,
       status: updated.status as Project["status"],
       createdAt: updated.createdAt.toISOString(),
-      updatedAt: updated.updatedAt.toISOString(),
     };
   }
 

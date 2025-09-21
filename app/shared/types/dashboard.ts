@@ -1,4 +1,5 @@
 // Consolidated, minimal types used across dashboard and sidebar
+import { ReactNode } from "react";
 export interface SidebarItem {
   name: string;
   count?: number;
@@ -133,7 +134,8 @@ export interface MetricCard {
   change?: number;
   changeType?: "increase" | "decrease";
   period?: string;
-  icon?: string;
+  // allow either an emoji key (string) or a React node (icon component)
+  icon?: string | ReactNode;
   color?: string;
 }
 
@@ -146,7 +148,6 @@ export interface Task {
   assignedTo?: string;
   assignedBy?: string;
   createdAt?: string;
-  updatedAt?: string;
   dueDate?: string;
   projectId?: string;
   projectName?: string;
@@ -245,7 +246,6 @@ export interface CloudFormationStack {
   region: string;
   resources: number;
   createdAt: string;
-  updatedAt: string;
   template?: string;
   parameters: Record<string, string>;
 }

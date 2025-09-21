@@ -432,9 +432,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Task Management</h2>
-          <p className="text-gray-600">
-            Powered by AWS Step Functions & DynamoDB
-          </p>
+          <p className="text-gray-600">Manage and track tasks for workers</p>
         </div>
         <button
           onClick={() => setShowCreateTask(true)}
@@ -654,27 +652,6 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
             </div>
           ))
         )}
-      </div>
-
-      {/* AWS Integration Status */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-blue-900 mb-2">
-          AWS Integration Status
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-blue-700">DynamoDB: Connected</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-blue-700">Step Functions: Active</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-blue-700">SNS Notifications: Enabled</span>
-          </div>
-        </div>
       </div>
 
       {/* Create Task Modal */}

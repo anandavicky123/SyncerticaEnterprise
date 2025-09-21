@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getInstallations, getInstallationToken } from "@/lib/github-app";
+import { getManagerGitHubAuthHeaders } from "@/lib/github-manager-auth";
 
 // Simple in-memory cache to avoid hitting GitHub API too frequently
 const infrastructureCache: Map<
@@ -28,20 +28,8 @@ export async function GET(request: NextRequest) {
         Accept: "application/vnd.github.v3+json",
       };
     } else {
-      // Try GitHub App authentication
-      try {
-        const installations = await getInstallations();
-        if (installations.length > 0) {
-          const installationToken = await getInstallationToken(installations[0].id);
-          authHeaders = {
-            Authorization: `token ${installationToken.token}`,
-            Accept: "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-          };
-        }
-      } catch {
-        // Failed to get GitHub App authentication
-      }
+      // Use manager-specific GitHub App authentication
+      authHeaders = await getManagerGitHubAuthHeaders();
     }
 
     if (!authHeaders) {
@@ -192,11 +180,13 @@ export async function GET(request: NextRequest) {
 
 async function getAllInfrastructure(authHeaders: any) {
   try {
-    console.log("🏗️ Fetching infrastructure from all repositories...");
+    console.log(
+      "🏗️ Fetching infrastructure from manager-specific repositories..."
+    );
 
-    // First, get all repositories
+    // Get repositories for this manager's installation only
     const reposResponse = await fetch(
-      "https://api.github.com/user/repos?sort=updated&per_page=100",
+      "https://api.github.com/installation/repositories?per_page=100",
       {
         headers: {
           ...authHeaders,
@@ -209,7 +199,8 @@ async function getAllInfrastructure(authHeaders: any) {
       throw new Error(`Failed to fetch repositories: ${reposResponse.status}`);
     }
 
-    const repositories = await reposResponse.json();
+    const reposData = await reposResponse.json();
+    const repositories = reposData.repositories || [];
     console.log(`✅ Found ${repositories.length} repositories`);
 
     const allInfrastructure: any[] = [];

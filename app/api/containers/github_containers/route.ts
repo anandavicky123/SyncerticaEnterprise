@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getInstallations, getInstallationToken } from "@/lib/github-app";
+import { getManagerGitHubAuthHeaders } from "@/lib/github-manager-auth";
 
 // Simple in-memory cache to avoid hitting GitHub API too frequently
 let containerCache: {
@@ -32,55 +32,16 @@ export async function GET() {
 
     // Try OAuth first, then GitHub App
     let authHeaders = null;
-    let installationTokenValue: string | null = null;
+    let isInstallationAuth = false;
     if (githubToken) {
       authHeaders = {
         Authorization: `Bearer ${githubToken}`,
         Accept: "application/vnd.github.v3+json",
       };
     } else {
-      // Try GitHub App authentication
-      try {
-        const installations = await getInstallations();
-        console.debug(
-          `🔍 Installations returned: ${
-            Array.isArray(installations)
-              ? installations
-                  .map((i) => `${i.id}@${i.account?.login}`)
-                  .join(", ")
-              : String(installations)
-          }`
-        );
-        if (installations.length > 0) {
-          const inst = installations[0];
-          console.debug(
-            `🔎 Using installation id=${inst.id} account=${inst.account?.login}`
-          );
-          try {
-            const installationToken = await getInstallationToken(inst.id);
-            installationTokenValue = installationToken.token;
-            console.debug(
-              `🔐 Obtained installation token (masked): ${
-                installationTokenValue
-                  ? installationTokenValue.slice(0, 6) + "..."
-                  : "none"
-              }`
-            );
-            authHeaders = {
-              Authorization: `token ${installationTokenValue}`,
-              Accept: "application/vnd.github+json",
-              "X-GitHub-Api-Version": "2022-11-28",
-            };
-          } catch (instErr) {
-            console.error(
-              `❌ Failed to retrieve installation token for id=${inst.id}:`,
-              instErr
-            );
-          }
-        }
-      } catch (err) {
-        console.error("❌ Failed to fetch installations for GitHub App:", err);
-      }
+      // Use manager-specific GitHub App authentication
+      authHeaders = await getManagerGitHubAuthHeaders();
+      isInstallationAuth = !!authHeaders;
     }
 
     if (!authHeaders) {
@@ -93,17 +54,14 @@ export async function GET() {
 
     console.log("✅ Authentication found, fetching repositories...");
 
-    // First, get all repositories.
-    // If we have an installation token (GitHub App), use the installation endpoint.
+    // Get repositories - use installation endpoint if GitHub App auth
     let repositories: any[] = [];
-    if (installationTokenValue) {
+    if (isInstallationAuth) {
       const reposResponse = await fetch(
         "https://api.github.com/installation/repositories?per_page=100",
         {
           headers: {
-            Authorization: `token ${installationTokenValue}`,
-            Accept: "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
+            ...authHeaders,
             "User-Agent": "SyncerticaEnterprise",
           },
         }

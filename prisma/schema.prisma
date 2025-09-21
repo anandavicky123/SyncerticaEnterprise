@@ -8,18 +8,19 @@ datasource db {
 }
 
 model Manager {
-  deviceUUID   String   @id @db.Uuid @map("deviceuuid")
-  name         String?
-  dateFormat   String   @default("YYYY-MM-DD") @map("dateformat")
-  timeFormat   String   @default("24")        @map("timeformat")
-  email        String?  @map("email")
-  createdAt    DateTime @default(now()) @db.Timestamptz @map("createdat")
-  updatedAt    DateTime @default(now()) @db.Timestamptz @map("updatedat")
+  deviceUUID          String   @id @map("deviceuuid") @db.Uuid
+  name                String?
+  dateFormat          String   @default("YYYY-MM-DD") @map("dateformat")
+  timeFormat          String   @default("24") @map("timeformat")
+  email               String?  @map("email")
+  createdAt           DateTime @default(now()) @map("createdat") @db.Timestamptz
+  updatedAt           DateTime @default(now()) @map("updatedat") @db.Timestamptz
+  githubAppId         String?  @unique @map("github_app_id")
 
   // Relations
   workers       Worker[]
   projects      Project[]
-  tasks         Task[]        @relation("TaskAssignedBy")
+  tasks         Task[]         @relation("TaskAssignedBy")
   statuses      Status[]
   notifications Notification[]
 
@@ -28,15 +29,15 @@ model Manager {
 
 model Worker {
   id                String   @id
-  managerDeviceUUID String   @db.Uuid @map("managerdeviceuuid")
+  managerDeviceUUID String   @map("managerdeviceuuid") @db.Uuid
   name              String
   pronouns          String?
   jobRole           String   @map("jobrole")
   email             String   @unique @db.Citext
   passwordHash      String   @map("passwordhash")
   github_username   String?  @map("github_username")
-  createdAt         DateTime @default(now()) @db.Timestamptz @map("createdat")
-  updatedAt         DateTime @default(now()) @db.Timestamptz @map("updatedat")
+  createdAt         DateTime @default(now()) @map("createdat") @db.Timestamptz
+  updatedAt         DateTime @default(now()) @map("updatedat") @db.Timestamptz
 
   // Relations
   manager       Manager        @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
@@ -50,13 +51,13 @@ model Worker {
 
 model Project {
   id                String   @id
-  managerDeviceUUID String   @db.Uuid @map("managerdeviceuuid")
+  managerDeviceUUID String   @map("managerdeviceuuid") @db.Uuid
   name              String
   description       String?
   repository        String?
   status            String   @default("active")
-  createdAt         DateTime @default(now()) @db.Timestamptz @map("createdat")
-  updatedAt         DateTime @default(now()) @db.Timestamptz @map("updatedat")
+  createdAt         DateTime @default(now()) @map("createdat") @db.Timestamptz
+  updatedAt         DateTime @default(now()) @map("updatedat") @db.Timestamptz
 
   // Relations
   manager Manager @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
@@ -72,21 +73,20 @@ model Task {
   statusId        Int       @map("statusid")
   priority        String    @default("medium")
   assignedTo      String    @map("assignedto")
-  assignedBy      String    @db.Uuid @map("managerdeviceuuid")
+  assignedBy      String    @map("managerdeviceuuid") @db.Uuid
   projectId       String    @map("projectid")
-  dueDate         DateTime? @db.Timestamptz @map("duedate")
+  dueDate         DateTime? @map("duedate") @db.Timestamptz
   estimatedHours  Int?      @map("estimatedhours")
   actualHours     Int?      @map("actualhours")
   stepFunctionArn String?   @map("stepfunctionarn")
   tags            String[]
-  createdAt       DateTime  @default(now()) @db.Timestamptz @map("createdat")
-  updatedAt       DateTime  @default(now()) @db.Timestamptz @map("updatedat")
-
+  createdAt       DateTime  @default(now()) @map("createdat") @db.Timestamptz
+  updatedAt       DateTime? @map("updatedat") @db.Timestamptz
   // Relations
-  worker  Worker  @relation("TaskAssignedTo", fields: [assignedTo], references: [id], onDelete: Cascade)
-  manager Manager @relation("TaskAssignedBy", fields: [assignedBy], references: [deviceUUID], onDelete: Cascade)
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  status  Status  @relation(fields: [statusId], references: [id], onDelete: Cascade)
+  worker          Worker    @relation("TaskAssignedTo", fields: [assignedTo], references: [id], onDelete: Cascade)
+  manager         Manager   @relation("TaskAssignedBy", fields: [assignedBy], references: [deviceUUID], onDelete: Cascade)
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status          Status    @relation(fields: [statusId], references: [id], onDelete: Cascade)
 
   dependentTasks    TaskDependency[] @relation("DependentTask")
   prerequisiteTasks TaskDependency[] @relation("PrerequisiteTask")
@@ -95,10 +95,10 @@ model Task {
 }
 
 model Status {
-  id                Int      @id @default(autoincrement())
-  managerDeviceUUID String   @db.Uuid @map("managerdeviceuuid")
+  id                Int    @id @default(autoincrement())
+  managerDeviceUUID String @map("managerdeviceuuid") @db.Uuid
   name              String
-  category          String   @map("category")
+  category          String @map("category")
 
   // Relations
   manager Manager @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
@@ -112,8 +112,8 @@ model TaskDependency {
   dependsOnId String @map("dependsonid")
 
   // Relations
-  task       Task @relation("DependentTask", fields: [taskId], references: [id], onDelete: Cascade)
-  dependsOn  Task @relation("PrerequisiteTask", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  task      Task @relation("DependentTask", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn Task @relation("PrerequisiteTask", fields: [dependsOnId], references: [id], onDelete: Cascade)
 
   @@id([taskId, dependsOnId])
   @@map("task_dependencies")
@@ -124,7 +124,7 @@ model chats {
   senderId   String   @map("sender_id")
   receiverId String   @map("receiver_id")
   content    String
-  createdAt  DateTime @default(now()) @db.Timestamptz @map("created_at")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   // Relations
   sender   Worker @relation("SentChats", fields: [senderId], references: [id], onDelete: Cascade)
@@ -136,10 +136,10 @@ model chats {
 model Notification {
   id                String   @id
   workerId          String?  @map("workerid")
-  managerDeviceUUID String?  @db.Uuid @map("managerdeviceuuid")
+  managerDeviceUUID String?  @map("managerdeviceuuid") @db.Uuid
   message           String
   read              Boolean  @default(false)
-  createdAt         DateTime @default(now()) @db.Timestamptz @map("createdat")
+  createdAt         DateTime @default(now()) @map("createdat") @db.Timestamptz
 
   // Relations
   worker  Worker?  @relation(fields: [workerId], references: [id], onDelete: Cascade)

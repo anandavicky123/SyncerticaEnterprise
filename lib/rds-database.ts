@@ -16,7 +16,6 @@ export interface Task {
   assignedTo: string;
   managerDeviceUUID?: string;
   createdAt: string;
-  updatedAt: string;
   dueDate?: string;
   tags: string[];
   estimatedHours?: number;
@@ -159,7 +158,6 @@ export class DatabaseManager {
       assignedTo: t.assignedTo,
       managerDeviceUUID: t.assignedBy,
       createdAt: t.createdAt.toISOString(),
-      updatedAt: t.updatedAt.toISOString(),
       dueDate: t.dueDate?.toISOString(),
       tags: t.tags,
       estimatedHours: t.estimatedHours || undefined,
@@ -185,7 +183,6 @@ export class DatabaseManager {
       assignedTo: t.assignedTo,
       managerDeviceUUID: t.assignedBy,
       createdAt: t.createdAt.toISOString(),
-      updatedAt: t.updatedAt.toISOString(),
       dueDate: t.dueDate?.toISOString(),
       tags: t.tags,
       estimatedHours: t.estimatedHours || undefined,
@@ -290,7 +287,6 @@ export class DatabaseManager {
       assignedTo: created.assignedTo,
       managerDeviceUUID: created.assignedBy,
       createdAt: created.createdAt.toISOString(),
-      updatedAt: created.updatedAt.toISOString(),
       dueDate: created.dueDate?.toISOString(),
       tags: created.tags,
       estimatedHours: created.estimatedHours || undefined,
@@ -330,6 +326,22 @@ export class DatabaseManager {
           status: { connect: { id: status.id } },
           dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
         };
+        // Respect explicit updatedAt from caller: either a timestamp string/date or null
+        if ((updates as any).updatedAt !== undefined) {
+          const incoming = (updates as any).updatedAt;
+          if (incoming === null) (data as any).updatedAt = null;
+          else if (incoming) (data as any).updatedAt = new Date(incoming);
+        } else {
+          // If status category indicates completion, default to now
+          try {
+            if (
+              status.category &&
+              status.category.toLowerCase() === "completed"
+            ) {
+              (data as any).updatedAt = new Date();
+            }
+          } catch {}
+        }
         await prisma.task.update({ where: { id }, data });
       } else {
         const data: Prisma.TaskUpdateInput = {
@@ -392,8 +404,8 @@ export class DatabaseManager {
 
   async deleteTask(id: string): Promise<boolean> {
     try {
-      await prisma.task.delete({ where: { id } });
-      return true;
+      const result = await prisma.task.deleteMany({ where: { id } });
+      return result.count > 0;
     } catch (err) {
       console.error("Error deleting task:", err);
       return false;

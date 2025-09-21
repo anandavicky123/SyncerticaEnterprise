@@ -21,7 +21,6 @@ interface Task {
     description?: string;
   };
   createdAt: string;
-  updatedAt: string;
 }
 
 export default function TasksPage() {
@@ -93,7 +92,6 @@ export default function TasksPage() {
             ? {
                 ...task,
                 status: newStatus,
-                updatedAt: new Date().toISOString(),
               }
             : task
         )
@@ -209,6 +207,7 @@ export default function TasksPage() {
                   aria-label="Open chat"
                   className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                 >
+                  <MessageCircle className="w-6 h-6" />
                   {chatUnread > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                       {chatUnread > 9 ? "9+" : chatUnread}
@@ -376,7 +375,7 @@ export default function TasksPage() {
             </div>
           )}
 
-          {/* Task Filter Tabs */}
+          
           <div className="mt-6">
             <div className="border-b border-gray-200">
               <nav className="-mb-px flex space-x-8">
@@ -563,7 +562,7 @@ export default function TasksPage() {
                         </span>
                         <span>
                           Updated{" "}
-                          {new Date(task.updatedAt).toLocaleDateString()}
+                         
                         </span>
                       </div>
                     </div>
