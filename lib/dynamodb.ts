@@ -11,11 +11,22 @@ import {
 import { v4 as uuidv4 } from "uuid";
 
 // --- Setup DynamoDB Client ---
+// Validate required AWS environment variables early to give clearer error messages
+const awsRegion = process.env.AWS_REGION || "ap-southeast-2";
+const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
+const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+
+if (!awsAccessKeyId || !awsSecretAccessKey) {
+  throw new Error(
+    "Missing AWS credentials: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set"
+  );
+}
+
 const client = new DynamoDBClient({
-  region: process.env.AWS_REGION || "ap-southeast-2",
+  region: awsRegion,
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    accessKeyId: awsAccessKeyId,
+    secretAccessKey: awsSecretAccessKey,
   },
 });
 
