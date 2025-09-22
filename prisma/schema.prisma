@@ -8,43 +8,37 @@ datasource db {
 }
 
 model Manager {
-  deviceUUID          String   @id @map("deviceuuid") @db.Uuid
-  name                String?
-  dateFormat          String   @default("YYYY-MM-DD") @map("dateformat")
-  timeFormat          String   @default("24") @map("timeformat")
-  email               String?  @map("email")
-  createdAt           DateTime @default(now()) @map("createdat") @db.Timestamptz
-  updatedAt           DateTime @default(now()) @map("updatedat") @db.Timestamptz
-  githubAppId         String?  @unique @map("github_app_id")
-
-  // Relations
-  workers       Worker[]
-  projects      Project[]
-  tasks         Task[]         @relation("TaskAssignedBy")
-  statuses      Status[]
+  deviceUUID    String         @id @map("deviceuuid") @db.Uuid
+  name          String?
+  dateFormat    String         @default("YYYY-MM-DD") @map("dateformat")
+  timeFormat    String         @default("24") @map("timeformat")
+  email         String?        @map("email")
+  createdAt     DateTime       @default(now()) @map("createdat") @db.Timestamptz(6)
+  updatedAt     DateTime       @default(now()) @map("updatedat") @db.Timestamptz(6)
+  githubAppId   String?        @unique(map: "github_app") @map("github_app_id")
   notifications Notification[]
+  projects      Project[]
+  statuses      Status[]
+  tasks         Task[]         @relation("TaskAssignedBy")
+  workers       Worker[]
 
   @@map("managers")
 }
 
 model Worker {
-  id                String   @id
-  managerDeviceUUID String   @map("managerdeviceuuid") @db.Uuid
+  id                String         @id
+  managerDeviceUUID String         @map("managerdeviceuuid") @db.Uuid
   name              String
   pronouns          String?
-  jobRole           String   @map("jobrole")
-  email             String   @unique @db.Citext
-  passwordHash      String   @map("passwordhash")
-  github_username   String?  @map("github_username")
-  createdAt         DateTime @default(now()) @map("createdat") @db.Timestamptz
-  updatedAt         DateTime @default(now()) @map("updatedat") @db.Timestamptz
-
-  // Relations
-  manager       Manager        @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
-  tasks         Task[]         @relation("TaskAssignedTo")
-  notifications Notification[]
-  sentChats     chats[]        @relation("SentChats")
-  receivedChats chats[]        @relation("ReceivedChats")
+  jobRole           String         @map("jobrole")
+  email             String         @unique @db.Citext
+  passwordHash      String         @map("passwordhash")
+  github_username   String?        @map("github_username")
+  createdAt         DateTime       @default(now()) @map("createdat") @db.Timestamptz(6)
+  updatedAt         DateTime       @default(now()) @map("updatedat") @db.Timestamptz(6)
+  notifications     Notification[]
+  tasks             Task[]         @relation("TaskAssignedTo")
+  manager           Manager        @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
 
   @@map("workers")
 }
@@ -56,53 +50,47 @@ model Project {
   description       String?
   repository        String?
   status            String   @default("active")
-  createdAt         DateTime @default(now()) @map("createdat") @db.Timestamptz
-  updatedAt         DateTime @default(now()) @map("updatedat") @db.Timestamptz
-
-  // Relations
-  manager Manager @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
-  tasks   Task[]
+  createdAt         DateTime @default(now()) @map("createdat") @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @map("updatedat") @db.Timestamptz(6)
+  manager           Manager  @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
+  tasks             Task[]
 
   @@map("projects")
 }
 
 model Task {
-  id              String    @id
-  title           String
-  description     String
-  statusId        Int       @map("statusid")
-  priority        String    @default("medium")
-  assignedTo      String    @map("assignedto")
-  assignedBy      String    @map("managerdeviceuuid") @db.Uuid
-  projectId       String    @map("projectid")
-  dueDate         DateTime? @map("duedate") @db.Timestamptz
-  estimatedHours  Int?      @map("estimatedhours")
-  actualHours     Int?      @map("actualhours")
-  stepFunctionArn String?   @map("stepfunctionarn")
-  tags            String[]
-  createdAt       DateTime  @default(now()) @map("createdat") @db.Timestamptz
-  updatedAt       DateTime? @map("updatedat") @db.Timestamptz
-  // Relations
-  worker          Worker    @relation("TaskAssignedTo", fields: [assignedTo], references: [id], onDelete: Cascade)
-  manager         Manager   @relation("TaskAssignedBy", fields: [assignedBy], references: [deviceUUID], onDelete: Cascade)
-  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  status          Status    @relation(fields: [statusId], references: [id], onDelete: Cascade)
-
-  dependentTasks    TaskDependency[] @relation("DependentTask")
+  id                String           @id
+  title             String
+  description       String
+  statusId          Int              @map("statusid")
+  priority          String           @default("medium")
+  assignedTo        String           @map("assignedto")
+  assignedBy        String           @map("managerdeviceuuid") @db.Uuid
+  projectId         String           @map("projectid")
+  dueDate           DateTime?        @map("duedate") @db.Timestamptz(6)
+  estimatedHours    Int?             @map("estimatedhours")
+  actualHours       Int?             @map("actualhours")
+  stepFunctionArn   String?          @map("stepfunctionarn")
+  tags              String[]
+  createdAt         DateTime         @default(now()) @map("createdat") @db.Timestamptz(6)
+  updatedAt         DateTime?        @map("updatedat") @db.Timestamptz(6)
   prerequisiteTasks TaskDependency[] @relation("PrerequisiteTask")
+  dependentTasks    TaskDependency[] @relation("DependentTask")
+  worker            Worker           @relation("TaskAssignedTo", fields: [assignedTo], references: [id], onDelete: Cascade)
+  manager           Manager          @relation("TaskAssignedBy", fields: [assignedBy], references: [deviceUUID], onDelete: Cascade)
+  project           Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status            Status           @relation(fields: [statusId], references: [id], onDelete: Cascade)
 
   @@map("tasks")
 }
 
 model Status {
-  id                Int    @id @default(autoincrement())
-  managerDeviceUUID String @map("managerdeviceuuid") @db.Uuid
+  id                Int     @id @default(autoincrement())
+  managerDeviceUUID String  @map("managerdeviceuuid") @db.Uuid
   name              String
-  category          String @map("category")
-
-  // Relations
-  manager Manager @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
-  tasks   Task[]
+  category          String  @map("category")
+  manager           Manager @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
+  tasks             Task[]
 
   @@map("statuses")
 }
@@ -110,10 +98,8 @@ model Status {
 model TaskDependency {
   taskId      String @map("taskid")
   dependsOnId String @map("dependsonid")
-
-  // Relations
-  task      Task @relation("DependentTask", fields: [taskId], references: [id], onDelete: Cascade)
-  dependsOn Task @relation("PrerequisiteTask", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  dependsOn   Task   @relation("PrerequisiteTask", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  task        Task   @relation("DependentTask", fields: [taskId], references: [id], onDelete: Cascade)
 
   @@id([taskId, dependsOnId])
   @@map("task_dependencies")
@@ -124,11 +110,7 @@ model chats {
   senderId   String   @map("sender_id")
   receiverId String   @map("receiver_id")
   content    String
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  // Relations
-  sender   Worker @relation("SentChats", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver Worker @relation("ReceivedChats", fields: [receiverId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("chats")
 }
@@ -139,11 +121,76 @@ model Notification {
   managerDeviceUUID String?  @map("managerdeviceuuid") @db.Uuid
   message           String
   read              Boolean  @default(false)
-  createdAt         DateTime @default(now()) @map("createdat") @db.Timestamptz
-
-  // Relations
-  worker  Worker?  @relation(fields: [workerId], references: [id], onDelete: Cascade)
-  manager Manager? @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
+  createdAt         DateTime @default(now()) @map("createdat") @db.Timestamptz(6)
+  manager           Manager? @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
+  worker            Worker?  @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model part_config {
+  parent_table               String           @id(map: "part_config_parent_table_pkey")
+  control                    String
+  time_encoder               String?
+  time_decoder               String?
+  partition_interval         String
+  partition_type             String
+  premake                    Int              @default(4)
+  automatic_maintenance      String           @default("on")
+  template_table             String?
+  retention                  String?
+  retention_schema           String?
+  retention_keep_index       Boolean          @default(true)
+  retention_keep_table       Boolean          @default(true)
+  epoch                      String           @default("none")
+  constraint_cols            String[]
+  optimize_constraint        Int              @default(30)
+  infinite_time_partitions   Boolean          @default(false)
+  datetime_string            String?
+  jobmon                     Boolean          @default(true)
+  sub_partition_set_full     Boolean          @default(false)
+  undo_in_progress           Boolean          @default(false)
+  inherit_privileges         Boolean?         @default(false)
+  constraint_valid           Boolean          @default(true)
+  ignore_default_data        Boolean          @default(true)
+  date_trunc_interval        String?
+  maintenance_order          Int?
+  retention_keep_publication Boolean          @default(false)
+  maintenance_last_run       DateTime?        @db.Timestamptz(6)
+  part_config_sub            part_config_sub?
+
+  @@index([partition_type], map: "part_config_type_idx")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model part_config_sub {
+  sub_parent                     String      @id
+  sub_control                    String
+  sub_time_encoder               String?
+  sub_time_decoder               String?
+  sub_partition_interval         String
+  sub_partition_type             String
+  sub_premake                    Int         @default(4)
+  sub_automatic_maintenance      String      @default("on")
+  sub_template_table             String?
+  sub_retention                  String?
+  sub_retention_schema           String?
+  sub_retention_keep_index       Boolean     @default(true)
+  sub_retention_keep_table       Boolean     @default(true)
+  sub_epoch                      String      @default("none")
+  sub_constraint_cols            String[]
+  sub_optimize_constraint        Int         @default(30)
+  sub_infinite_time_partitions   Boolean     @default(false)
+  sub_jobmon                     Boolean     @default(true)
+  sub_inherit_privileges         Boolean?    @default(false)
+  sub_constraint_valid           Boolean     @default(true)
+  sub_ignore_default_data        Boolean     @default(true)
+  sub_default_table              Boolean?    @default(true)
+  sub_date_trunc_interval        String?
+  sub_maintenance_order          Int?
+  sub_retention_keep_publication Boolean     @default(false)
+  sub_control_not_null           Boolean?    @default(true)
+  part_config                    part_config @relation(fields: [sub_parent], references: [parent_table], onDelete: Cascade)
 }

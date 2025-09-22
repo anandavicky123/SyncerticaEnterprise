@@ -5,7 +5,17 @@ import { createOrGetManager } from "../../../../lib/auth";
 // Uses createOrGetManager which will persist manager (Prisma) and create session (DynamoDB)
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const raw = await request.text();
+    // Log raw body for debugging
+    console.log("/api/auth/manager raw body:", raw);
+
+    let body: any = null;
+    try {
+      body = raw ? JSON.parse(raw) : {};
+    } catch (parseErr) {
+      console.error("/api/auth/manager JSON parse error:", parseErr);
+      return NextResponse.json({ error: "Malformed JSON in request body" }, { status: 400 });
+    }
 
     const deviceUUID = body?.deviceUUID || null;
     const name = body?.name || "Manager";
