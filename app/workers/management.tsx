@@ -23,7 +23,7 @@ interface Worker {
   managerDeviceUUID: string;
   name: string;
   pronouns: string | null;
-  jobRole: "UI/UX Designer" | "Developer" | "Manager" | "QA";
+  jobRole: "UI/UX Designer" | "Developer" | "IT Supports" | "QA" | "Data Analyst";
   email: string;
   createdAt: string;
   updatedAt: string;
@@ -342,10 +342,12 @@ export default function WorkersManagement({
         return <Palette className="w-5 h-5" />;
       case "Developer":
         return <Code className="w-5 h-5" />;
-      case "Manager":
+      case "IT Supports":
         return <Settings className="w-5 h-5" />;
       case "QA":
         return <Shield className="w-5 h-5" />;
+      case "Data Analyst":
+        return <User className="w-5 h-5" />;
       default:
         return <User className="w-5 h-5" />;
     }
@@ -357,10 +359,12 @@ export default function WorkersManagement({
         return "bg-purple-100 text-purple-700 border-purple-200";
       case "Developer":
         return "bg-blue-100 text-blue-700 border-blue-200";
-      case "Manager":
+      case "IT Supports":
         return "bg-green-100 text-green-700 border-green-200";
       case "QA":
         return "bg-orange-100 text-orange-700 border-orange-200";
+      case "Data Analyst":
+        return "bg-yellow-100 text-yellow-700 border-yellow-200";
       default:
         return "bg-gray-100 text-gray-700 border-gray-200";
     }
@@ -388,7 +392,7 @@ export default function WorkersManagement({
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <div className="bg-white rounded-lg p-4 border border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -435,9 +439,9 @@ export default function WorkersManagement({
               <Settings className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <h3 className="font-medium text-gray-900">Managers</h3>
+              <h3 className="font-medium text-gray-900">IT Supports</h3>
               <p className="text-2xl font-bold text-green-600">
-                {workersByRole["Manager"] || 0}
+                {workersByRole["IT Supports"] || 0}
               </p>
             </div>
           </div>
@@ -452,6 +456,20 @@ export default function WorkersManagement({
               <h3 className="font-medium text-gray-900">QA</h3>
               <p className="text-2xl font-bold text-orange-600">
                 {workersByRole["QA"] || 0}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <User className="w-5 h-5 text-yellow-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-900">Data Analysts</h3>
+              <p className="text-2xl font-bold text-yellow-600">
+                {workersByRole["Data Analyst"] || 0}
               </p>
             </div>
           </div>

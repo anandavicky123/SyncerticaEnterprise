@@ -351,7 +351,7 @@ export const mockSecurityMetrics: SecurityMetric[] = [
     id: "threat-level",
     name: "Current Threat Level",
     value: 2,
-    maxValue: 5,
+    maxValue: 7,
     unit: "level",
     status: "good",
     description: "Overall security threat assessment",

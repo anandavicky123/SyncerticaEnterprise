@@ -36,7 +36,7 @@ export interface Worker {
   managerDeviceUUID: string;
   name: string;
   pronouns?: string;
-  jobRole: "UI/UX Designer" | "Developer" | "Manager" | "QA";
+  jobRole: "UI/UX Designer" | "Developer" | "IT Supports" | "QA" | "Data Analyst";
   email: string;
   createdAt: string;
 }

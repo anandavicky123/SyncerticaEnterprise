@@ -393,7 +393,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
   const handleAddWorker = async (workerData: {
     name: string;
     pronouns: string | null;
-    jobRole: "UI/UX Designer" | "Developer" | "Manager" | "QA";
+    jobRole: "UI/UX Designer" | "Developer" | "IT Supports" | "QA" | "Data Analyst";
     email: string;
     password?: string;
   }) => {

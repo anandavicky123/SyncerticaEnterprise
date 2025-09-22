@@ -7,7 +7,7 @@ import { z } from "zod";
 const createWorkerSchema = z.object({
   name: z.string().min(1, "Name is required"),
   pronouns: z.string().nullable(),
-  jobRole: z.enum(["UI/UX Designer", "Developer", "Manager", "QA"]),
+  jobRole: z.enum(["UI/UX Designer", "Developer", "IT Supports", "QA", "Data Analyst"]),
   email: z.string().email("Invalid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   githubUsername: z.string().nullable().optional(),
@@ -167,12 +167,12 @@ export async function POST(req: NextRequest) {
     console.log("POST /api/workers - body:", body);
     const validatedData = createWorkerSchema.parse(body);
 
-    // Check worker limit (5 workers per manager)
+    // Check worker limit (7 workers per manager)
     const workerCount = await prisma.worker.count({
       where: { managerDeviceUUID: actorId! },
     });
 
-    if (workerCount >= 5) {
+    if (workerCount >= 7) {
       throw new Error("WORKER_LIMIT_REACHED");
     }
 

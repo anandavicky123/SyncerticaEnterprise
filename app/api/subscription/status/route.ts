@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       subscription: {
         tier: "free",
         features: {
-          maxWorkers: 5,
+          maxWorkers: 7,
           auditLogs: false,
           prioritySupport: false,
         },

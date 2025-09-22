@@ -12,7 +12,7 @@ import {
   EyeOff,
 } from "lucide-react";
 
-type JobRole = "UI/UX Designer" | "Developer" | "Manager" | "QA";
+type JobRole = "UI/UX Designer" | "Developer" | "IT Supports" | "QA" | "Data Analyst";
 
 interface Worker {
   id: string;
@@ -120,7 +120,7 @@ const AddWorkerModal = ({
       console.error("Error saving worker:", error);
       if (error instanceof Error && error.message === "WORKER_LIMIT_REACHED") {
         alert(
-          "You have reached the limit of 5 workers. Please upgrade to Pro to add more workers, or delete existing workers first."
+          "You have reached the limit of 7 workers. Please upgrade to Pro to add more workers, or delete existing workers first."
         );
       } else {
         alert("Failed to save worker. Please try again.");
@@ -255,8 +255,9 @@ const AddWorkerModal = ({
                 >
                   <option value="Developer">Developer</option>
                   <option value="UI/UX Designer">UI/UX Designer</option>
-                  <option value="Manager">Manager</option>
+                  <option value="IT Supports">IT Supports</option>
                   <option value="QA">QA</option>
+                  <option value="Data Analyst">Data Analyst</option>
                 </select>
               </div>
             </div>

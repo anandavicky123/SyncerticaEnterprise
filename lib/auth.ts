@@ -116,12 +116,12 @@ export async function createWorker(
   pronouns?: string
 ): Promise<any> {
   try {
-    // Check worker limit (5 workers per manager)
+    // Check worker limit (7 workers per manager)
     const workerCount = await prisma.worker.count({
       where: { managerDeviceUUID },
     });
 
-    if (workerCount >= 5) {
+    if (workerCount >= 7) {
       throw new Error("WORKER_LIMIT_REACHED");
     }
 

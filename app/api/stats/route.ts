@@ -43,8 +43,9 @@ export async function GET(request: Request) {
       workersByRole: {
         "UI/UX Designer": 0,
         Developer: 0,
-        Manager: 0,
+        "IT Supports": 0,
         QA: 0,
+        "Data Analyst": 0,
       },
     };
 

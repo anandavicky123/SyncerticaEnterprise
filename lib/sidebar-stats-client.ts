@@ -13,12 +13,15 @@ export interface DatabaseStats {
   workersByRole: {
     "UI/UX Designer": number;
     Developer: number;
-    Manager: number;
+    "IT Supports": number;
     QA: number;
+    "Data Analyst": number;
   };
 }
 
-export async function getDatabaseStats(managerDeviceUUID?: string): Promise<DatabaseStats> {
+export async function getDatabaseStats(
+  managerDeviceUUID?: string
+): Promise<DatabaseStats> {
   // Server expects managerDeviceUUID; prefer callers to pass it.
   const url = managerDeviceUUID
     ? `/api/stats?managerDeviceUUID=${encodeURIComponent(managerDeviceUUID)}`
@@ -63,8 +66,17 @@ export function generateDynamicSidebarItems(
           count: stats.workersByRole.Developer,
           icon: "💻",
         },
-        { name: "Managers", count: stats.workersByRole.Manager, icon: "👔" },
+        {
+          name: "IT Supports",
+          count: stats.workersByRole["IT Supports"],
+          icon: "👨🏻‍💻",
+        },
         { name: "QA Engineers", count: stats.workersByRole.QA, icon: "🔍" },
+        {
+          name: "Data Analysts",
+          count: stats.workersByRole["Data Analyst"],
+          icon: "📊",
+        },
       ],
     },
     {

@@ -34,9 +34,24 @@ export default function WorkerChatModal({
   const [chats, setChats] = useState<ChatRow[]>([]);
   const [chatMessage, setChatMessage] = useState("");
   const [currentWorker, setCurrentWorker] = useState<Worker | null>(null);
-  const [unreadBySender, setUnreadBySender] = useState<Record<string, number>>({});
+  const [unreadBySender, setUnreadBySender] = useState<Record<string, number>>(
+    {}
+  );
   const [isModalLoading, setIsModalLoading] = useState(false);
   const [isChatsLoading, setIsChatsLoading] = useState(false);
+
+  // Normalize special contact IDs (e.g., manager:<uuid>) to match unread map keys
+  const normalizeSenderId = (id: string) =>
+    id.startsWith("manager:") ? id.substring(8) : id;
+  const getUnreadCount = (id: string) => {
+    // Try both the original ID and normalized ID to handle different server key formats
+    const normalizedId = normalizeSenderId(id);
+    const count = unreadBySender[id] || unreadBySender[normalizedId] || 0;
+    console.debug(
+      `Getting unread count for ${id}: ${count} (tried keys: ${id}, ${normalizedId})`
+    );
+    return count;
+  };
 
   // Load current worker info and co-workers
   useEffect(() => {
@@ -59,8 +74,13 @@ export default function WorkerChatModal({
 
             // If worker has a managerDeviceUUID, expose a manager contact
             if (worker.managerDeviceUUID) {
+              const managerContactId = `manager:${worker.managerDeviceUUID}`;
+              console.debug(
+                "Creating manager contact with ID:",
+                managerContactId
+              );
               setManagerInfo({
-                id: `manager:${worker.managerDeviceUUID}`,
+                id: managerContactId,
                 name: "Manager",
                 email: "manager@local",
               });
@@ -98,7 +118,8 @@ export default function WorkerChatModal({
   // Load per-contact unread counts for the current worker on open
   useEffect(() => {
     if (!isOpen) return;
-    (async () => {
+
+    const loadUnreadCounts = async () => {
       try {
         const ubRes = await fetch("/api/notifications/unread-by-conversation", {
           credentials: "include",
@@ -107,12 +128,30 @@ export default function WorkerChatModal({
           const data = await ubRes.json();
           // workers endpoint returns { bySender: Record<string, number>, total }
           const map = (data && data.bySender) || {};
+          console.debug("Loaded unread counts for worker:", map); // Debug log
+          console.debug("Available unread keys:", Object.keys(map)); // Debug keys
           setUnreadBySender(map);
+        } else {
+          console.warn(
+            "Failed to fetch unread counts:",
+            ubRes.status,
+            ubRes.statusText
+          );
         }
       } catch (e) {
         console.debug("Failed to load unread-by-conversation for worker", e);
       }
-    })();
+    };
+
+    // Load immediately
+    loadUnreadCounts();
+
+    // Set up periodic refresh every 30 seconds to catch new messages
+    const interval = setInterval(loadUnreadCounts, 30000);
+
+    return () => {
+      clearInterval(interval);
+    };
   }, [isOpen]);
 
   // Load chats when activeChat changes
@@ -155,14 +194,25 @@ export default function WorkerChatModal({
     // Mark notifications from this sender as read (worker marking manager/coworker messages as read)
     (async () => {
       try {
+        // For manager contacts, we need to extract the actual manager UUID from the ID
+        const actualSenderId = worker.id.startsWith("manager:")
+          ? worker.id.substring(8) // Remove 'manager:' prefix
+          : worker.id;
+
         await fetch("/api/notifications/mark-read-sender", {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ senderId: worker.id }),
+          body: JSON.stringify({ senderId: actualSenderId }),
         });
-        // Optimistically clear local badge for this contact
-        setUnreadBySender((prev) => ({ ...prev, [worker.id]: 0 }));
+        // Optimistically clear local badge for this contact.
+        // Clear both the display id and the normalized id to cover server key format.
+        setUnreadBySender((prev) => {
+          const updated = { ...prev } as Record<string, number>;
+          updated[worker.id] = 0;
+          updated[actualSenderId] = 0;
+          return updated;
+        });
       } catch (err) {
         console.debug("Failed to mark notifications as read for sender", err);
       }
@@ -193,6 +243,23 @@ export default function WorkerChatModal({
           // append the new message locally for immediate UX
           setChats((prev) => [...prev, created]);
           setChatMessage("");
+
+          // Refresh unread counts after sending a message to catch any new messages from others
+          try {
+            const ubRes = await fetch(
+              "/api/notifications/unread-by-conversation",
+              {
+                credentials: "include",
+              }
+            );
+            if (ubRes.ok) {
+              const data = await ubRes.json();
+              const map = (data && data.bySender) || {};
+              setUnreadBySender(map);
+            }
+          } catch (e) {
+            console.debug("Failed to refresh unread counts after sending", e);
+          }
         } catch (err) {
           console.error("Error sending chat:", err);
           alert(err instanceof Error ? err.message : "Failed to send message");
@@ -236,16 +303,8 @@ export default function WorkerChatModal({
                 }`}
               >
                 <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                      {managerInfo.name.charAt(0).toUpperCase()}
-                    </div>
-                    {unreadBySender[managerInfo.id] > 0 && (
-                      <span
-                        title={`${unreadBySender[managerInfo.id]} unread`}
-                        className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"
-                      />
-                    )}
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                    {managerInfo.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-gray-900 truncate">
@@ -255,6 +314,20 @@ export default function WorkerChatModal({
                       {managerInfo.email}
                     </div>
                   </div>
+                  {getUnreadCount(managerInfo.id) > 0 && (
+                    <span
+                      title={`${getUnreadCount(managerInfo.id)} unread message${
+                        getUnreadCount(managerInfo.id) > 1 ? "s" : ""
+                      }`}
+                      className="w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center flex-shrink-0"
+                    >
+                      <span className="text-white text-xs font-medium">
+                        {getUnreadCount(managerInfo.id) > 9
+                          ? "9+"
+                          : getUnreadCount(managerInfo.id)}
+                      </span>
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -262,16 +335,40 @@ export default function WorkerChatModal({
             <div className="flex-1 overflow-y-auto">
               {isModalLoading ? (
                 <div className="p-6 flex items-center justify-center">
-                  <div role="status" aria-live="polite" className="flex items-center gap-3">
-                    <svg className="animate-spin -ml-1 h-6 w-6 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className="flex items-center gap-3"
+                  >
+                    <svg
+                      className="animate-spin -ml-1 h-6 w-6 text-gray-600"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      ></path>
                     </svg>
-                    <div className="text-sm text-gray-600">Loading contacts…</div>
+                    <div className="text-sm text-gray-600">
+                      Loading contacts…
+                    </div>
                   </div>
                 </div>
               ) : workers.length === 0 ? (
-                <div className="p-4 text-center text-gray-500 text-sm">No co-workers found</div>
+                <div className="p-4 text-center text-gray-500 text-sm">
+                  No co-workers found
+                </div>
               ) : (
                 workers.map((worker) => (
                   <div
@@ -284,21 +381,31 @@ export default function WorkerChatModal({
                     }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="relative">
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                          {worker.name.charAt(0).toUpperCase()}
-                        </div>
-                        {unreadBySender[worker.id] > 0 && (
-                          <span
-                            title={`${unreadBySender[worker.id]} unread`}
-                            className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"
-                          />
-                        )}
+                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                        {worker.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900 truncate">{worker.name}</div>
-                        <div className="text-sm text-gray-500 truncate">{worker.email}</div>
+                        <div className="font-medium text-gray-900 truncate">
+                          {worker.name}
+                        </div>
+                        <div className="text-sm text-gray-500 truncate">
+                          {worker.email}
+                        </div>
                       </div>
+                      {getUnreadCount(worker.id) > 0 && (
+                        <span
+                          title={`${getUnreadCount(worker.id)} unread message${
+                            getUnreadCount(worker.id) > 1 ? "s" : ""
+                          }`}
+                          className="w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center flex-shrink-0"
+                        >
+                          <span className="text-white text-xs font-medium">
+                            {getUnreadCount(worker.id) > 9
+                              ? "9+"
+                              : getUnreadCount(worker.id)}
+                          </span>
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))
@@ -350,16 +457,40 @@ export default function WorkerChatModal({
                 <div className="space-y-3">
                   {isChatsLoading ? (
                     <div className="p-6 flex items-center justify-center">
-                      <div role="status" aria-live="polite" className="flex items-center gap-3">
-                        <svg className="animate-spin -ml-1 h-6 w-6 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        className="flex items-center gap-3"
+                      >
+                        <svg
+                          className="animate-spin -ml-1 h-6 w-6 text-gray-600"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                          ></path>
                         </svg>
-                        <div className="text-sm text-gray-600">Loading messages…</div>
+                        <div className="text-sm text-gray-600">
+                          Loading messages…
+                        </div>
                       </div>
                     </div>
                   ) : chats.length === 0 ? (
-                    <div className="text-center text-gray-500 text-sm">Start chatting with {activeChat.name}</div>
+                    <div className="text-center text-gray-500 text-sm">
+                      Start chatting with {activeChat.name}
+                    </div>
                   ) : (
                     chats.map((c) => {
                       const isFromMe = c.senderId === currentWorker?.id;
