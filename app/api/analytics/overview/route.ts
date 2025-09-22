@@ -32,6 +32,13 @@ export async function GET(request: Request) {
     }
 
     // Get basic counts
+    // First fetch worker IDs for the manager so we can filter chats by senderId/receiverId
+    const workerRows = await prisma.worker.findMany({
+      where: { managerDeviceUUID: managerUUID },
+      select: { id: true },
+    });
+    const workerIds = workerRows.map((w) => w.id);
+
     const [
       totalWorkers,
       totalProjects,
@@ -83,8 +90,9 @@ export async function GET(request: Request) {
       prisma.chats.count({
         where: {
           OR: [
-            { sender: { managerDeviceUUID: managerUUID } },
-            { receiver: { managerDeviceUUID: managerUUID } },
+            // chats model stores raw senderId/receiverId; filter by worker IDs for this manager
+            { senderId: { in: workerIds.length ? workerIds : ["__none__"] } },
+            { receiverId: { in: workerIds.length ? workerIds : ["__none__"] } },
           ],
           createdAt: {
             gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
