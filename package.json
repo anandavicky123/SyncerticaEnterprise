@@ -40,7 +40,8 @@
     "deploy:staging": "npm run build",
     "deploy:production": "npm run build",
     "ci": "npm run lint && npm run type-check && npm run test && npm run build",
-    "prepare": "husky install || true"
+    "prepare": "husky install || true",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.883.0",
