@@ -35,10 +35,14 @@ export default function WorkerChatModal({
   const [chatMessage, setChatMessage] = useState("");
   const [currentWorker, setCurrentWorker] = useState<Worker | null>(null);
   const [unreadBySender, setUnreadBySender] = useState<Record<string, number>>({});
+  const [isModalLoading, setIsModalLoading] = useState(false);
+  const [isChatsLoading, setIsChatsLoading] = useState(false);
 
   // Load current worker info and co-workers
   useEffect(() => {
     if (isOpen) {
+      let mounted = true;
+      setIsModalLoading(true);
       (async () => {
         try {
           // Get current worker info
@@ -72,13 +76,22 @@ export default function WorkerChatModal({
               const coWorkers = allWorkers.filter(
                 (w: Worker) => w.id !== worker.id
               );
-              setWorkers(coWorkers);
+              if (mounted) setWorkers(coWorkers);
             }
           }
         } catch (err) {
           console.error("Error loading workers:", err);
+          if (mounted) setWorkers([]);
+        } finally {
+          // small delay to avoid flicker for very fast responses
+          setTimeout(() => {
+            if (mounted) setIsModalLoading(false);
+          }, 120);
         }
       })();
+      return () => {
+        mounted = false;
+      };
     }
   }, [isOpen]);
 
@@ -105,6 +118,8 @@ export default function WorkerChatModal({
   // Load chats when activeChat changes
   useEffect(() => {
     if (activeChat) {
+      let mounted = true;
+      setIsChatsLoading(true);
       (async () => {
         try {
           // activeChat.id may be in form "manager:<uuid>" or a worker id
@@ -116,12 +131,22 @@ export default function WorkerChatModal({
           );
           if (res.ok) {
             const list = await res.json();
-            setChats(list);
+            if (mounted) setChats(list);
+          } else {
+            if (mounted) setChats([]);
           }
         } catch (err) {
           console.error("Error loading chats:", err);
+          if (mounted) setChats([]);
+        } finally {
+          setTimeout(() => {
+            if (mounted) setIsChatsLoading(false);
+          }, 80);
         }
       })();
+      return () => {
+        mounted = false;
+      };
     }
   }, [activeChat]);
 
@@ -235,10 +260,18 @@ export default function WorkerChatModal({
             )}
 
             <div className="flex-1 overflow-y-auto">
-              {workers.length === 0 ? (
-                <div className="p-4 text-center text-gray-500 text-sm">
-                  No co-workers found
+              {isModalLoading ? (
+                <div className="p-6 flex items-center justify-center">
+                  <div role="status" aria-live="polite" className="flex items-center gap-3">
+                    <svg className="animate-spin -ml-1 h-6 w-6 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                    <div className="text-sm text-gray-600">Loading contacts…</div>
+                  </div>
                 </div>
+              ) : workers.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 text-sm">No co-workers found</div>
               ) : (
                 workers.map((worker) => (
                   <div
@@ -263,12 +296,8 @@ export default function WorkerChatModal({
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900 truncate">
-                          {worker.name}
-                        </div>
-                        <div className="text-sm text-gray-500 truncate">
-                          {worker.email}
-                        </div>
+                        <div className="font-medium text-gray-900 truncate">{worker.name}</div>
+                        <div className="text-sm text-gray-500 truncate">{worker.email}</div>
                       </div>
                     </div>
                   </div>
@@ -316,14 +345,21 @@ export default function WorkerChatModal({
                   <X className="w-4 h-4 text-gray-600" />
                 </button>
               </div>
-
               {/* Chat messages */}
               <div className="flex-1 p-4 bg-gray-50 overflow-y-auto">
                 <div className="space-y-3">
-                  {chats.length === 0 ? (
-                    <div className="text-center text-gray-500 text-sm">
-                      Start chatting with {activeChat.name}
+                  {isChatsLoading ? (
+                    <div className="p-6 flex items-center justify-center">
+                      <div role="status" aria-live="polite" className="flex items-center gap-3">
+                        <svg className="animate-spin -ml-1 h-6 w-6 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                        </svg>
+                        <div className="text-sm text-gray-600">Loading messages…</div>
+                      </div>
                     </div>
+                  ) : chats.length === 0 ? (
+                    <div className="text-center text-gray-500 text-sm">Start chatting with {activeChat.name}</div>
                   ) : (
                     chats.map((c) => {
                       const isFromMe = c.senderId === currentWorker?.id;

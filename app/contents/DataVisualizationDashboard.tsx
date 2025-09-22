@@ -379,29 +379,27 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
       {
         label: "Total Tasks",
         data: teamEntries.map(([, count]) => count),
+        // New 5-color palette for Tasks by Team (Yellow, Blue, Red, Green, Violet)
         backgroundColor: teamEntries.map(
           (_, i) =>
             [
-              "rgba(99,102,241,0.8)",
-              "rgba(16,185,129,0.8)",
-              "rgba(59,130,246,0.8)",
-              "rgba(244,63,94,0.8)",
-              "rgba(249,115,22,0.8)",
-              "rgba(190,24,93,0.8)",
-            ][i % 6]
+              "rgba(59,130,246,0.95)", // Blue-500
+              "rgba(245,158,11,0.95)", // Yellow/Amber-500
+              "rgba(239,68,68,0.95)", // Red-500
+              "rgba(16,185,129,0.95)", // Green/Emerald-500
+              "rgba(99,102,241,0.95)", // Violet/Indigo-500
+            ][i % 5]
         ),
-        borderColor: teamEntries.map(
+        hoverBackgroundColor: teamEntries.map(
           (_, i) =>
             [
-              "rgba(79,70,229,1)",
-              "rgba(5,150,105,1)",
               "rgba(37,99,235,1)",
-              "rgba(190,18,60,1)",
               "rgba(234,88,12,1)",
-              "rgba(153,27,27,1)",
-            ][i % 6]
+              "rgba(220,38,38,1)",
+              "rgba(5,150,105,1)",
+              "rgba(79,70,229,1)",
+            ][i % 5]
         ),
-        borderWidth: 1,
       },
     ],
   };
@@ -605,26 +603,28 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
       {/* Project Statistics */}
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Team Statistics
+          Project Statistics
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">
-              {overview.taskCompletionRate}%
-            </div>
-            <div className="text-sm text-gray-600">Task Completion Rate</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">
-              {overview.totalWorkers}
-            </div>
-            <div className="text-sm text-gray-600">Active Workers</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">
               {overview.activeProjects}
             </div>
             <div className="text-sm text-gray-600">Active Projects</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">
+              {overview.totalProjects}
+            </div>
+            <div className="text-sm text-gray-600">Total Projects</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-600">
+              {Math.round(
+                overview.totalTasks / Math.max(overview.activeProjects, 1)
+              )}
+            </div>
+            <div className="text-sm text-gray-600">Avg Tasks per Project</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-orange-600">
@@ -643,17 +643,22 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <h5 className="font-medium text-gray-900">Completed Tasks</h5>
+                  <h5 className="font-medium text-gray-900">
+                    Completed Projects
+                  </h5>
                   <p className="text-sm text-gray-600">
-                    Total: {overview.completedTasks}
+                    Total:{" "}
+                    {Math.max(
+                      overview.totalProjects - overview.activeProjects,
+                      0
+                    )}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {overview.recentTasksCompleted} completed recently
+                    Projects successfully finished
                   </p>
                 </div>
                 <div className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                  {overview.taskCompletionChange >= 0 ? "+" : ""}
-                  {overview.taskCompletionChange}%
+                  completed
                 </div>
               </div>
             </div>
@@ -662,7 +667,8 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
                 <div>
                   <h5 className="font-medium text-gray-900">Pending Tasks</h5>
                   <p className="text-sm text-gray-600">
-                    Total: {overview.pendingTasks}
+                    Total:{" "}
+                    {Math.max(overview.totalTasks - overview.completedTasks, 0)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     {overview.recentTasksCreated} created recently

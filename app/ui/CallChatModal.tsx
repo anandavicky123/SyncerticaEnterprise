@@ -51,6 +51,8 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
   const [chatMessage, setChatMessage] = useState("");
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [chats, setChats] = useState<ChatRow[]>([]);
+  const [isModalLoading, setIsModalLoading] = useState(false);
+  const [isChatsLoading, setIsChatsLoading] = useState(false);
   // Track if we've already auto-selected a member for this open cycle to avoid re-running
   const autoInitRef = useRef<string | null>(null);
 
@@ -58,6 +60,7 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     let mounted = true;
+    setIsModalLoading(true);
     async function loadWorkers() {
       try {
         const res = await fetch("/api/workers", { credentials: "include" });
@@ -94,7 +97,12 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
           console.debug("Failed to load per-worker unread counts", e);
         }
         setTeamMembers(mapped);
+        // small delay to avoid flicker for very fast responses
+        setTimeout(() => {
+          if (mounted) setIsModalLoading(false);
+        }, 120);
       } catch (err) {
+        if (mounted) setIsModalLoading(false);
         console.error("Error loading workers:", err);
       }
     }
@@ -225,6 +233,7 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
   useEffect(() => {
     if (!activeChat) return;
     let mounted = true;
+    setIsChatsLoading(true);
     (async () => {
       try {
         const res = await fetch(`/api/chat?receiverId=${activeChat.id}`, {
@@ -236,6 +245,11 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
       } catch (err) {
         console.error(err);
         if (mounted) setChats([]);
+      } finally {
+        // small delay to reduce flicker
+        setTimeout(() => {
+          if (mounted) setIsChatsLoading(false);
+        }, 80);
       }
     })();
     return () => {
@@ -260,7 +274,17 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            {teamMembers.map((member) => (
+            {isModalLoading ? (
+              <div className="flex items-center justify-center p-8">
+                <div role="status" aria-live="polite" className="flex items-center gap-3">
+                  <svg className="animate-spin -ml-1 h-6 w-6 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                  </svg>
+                  <div className="text-sm text-gray-600">Loading team members…</div>
+                </div>
+              </div>
+            ) : teamMembers.map((member) => (
               <div
                 key={member.id}
                 className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
@@ -348,7 +372,17 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
 
               <div className="flex-1 p-4 bg-gray-50 overflow-y-auto">
                 <div className="flex flex-col gap-3">
-                  {chats.length === 0 ? (
+                  {isChatsLoading ? (
+                    <div className="p-6 flex items-center justify-center">
+                      <div role="status" aria-live="polite" className="flex items-center gap-3">
+                        <svg className="animate-spin -ml-1 h-6 w-6 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                        </svg>
+                        <div className="text-sm text-gray-600">Loading messages…</div>
+                      </div>
+                    </div>
+                  ) : chats.length === 0 ? (
                     <div className="text-center text-gray-500 text-sm">
                       Start chatting with {activeChat.name}
                     </div>
