@@ -272,10 +272,10 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </p>
           </div>
 
-          {/* Due Date and Estimated Hours Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Due Date row (spans full width) */}
+          <div className="grid grid-cols-1 gap-4">
             {/* Due Date */}
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Calendar className="w-4 h-4 inline mr-1" />
                 Due Date
@@ -288,7 +288,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-
             {/* Estimated Hours input removed - field deleted from schema */}
           </div>
 

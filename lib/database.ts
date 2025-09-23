@@ -182,9 +182,7 @@ export class DatabaseManager {
       createdAt: task.createdAt.toISOString(),
       dueDate: task.dueDate?.toISOString(),
       tags: task.tags,
-      estimatedHours: task.estimatedHours || undefined,
-      actualHours: task.actualHours || undefined,
-      stepFunctionArn: task.stepFunctionArn || undefined,
+      // estimatedHours/actualHours/stepFunctionArn removed from schema
       projectId: task.projectId || undefined,
       projectName: task.project?.name || undefined,
     }));
@@ -212,9 +210,7 @@ export class DatabaseManager {
       createdAt: task.createdAt.toISOString(),
       dueDate: task.dueDate?.toISOString(),
       tags: task.tags,
-      estimatedHours: task.estimatedHours || undefined,
-      actualHours: task.actualHours || undefined,
-      stepFunctionArn: task.stepFunctionArn || undefined,
+  // estimatedHours/actualHours/stepFunctionArn removed from schema
       projectId: task.projectId || undefined,
       projectName: task.project?.name || undefined,
     };
@@ -269,28 +265,13 @@ export class DatabaseManager {
       return ["workflow", "tasks", "task_status", "general", "status"];
     };
 
-    // Ensure a default project exists for this manager
-    let defaultProject = await prisma.project.findFirst({
-      where: { managerDeviceUUID, name: "Default Project" },
-    });
-    if (!defaultProject) {
-      defaultProject = await prisma.project.create({
-        data: {
-          id: crypto.randomUUID(),
-          managerDeviceUUID,
-          name: "Default Project",
-          description: "Auto-created default project",
-          status: "active",
-        },
-      });
-    }
+  // Do NOT auto-create a default project anymore.
+  // If a projectId is not provided or is invalid, we'll leave the task.projectId as null
+  // so tasks can be created without being attached to a project.
 
     // Get or create status
     let status = await prisma.status.findFirst({
-      where: {
-        name: task.status,
-        managerDeviceUUID,
-      },
+      where: { name: task.status },
     });
 
     if (!status) {
@@ -301,11 +282,7 @@ export class DatabaseManager {
       for (const category of categoryCandidates) {
         try {
           createdStatusLocal = await prisma.status.create({
-            data: {
-              name: task.status,
-              category,
-              managerDeviceUUID,
-            },
+            data: { name: task.status, category },
           });
           break;
         } catch {
@@ -320,21 +297,40 @@ export class DatabaseManager {
       status = createdStatusLocal;
     }
 
-    // If a projectId was provided, make sure it exists and belongs to this manager
-    let projectToUseId = defaultProject.id;
+    // If a projectId was provided, make sure it exists and belongs to this manager.
+    // If not provided, try to pick an existing project for the manager. We will NOT
+    // auto-create a Default Project anymore. If the manager has no projects, throw an error.
+    let projectToUseId: string;
     if (projectId) {
       const projectCheck = await prisma.project.findFirst({
         where: { id: projectId, managerDeviceUUID },
       });
-      if (projectCheck) {
-        projectToUseId = projectCheck.id;
-      } else {
-        // invalid projectId for this manager; fall back to defaultProject
-        projectToUseId = defaultProject.id;
+      if (!projectCheck) {
+        throw new Error("Invalid projectId for this manager");
       }
+      projectToUseId = projectCheck.id;
+    } else {
+      // pick the first project for this manager if any
+      const existingProject = await prisma.project.findFirst({
+        where: { managerDeviceUUID },
+      });
+      if (!existingProject) {
+        throw new Error(
+          "No project found for this manager. Create a project first or provide projectId."
+        );
+      }
+      projectToUseId = existingProject.id;
     }
 
-    const input = task as any;
+    const input = task as Partial<Task> & {
+      title: string;
+      description: string;
+      assignedTo: string;
+      priority?: string;
+      tags?: string[];
+      dueDate?: string | Date;
+    };
+
     const created = await prisma.task.create({
       data: {
         id: crypto.randomUUID(),
@@ -346,9 +342,6 @@ export class DatabaseManager {
         statusId: status.id,
         tags: input.tags || [],
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
-        estimatedHours: input.estimatedHours ?? null,
-        actualHours: input.actualHours ?? null,
-        stepFunctionArn: input.stepFunctionArn ?? null,
         projectId: projectToUseId,
       },
       include: {
@@ -357,22 +350,20 @@ export class DatabaseManager {
       },
     });
 
+    const createdAny = created as unknown as { status?: { name?: string }; project?: { name?: string } };
     return {
       id: created.id,
       title: created.title,
       description: created.description,
-      status: created.status.name as Task["status"],
+      status: (createdAny.status?.name as Task["status"]) || String(created.statusId),
       priority: created.priority as Task["priority"],
       assignedTo: created.assignedTo,
       managerdeviceuuid: created.assignedBy,
       createdAt: created.createdAt.toISOString(),
       dueDate: created.dueDate?.toISOString(),
       tags: created.tags,
-      estimatedHours: created.estimatedHours || undefined,
-      actualHours: created.actualHours || undefined,
-      stepFunctionArn: created.stepFunctionArn || undefined,
       projectId: created.projectId || undefined,
-      projectName: created.project?.name || undefined,
+      projectName: createdAny.project?.name || undefined,
     };
   }
 
@@ -392,14 +383,8 @@ export class DatabaseManager {
       const managerDeviceUUID = existing.manager.deviceUUID;
 
       if (updates.status) {
-        const task = { assignedBy: managerDeviceUUID };
-
-        let status = await prisma.status.findFirst({
-          where: {
-            name: updates.status,
-            managerDeviceUUID: task.assignedBy,
-          },
-        });
+        // managerDeviceUUID available in local variable `managerDeviceUUID`
+        let status = await prisma.status.findFirst({ where: { name: updates.status } });
 
         if (!status) {
           const rows = await prisma.$queryRaw<Array<{ def: string }>>`
@@ -422,11 +407,7 @@ export class DatabaseManager {
           for (const category of candidates) {
             try {
               newStatus = await prisma.status.create({
-                data: {
-                  name: updates.status,
-                  category,
-                  managerDeviceUUID: task.assignedBy,
-                },
+                data: { name: updates.status, category },
               });
               break;
             } catch {
@@ -472,8 +453,10 @@ export class DatabaseManager {
           // ignore if status.category missing
         }
         // If caller explicitly provided updatedAt (either timestamp or null), respect it
-        if ((maybeUpdates as any).updatedAt !== undefined) {
-          const incoming = (maybeUpdates as any).updatedAt;
+        // Respect explicit updatedAt when provided by caller
+        const maybeAny = maybeUpdates as unknown as Record<string, unknown>;
+        if (maybeAny.updatedAt !== undefined) {
+          const incoming = maybeAny.updatedAt as string | number | null | undefined;
           if (incoming === null) data.updatedAt = null;
           else if (incoming) data.updatedAt = new Date(incoming);
         }
@@ -483,46 +466,17 @@ export class DatabaseManager {
         };
         if (mu.projectId !== undefined) {
           const incoming = mu.projectId;
-          // If empty/falsy, fall back to default project
+          // If incoming is falsy, unassign project (set to null)
           if (!incoming) {
-            // ensure default exists
-            let defaultProject = await prisma.project.findFirst({
-              where: { managerDeviceUUID, name: "Default Project" },
-            });
-            if (!defaultProject) {
-              defaultProject = await prisma.project.create({
-                data: {
-                  id: crypto.randomUUID(),
-                  managerDeviceUUID,
-                  name: "Default Project",
-                  description: "Auto-created default project",
-                  status: "active",
-                },
-              });
-            }
-            data.projectId = defaultProject.id;
+            data.projectId = null;
           } else {
             const projectCheck = await prisma.project.findFirst({
               where: { id: incoming, managerDeviceUUID },
             });
             if (projectCheck) data.projectId = projectCheck.id;
             else {
-              // invalid project -> fall back to default
-              let defaultProject = await prisma.project.findFirst({
-                where: { managerDeviceUUID, name: "Default Project" },
-              });
-              if (!defaultProject) {
-                defaultProject = await prisma.project.create({
-                  data: {
-                    id: crypto.randomUUID(),
-                    managerDeviceUUID,
-                    name: "Default Project",
-                    description: "Auto-created default project",
-                    status: "active",
-                  },
-                });
-              }
-              data.projectId = defaultProject.id;
+              // invalid project -> leave projectId null (do not auto-create)
+              data.projectId = null;
             }
           }
         }
@@ -561,43 +515,13 @@ export class DatabaseManager {
         if (mu2.projectId !== undefined) {
           const incoming = mu2.projectId;
           if (!incoming) {
-            let defaultProject = await prisma.project.findFirst({
-              where: { managerDeviceUUID, name: "Default Project" },
-            });
-            if (!defaultProject) {
-              defaultProject = await prisma.project.create({
-                data: {
-                  id: crypto.randomUUID(),
-                  managerDeviceUUID,
-                  name: "Default Project",
-                  description: "Auto-created default project",
-                  status: "active",
-                },
-              });
-            }
-            data2.projectId = defaultProject.id;
+            data2.projectId = null;
           } else {
             const projectCheck = await prisma.project.findFirst({
               where: { id: incoming, managerDeviceUUID },
             });
             if (projectCheck) data2.projectId = projectCheck.id;
-            else {
-              let defaultProject = await prisma.project.findFirst({
-                where: { managerDeviceUUID, name: "Default Project" },
-              });
-              if (!defaultProject) {
-                defaultProject = await prisma.project.create({
-                  data: {
-                    id: crypto.randomUUID(),
-                    managerDeviceUUID,
-                    name: "Default Project",
-                    description: "Auto-created default project",
-                    status: "active",
-                  },
-                });
-              }
-              data2.projectId = defaultProject.id;
-            }
+            else data2.projectId = null;
           }
         }
 
@@ -636,8 +560,8 @@ export class DatabaseManager {
       name: project.name,
       description: project.description || undefined,
       repository: project.repository || undefined,
-      statusId: (project as any).statusId || 5,
-      statusName: this.getStatusName((project as any).statusId || 5),
+      statusId: project.statusId || 5,
+      statusName: this.getStatusName(project.statusId || 5),
       createdAt: project.createdAt.toISOString(),
     }));
   }
@@ -661,8 +585,8 @@ export class DatabaseManager {
       name: project.name,
       description: project.description || undefined,
       repository: project.repository || undefined,
-      statusId: (project as any).statusId || 5,
-      statusName: this.getStatusName((project as any).statusId || 5),
+      statusId: project.statusId || 5,
+      statusName: this.getStatusName(project.statusId || 5),
       createdAt: project.createdAt.toISOString(),
     };
   }
@@ -679,7 +603,7 @@ export class DatabaseManager {
         repository: project.repository,
         statusId: project.statusId || 5,
         managerDeviceUUID,
-      } as any,
+      },
     });
 
     return {
@@ -687,8 +611,8 @@ export class DatabaseManager {
       name: created.name,
       description: created.description || undefined,
       repository: created.repository || undefined,
-      statusId: (created as any).statusId || 5,
-      statusName: this.getStatusName((created as any).statusId || 5),
+      statusId: created.statusId || 5,
+      statusName: this.getStatusName(created.statusId || 5),
       createdAt: created.createdAt.toISOString(),
     };
   }
@@ -721,8 +645,8 @@ export class DatabaseManager {
       name: updated.name,
       description: updated.description || undefined,
       repository: updated.repository || undefined,
-      statusId: (updated as any).statusId || 5,
-      statusName: this.getStatusName((updated as any).statusId || 5),
+      statusId: updated.statusId || 5,
+      statusName: this.getStatusName(updated.statusId || 5),
       createdAt: updated.createdAt.toISOString(),
     };
   }
