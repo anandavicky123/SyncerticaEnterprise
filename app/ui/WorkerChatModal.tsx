@@ -43,13 +43,24 @@ export default function WorkerChatModal({
   // Normalize special contact IDs (e.g., manager:<uuid>) to match unread map keys
   const normalizeSenderId = (id: string) =>
     id.startsWith("manager:") ? id.substring(8) : id;
+  
   const getUnreadCount = (id: string) => {
-    // Try both the original ID and normalized ID to handle different server key formats
+    // Try multiple ID formats to handle different server key formats:
+    // 1. Original ID as-is (e.g., "manager:uuid" or "worker-id")
+    // 2. Normalized ID (e.g., "uuid" from "manager:uuid")
+    // 3. Prefixed manager ID (e.g., "manager:uuid" from "uuid")
     const normalizedId = normalizeSenderId(id);
-    const count = unreadBySender[id] || unreadBySender[normalizedId] || 0;
+    const managerPrefixedId = id.startsWith("manager:") ? id : `manager:${id}`;
+    
+    const count = unreadBySender[id] || 
+                  unreadBySender[normalizedId] || 
+                  unreadBySender[managerPrefixedId] || 
+                  0;
+                  
     console.debug(
-      `Getting unread count for ${id}: ${count} (tried keys: ${id}, ${normalizedId})`
+      `Getting unread count for ${id}: ${count} (tried keys: ${id}, ${normalizedId}, ${managerPrefixedId})`
     );
+    console.debug("Current unreadBySender map:", unreadBySender);
     return count;
   };
 
@@ -126,9 +137,10 @@ export default function WorkerChatModal({
         });
         if (ubRes.ok) {
           const data = await ubRes.json();
-          // workers endpoint returns { bySender: Record<string, number>, total }
-          const map = (data && data.bySender) || {};
-          console.debug("Loaded unread counts for worker:", map); // Debug log
+          // API returns { bySender: Record<string, number>, total } for workers
+          // or { byWorker: Record<string, number>, total } for managers
+          const map = (data && (data.bySender || data.byWorker)) || {};
+          console.debug("Loaded unread counts for worker:", data); // Debug full response
           console.debug("Available unread keys:", Object.keys(map)); // Debug keys
           setUnreadBySender(map);
         } else {
@@ -206,11 +218,19 @@ export default function WorkerChatModal({
           body: JSON.stringify({ senderId: actualSenderId }),
         });
         // Optimistically clear local badge for this contact.
-        // Clear both the display id and the normalized id to cover server key format.
+        // Clear multiple ID formats to ensure we catch the right key.
         setUnreadBySender((prev) => {
           const updated = { ...prev } as Record<string, number>;
+          const normalizedId = normalizeSenderId(worker.id);
+          const managerPrefixedId = worker.id.startsWith("manager:") ? worker.id : `manager:${worker.id}`;
+          
+          // Clear all possible formats
           updated[worker.id] = 0;
           updated[actualSenderId] = 0;
+          updated[normalizedId] = 0;
+          updated[managerPrefixedId] = 0;
+          
+          console.debug("Cleared unread badges for keys:", [worker.id, actualSenderId, normalizedId, managerPrefixedId]);
           return updated;
         });
       } catch (err) {
@@ -254,7 +274,7 @@ export default function WorkerChatModal({
             );
             if (ubRes.ok) {
               const data = await ubRes.json();
-              const map = (data && data.bySender) || {};
+              const map = (data && (data.bySender || data.byWorker)) || {};
               setUnreadBySender(map);
             }
           } catch (e) {
@@ -285,54 +305,54 @@ export default function WorkerChatModal({
           </button>
         )}
         {/* Left sidebar - Workers list */}
-        <div className="w-1/3 border-r border-gray-200 flex flex-col">
+        <div className="w-1/3 border-r border-gray-200 flex flex-col min-h-0">
           <div className="p-4 border-b border-gray-200 bg-gray-50">
             <h3 className="text-lg font-medium text-gray-900">Co-workers</h3>
             <p className="text-sm text-gray-500">Chat with your teammates</p>
           </div>
 
-          <div className="flex-1 flex flex-col">
-            {/* Sticky manager contact at top */}
-            {managerInfo && (
-              <div
-                onClick={() => handleStartChat(managerInfo)}
-                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 sticky top-0 bg-white z-10 ${
-                  activeChat?.id === managerInfo.id
-                    ? "bg-blue-50 border-l-4 border-l-blue-500"
-                    : ""
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                    {managerInfo.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 truncate">
-                      {managerInfo.name}
-                    </div>
-                    <div className="text-sm text-gray-500 truncate">
-                      {managerInfo.email}
-                    </div>
-                  </div>
-                  {getUnreadCount(managerInfo.id) > 0 && (
-                    <span
-                      title={`${getUnreadCount(managerInfo.id)} unread message${
-                        getUnreadCount(managerInfo.id) > 1 ? "s" : ""
-                      }`}
-                      className="w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center flex-shrink-0"
-                    >
-                      <span className="text-white text-xs font-medium">
-                        {getUnreadCount(managerInfo.id) > 9
-                          ? "9+"
-                          : getUnreadCount(managerInfo.id)}
-                      </span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
+          <div className="flex-1 min-h-0 flex flex-col">
             <div className="flex-1 overflow-y-auto">
+              {/* Sticky manager contact at top inside the scrollable area */}
+              {managerInfo && (
+                <div
+                  onClick={() => handleStartChat(managerInfo)}
+                  className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 sticky top-0 bg-white z-10 ${
+                    activeChat?.id === managerInfo.id
+                      ? "bg-blue-50 border-l-4 border-l-blue-500"
+                      : ""
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                      {managerInfo.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 truncate">
+                        {managerInfo.name}
+                      </div>
+                      <div className="text-sm text-gray-500 truncate">
+                        {managerInfo.email}
+                      </div>
+                    </div>
+                    {getUnreadCount(managerInfo.id) > 0 && (
+                      <span
+                        title={`${getUnreadCount(managerInfo.id)} unread message${
+                          getUnreadCount(managerInfo.id) > 1 ? "s" : ""
+                        }`}
+                        className="w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center flex-shrink-0"
+                      >
+                        <span className="text-white text-xs font-medium">
+                          {getUnreadCount(managerInfo.id) > 9
+                            ? "9+"
+                            : getUnreadCount(managerInfo.id)}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {isModalLoading ? (
                 <div className="p-6 flex items-center justify-center">
                   <div
@@ -410,9 +430,9 @@ export default function WorkerChatModal({
                   </div>
                 ))
               )}
+              </div>
             </div>
           </div>
-        </div>
 
         {/* Right side - Chat area */}
         <div className="flex-1 flex flex-col">
