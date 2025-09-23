@@ -26,6 +26,22 @@ export async function GET(request: NextRequest) {
         },
       }
     );
+    
+    if (!collabRes.ok) {
+      const errorText = await collabRes.text();
+      console.error(`Failed to fetch collaborators for ${owner}/${name}:`, collabRes.status, errorText);
+      return NextResponse.json(
+        { 
+          error: `Failed to fetch collaborators: ${collabRes.status}`,
+          details: errorText,
+          suggestion: collabRes.status === 403 
+            ? "GitHub App may lack 'Members' permission. Check App settings in GitHub."
+            : "Check repository access and permissions."
+        }, 
+        { status: collabRes.status }
+      );
+    }
+    
     const collaborators = await collabRes.json();
 
     // Also fetch pending invitations
@@ -39,7 +55,14 @@ export async function GET(request: NextRequest) {
         },
       }
     );
-    const invitations = await invitesRes.json();
+    
+    // Invitations might fail if no permission, but don't fail the whole request
+    let invitations = [];
+    if (invitesRes.ok) {
+      invitations = await invitesRes.json();
+    } else {
+      console.warn(`Failed to fetch invitations for ${owner}/${name}:`, invitesRes.status);
+    }
 
     return NextResponse.json({ collaborators, invitations });
   } catch (e) {

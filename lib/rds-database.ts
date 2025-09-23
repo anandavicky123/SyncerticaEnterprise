@@ -18,9 +18,6 @@ export interface Task {
   createdAt: string;
   dueDate?: string;
   tags: string[];
-  estimatedHours?: number;
-  actualHours?: number;
-  stepFunctionArn?: string;
   projectId?: string;
   projectName?: string;
 }
@@ -41,7 +38,8 @@ export interface Project {
   name: string;
   description?: string;
   repository?: string;
-  status: string;
+  statusId: number;
+  statusName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -160,9 +158,6 @@ export class DatabaseManager {
       createdAt: t.createdAt.toISOString(),
       dueDate: t.dueDate?.toISOString(),
       tags: t.tags,
-      estimatedHours: t.estimatedHours || undefined,
-      actualHours: t.actualHours || undefined,
-      stepFunctionArn: t.stepFunctionArn || undefined,
       projectId: t.projectId || undefined,
       projectName: t.project?.name || undefined,
     }));
@@ -185,9 +180,6 @@ export class DatabaseManager {
       createdAt: t.createdAt.toISOString(),
       dueDate: t.dueDate?.toISOString(),
       tags: t.tags,
-      estimatedHours: t.estimatedHours || undefined,
-      actualHours: t.actualHours || undefined,
-      stepFunctionArn: t.stepFunctionArn || undefined,
       projectId: t.projectId || undefined,
       projectName: t.project?.name || undefined,
     };
@@ -270,9 +262,7 @@ export class DatabaseManager {
         statusId: status.id,
         tags: task.tags || [],
         dueDate: task.dueDate ? new Date(task.dueDate) : null,
-        estimatedHours: task.estimatedHours,
-        actualHours: task.actualHours,
-        stepFunctionArn: task.stepFunctionArn,
+  // estimatedHours/actualHours/stepFunctionArn removed
         projectId: projectToUseId,
       },
       include: { status: true, project: true },
@@ -289,9 +279,6 @@ export class DatabaseManager {
       createdAt: created.createdAt.toISOString(),
       dueDate: created.dueDate?.toISOString(),
       tags: created.tags,
-      estimatedHours: created.estimatedHours || undefined,
-      actualHours: created.actualHours || undefined,
-      stepFunctionArn: created.stepFunctionArn || undefined,
       projectId: created.projectId || undefined,
       projectName: (created as any).project?.name || undefined,
     };
@@ -421,10 +408,21 @@ export class DatabaseManager {
       name: p.name,
       description: p.description || undefined,
       repository: p.repository || undefined,
-      status: p.status,
+      statusId: (p as unknown as { statusId: number }).statusId || 5,
+      statusName: this.getStatusName((p as unknown as { statusId: number }).statusId || 5),
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
     }));
+  }
+
+  private getStatusName(statusId: number): string {
+    const statusMap: Record<number, string> = {
+      5: "active",
+      6: "on-hold", 
+      7: "completed",
+      8: "archived"
+    };
+    return statusMap[statusId] || "active";
   }
 
   async getProjectById(
@@ -440,7 +438,8 @@ export class DatabaseManager {
       name: p.name,
       description: p.description || undefined,
       repository: p.repository || undefined,
-      status: p.status,
+      statusId: (p as unknown as { statusId: number }).statusId || 5,
+      statusName: this.getStatusName((p as unknown as { statusId: number }).statusId || 5),
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
     };
@@ -455,16 +454,17 @@ export class DatabaseManager {
         name: project.name!,
         description: project.description || null,
         repository: project.repository || null,
-        status: project.status || "active",
+        statusId: project.statusId || 5, // Default to active
         managerDeviceUUID: project.managerDeviceUUID,
-      },
+      } as any,
     });
     return {
       id: created.id,
       name: created.name,
       description: created.description || undefined,
       repository: created.repository || undefined,
-      status: created.status,
+      statusId: (created as unknown as { statusId: number }).statusId || 5,
+      statusName: this.getStatusName((created as unknown as { statusId: number }).statusId || 5),
       createdAt: created.createdAt.toISOString(),
       updatedAt: created.updatedAt.toISOString(),
     };

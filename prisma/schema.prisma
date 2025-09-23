@@ -18,7 +18,6 @@ model Manager {
   githubAppId   String?        @unique(map: "github_app") @map("github_app_id")
   notifications Notification[]
   projects      Project[]
-  statuses      Status[]
   tasks         Task[]         @relation("TaskAssignedBy")
   workers       Worker[]
 
@@ -49,10 +48,11 @@ model Project {
   name              String
   description       String?
   repository        String?
-  status            String   @default("active")
+  statusId          Int      @default(5) @map("statusid")
   createdAt         DateTime @default(now()) @map("createdat") @db.Timestamptz(6)
   updatedAt         DateTime @default(now()) @map("updatedat") @db.Timestamptz(6)
   manager           Manager  @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
+  status            Status   @relation(fields: [statusId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "projects_statuses_fk")
   tasks             Task[]
 
   @@map("projects")
@@ -68,9 +68,6 @@ model Task {
   assignedBy        String           @map("managerdeviceuuid") @db.Uuid
   projectId         String           @map("projectid")
   dueDate           DateTime?        @map("duedate") @db.Timestamptz(6)
-  estimatedHours    Int?             @map("estimatedhours")
-  actualHours       Int?             @map("actualhours")
-  stepFunctionArn   String?          @map("stepfunctionarn")
   tags              String[]
   createdAt         DateTime         @default(now()) @map("createdat") @db.Timestamptz(6)
   updatedAt         DateTime?        @map("updatedat") @db.Timestamptz(6)
@@ -85,12 +82,11 @@ model Task {
 }
 
 model Status {
-  id                Int     @id @default(autoincrement())
-  managerDeviceUUID String  @map("managerdeviceuuid") @db.Uuid
-  name              String
-  category          String  @map("category")
-  manager           Manager @relation(fields: [managerDeviceUUID], references: [deviceUUID], onDelete: Cascade)
-  tasks             Task[]
+  id       Int       @id @default(autoincrement())
+  name     String
+  category String    @map("category")
+  projects Project[]
+  tasks    Task[]
 
   @@map("statuses")
 }

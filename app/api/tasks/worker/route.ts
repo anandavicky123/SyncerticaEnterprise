@@ -24,8 +24,6 @@ export async function GET(request: NextRequest) {
         status: t.status,
         priority: t.priority,
         dueDate: t.dueDate,
-        estimatedHours: t.estimatedHours,
-        actualHours: t.actualHours,
         project: {
           // Don't expose full project; provide a safe placeholder if available
           name: t.managerdeviceuuid ? "Project" : "Unknown",

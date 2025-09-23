@@ -14,8 +14,6 @@ interface Task {
   status: string;
   priority: string;
   dueDate?: string;
-  estimatedHours?: number;
-  actualHours?: number;
   project: {
     name: string;
     description?: string;
@@ -514,26 +512,7 @@ export default function TasksPage() {
                               </span>
                             )}
 
-                            {task.estimatedHours && (
-                              <span className="flex items-center">
-                                <svg
-                                  className="mr-1.5 h-4 w-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                  />
-                                </svg>
-                                {task.actualHours
-                                  ? `${task.actualHours}/${task.estimatedHours}h`
-                                  : `${task.estimatedHours}h estimated`}
-                              </span>
-                            )}
+                            {/* estimated/actual hours removed */}
                           </div>
                         </div>
 

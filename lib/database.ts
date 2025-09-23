@@ -46,7 +46,8 @@ export interface Project {
   name: string;
   description?: string;
   repository?: string;
-  status: "active" | "on-hold" | "completed" | "archived";
+  statusId: number;
+  statusName?: string;
   createdAt: string;
 }
 
@@ -60,6 +61,21 @@ export class DatabaseManager {
       DatabaseManager.instance = new DatabaseManager();
     }
     return DatabaseManager.instance;
+  }
+
+  // Helper function to map status IDs to names
+  getStatusName(statusId: number): string {
+    switch (statusId) {
+      case 1: return "todo";
+      case 2: return "doing";  
+      case 3: return "done";
+      case 4: return "blocked";
+      case 5: return "active";
+      case 6: return "on-hold";
+      case 7: return "completed";
+      case 8: return "archived";
+      default: return "unknown";
+    }
   }
 
   async getAllWorkers(managerDeviceUUID: string): Promise<Worker[]> {
@@ -620,7 +636,8 @@ export class DatabaseManager {
       name: project.name,
       description: project.description || undefined,
       repository: project.repository || undefined,
-      status: project.status as Project["status"],
+      statusId: (project as any).statusId || 5,
+      statusName: this.getStatusName((project as any).statusId || 5),
       createdAt: project.createdAt.toISOString(),
     }));
   }
@@ -644,7 +661,8 @@ export class DatabaseManager {
       name: project.name,
       description: project.description || undefined,
       repository: project.repository || undefined,
-      status: project.status as Project["status"],
+      statusId: (project as any).statusId || 5,
+      statusName: this.getStatusName((project as any).statusId || 5),
       createdAt: project.createdAt.toISOString(),
     };
   }
@@ -655,10 +673,13 @@ export class DatabaseManager {
   ): Promise<Project> {
     const created = await prisma.project.create({
       data: {
-        ...project,
         id: crypto.randomUUID(),
+        name: project.name,
+        description: project.description,
+        repository: project.repository,
+        statusId: project.statusId || 5,
         managerDeviceUUID,
-      },
+      } as any,
     });
 
     return {
@@ -666,7 +687,8 @@ export class DatabaseManager {
       name: created.name,
       description: created.description || undefined,
       repository: created.repository || undefined,
-      status: created.status as Project["status"],
+      statusId: (created as any).statusId || 5,
+      statusName: this.getStatusName((created as any).statusId || 5),
       createdAt: created.createdAt.toISOString(),
     };
   }
@@ -687,7 +709,7 @@ export class DatabaseManager {
     if (updates.description !== undefined)
       data.description = updates.description;
     if (updates.repository !== undefined) data.repository = updates.repository;
-    if (updates.status !== undefined) data.status = updates.status;
+    if (updates.statusId !== undefined) data.statusId = updates.statusId;
 
     const updated = await prisma.project.update({
       where: { id },
@@ -699,7 +721,8 @@ export class DatabaseManager {
       name: updated.name,
       description: updated.description || undefined,
       repository: updated.repository || undefined,
-      status: updated.status as Project["status"],
+      statusId: (updated as any).statusId || 5,
+      statusName: this.getStatusName((updated as any).statusId || 5),
       createdAt: updated.createdAt.toISOString(),
     };
   }

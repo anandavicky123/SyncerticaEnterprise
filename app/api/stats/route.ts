@@ -84,14 +84,15 @@ export async function GET(request: Request) {
     // Process project statistics
     if (Array.isArray(projects)) {
       for (const project of projects) {
-        const status = project.status?.toLowerCase() ?? "";
-        switch (status) {
-          case "active":
+        const statusId = project.statusId || 5; // Default to active
+        switch (statusId) {
+          case 5: // active
             stats.activeProjects++;
             break;
-          case "completed":
+          case 7: // completed
             stats.completedProjects++;
             break;
+          // Note: on-hold (6) and archived (8) don't map to existing counters
         }
       }
     }

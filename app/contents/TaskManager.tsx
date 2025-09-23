@@ -7,7 +7,6 @@ import {
   Search,
   Calendar,
   User,
-  Clock,
   Flag,
   CheckCircle,
   Circle,
@@ -115,7 +114,6 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
     managerdeviceuuid: string;
     priority: string;
     dueDate?: string;
-    estimatedHours?: number;
     tags: string[];
     projectId?: string;
   }) => {
@@ -195,7 +193,6 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
     priority: string;
     status: string;
     dueDate?: string;
-    estimatedHours?: number;
     tags: string[];
     projectId?: string;
   }) => {
@@ -616,18 +613,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
                           </span>
                         </div>
                       )}
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        <span>
-                          {task.actualHours || 0}h / {task.estimatedHours}h
-                        </span>
-                      </div>
-                      {task.stepFunctionArn && (
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span>Step Functions</span>
-                        </div>
-                      )}
+                      {/* estimated/actual hours and step function indicator removed */}
                     </div>
                   </div>
                 </div>

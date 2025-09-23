@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Calendar, Clock, Flag, User, Tag } from "lucide-react";
+import { X, Calendar, Flag, User, Tag } from "lucide-react";
 
 interface Worker {
   id: string;
@@ -21,7 +21,6 @@ interface CreateTaskModalProps {
     managerdeviceuuid: string;
     priority: string;
     dueDate?: string;
-    estimatedHours?: number;
     projectId?: string;
     tags: string[];
   }) => void;
@@ -44,7 +43,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     priority: "medium",
     projectId: "",
     dueDate: "",
-    estimatedHours: "",
     tags: "",
   });
 
@@ -99,9 +97,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         priority: formData.priority,
         projectId: formData.projectId || undefined,
         dueDate: formData.dueDate || undefined,
-        estimatedHours: formData.estimatedHours
-          ? parseInt(formData.estimatedHours)
-          : undefined,
         tags: formData.tags
           .split(",")
           .map((tag) => tag.trim())
@@ -118,7 +113,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         priority: "medium",
         projectId: "",
         dueDate: "",
-        estimatedHours: "",
         tags: "",
       });
 
@@ -295,23 +289,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               />
             </div>
 
-            {/* Estimated Hours */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Clock className="w-4 h-4 inline mr-1" />
-                Estimated Hours
-              </label>
-              <input
-                type="number"
-                name="estimatedHours"
-                value={formData.estimatedHours}
-                onChange={handleInputChange}
-                min="1"
-                max="200"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., 8"
-              />
-            </div>
+            {/* Estimated Hours input removed - field deleted from schema */}
           </div>
 
           {/* Tags */}
@@ -370,11 +348,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     {new Date(formData.dueDate).toLocaleDateString()}
                   </p>
                 )}
-                {formData.estimatedHours && (
-                  <p>
-                    <strong>Estimated:</strong> {formData.estimatedHours} hours
-                  </p>
-                )}
+                {/* estimatedHours removed from preview */}
                 {formData.tags && (
                   <p>
                     <strong>Tags:</strong> {formData.tags}

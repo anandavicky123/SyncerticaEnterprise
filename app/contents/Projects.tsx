@@ -40,7 +40,8 @@ interface Project {
   name: string;
   description?: string | null;
   repository?: string | null;
-  status: string;
+  statusId: number;
+  statusName?: string;
   managerDeviceUUID?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -202,11 +203,32 @@ const Projects: React.FC<{
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [repository, setRepository] = useState("");
-  const [status, setStatus] = useState("active");
+  const [statusId, setStatusId] = useState(5); // Default to active (5)
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingInstallation, setCheckingInstallation] =
     useState<boolean>(false);
+
+  // Status mapping helper
+  const getStatusName = (statusId: number): string => {
+    const statusMap: Record<number, string> = {
+      5: "active",
+      6: "on-hold", 
+      7: "completed",
+      8: "archived"
+    };
+    return statusMap[statusId] || "active";
+  };
+
+  const getStatusId = (statusName: string): number => {
+    const statusMap: Record<string, number> = {
+      "active": 5,
+      "on-hold": 6,
+      "completed": 7,
+      "archived": 8
+    };
+    return statusMap[statusName] || 5;
+  };
 
   // Modal states
   // replaced by manageAccessRepo modal
@@ -491,7 +513,7 @@ const Projects: React.FC<{
           name,
           description: description || null,
           repository: repository || null,
-          status,
+          statusId,
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -501,7 +523,7 @@ const Projects: React.FC<{
       setName("");
       setDescription("");
       setRepository("");
-      setStatus("active");
+      setStatusId(5); // Reset to active
       try {
         window.dispatchEvent(
           new CustomEvent("syncertica:stats-changed", { detail: {} })
@@ -525,7 +547,7 @@ const Projects: React.FC<{
           name,
           description: description || null,
           repository: repository || null,
-          status,
+          statusId,
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -538,7 +560,7 @@ const Projects: React.FC<{
       setName("");
       setDescription("");
       setRepository("");
-      setStatus("active");
+      setStatusId(5); // Reset to active
     } catch (err) {
       console.error("Update project failed", err);
       alert("Failed to update project");
@@ -572,9 +594,24 @@ const Projects: React.FC<{
         );
         setInvitations(Array.isArray(data.invitations) ? data.invitations : []);
       } else {
+        const errorText = await res.text();
+        console.error("Failed to fetch collaborators:", res.status, errorText);
+        
+        // Show user-friendly error messages based on status code
+        if (res.status === 403) {
+          console.warn("GitHub App lacks permission to read repository collaborators. Check App permissions in GitHub settings.");
+        }
+        
         setCollaborators([]);
         setInvitations([]);
+        
+        // For debugging, you might want to show an alert (uncomment next line if needed)
+        // alert(`Failed to load collaborators: ${res.status} - Check console for details`);
       }
+    } catch (error) {
+      console.error("Error fetching collaborators:", error);
+      setCollaborators([]);
+      setInvitations([]);
     } finally {
       setLoadingCollabs(false);
     }
@@ -642,7 +679,33 @@ const Projects: React.FC<{
     });
     if (!res.ok) {
       const txt = await res.text();
-      alert(`Failed to add collaborator: ${res.status} ${txt}`);
+      console.error("Add collaborator failed:", res.status, txt);
+      
+      // Parse the error response to provide better user feedback
+      let errorMessage = `Failed to add collaborator: ${res.status}`;
+      try {
+        const errorData = JSON.parse(txt);
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+        
+        // Provide specific guidance based on error type
+        if (res.status === 403 && errorData.message?.includes("Resource not accessible by integration")) {
+          errorMessage = "GitHub App lacks permission to manage repository collaborators.\n\nTo fix this:\n1. Go to your GitHub App settings\n2. Enable 'Members' permission with Read & Write access\n3. Reinstall the app on your repositories\n\nNote: The person may already be a collaborator if you see this error.";
+        } else if (res.status === 404) {
+          errorMessage = "User not found. Please check the GitHub username is correct.";
+        } else if (res.status === 422) {
+          errorMessage = "Cannot add collaborator. They may already have access or there may be an organization policy restriction.";
+        }
+      } catch {
+        // Use the original text if JSON parsing fails
+        errorMessage = `Failed to add collaborator: ${res.status} ${txt}`;
+      }
+      
+      alert(errorMessage);
+    } else {
+      // Success - provide feedback
+      alert(`Successfully ${username ? `added ${username}` : 'sent invitation'} as collaborator!`);
     }
     await fetchCollaborators(repoFullName);
   };
@@ -972,16 +1035,16 @@ const Projects: React.FC<{
                           </h4>
                           <span
                             className={`px-2 py-1 text-xs rounded ${
-                              project.status === "active"
+                              project.statusId === 5
                                 ? "bg-green-100 text-green-800"
-                                : project.status === "on-hold"
+                                : project.statusId === 6
                                 ? "bg-yellow-100 text-yellow-800"
-                                : project.status === "completed"
+                                : project.statusId === 7
                                 ? "bg-blue-100 text-blue-800"
                                 : "bg-gray-100 text-gray-800"
                             }`}
                           >
-                            {project.status}
+                            {project.statusName || getStatusName(project.statusId)}
                           </span>
                         </div>
                         {project.description && (
@@ -1015,7 +1078,7 @@ const Projects: React.FC<{
                             setName(project.name);
                             setDescription(project.description || "");
                             setRepository(project.repository || "");
-                            setStatus(project.status || "active");
+                            setStatusId(project.statusId || 5);
                           }}
                         >
                           <Edit className="w-4 h-4" />
@@ -1460,13 +1523,13 @@ const Projects: React.FC<{
                   </label>
                   <select
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
+                    value={statusId}
+                    onChange={(e) => setStatusId(parseInt(e.target.value))}
                   >
-                    <option value="active">Active</option>
-                    <option value="on-hold">On Hold</option>
-                    <option value="completed">Completed</option>
-                    <option value="archived">Archived</option>
+                    <option value={5}>Active</option>
+                    <option value={6}>On Hold</option>
+                    <option value={7}>Completed</option>
+                    <option value={8}>Archived</option>
                   </select>
                 </div>
               </div>
@@ -1481,7 +1544,7 @@ const Projects: React.FC<{
                     setName("");
                     setDescription("");
                     setRepository("");
-                    setStatus("active");
+                    setStatusId(5); // Reset to active
                   }}
                 >
                   Cancel

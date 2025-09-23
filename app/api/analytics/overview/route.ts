@@ -3,6 +3,17 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Helper function to map status IDs to names
+function getStatusName(statusId: number): string {
+  switch (statusId) {
+    case 5: return "active";
+    case 6: return "on-hold";
+    case 7: return "completed";
+    case 8: return "archived";
+    default: return "unknown";
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -73,10 +84,10 @@ export async function GET(request: Request) {
           },
         },
       }),
-      prisma.project.count({
+      (prisma.project as any).count({
         where: {
           managerDeviceUUID: managerUUID,
-          status: "active",
+          statusId: 5, // Active projects (statusId = 5)
         },
       }),
       prisma.task.count({
@@ -181,12 +192,10 @@ export async function GET(request: Request) {
     });
 
     // Get project status distribution
-    const projectStatuses = await prisma.project.groupBy({
-      by: ["status"],
+    const projectStatuses = await (prisma.project as any).groupBy({
+      by: ["statusId"],
       where: { managerDeviceUUID: managerUUID },
-      _count: {
-        id: true,
-      },
+      _count: true,
     });
 
     // Get task priority distribution
@@ -291,9 +300,9 @@ export async function GET(request: Request) {
         taskCount: worker._count.tasks,
         jobRole: worker.jobRole,
       })),
-      projectStatuses: projectStatuses.map((status) => ({
-        status: status.status,
-        count: status._count.id,
+      projectStatuses: projectStatuses.map((status: any) => ({
+        status: getStatusName(status.statusId || status.status),
+        count: typeof status._count === 'number' ? status._count : (status._count as any)?._all || (status._count as any)?.id || 0,
       })),
       taskPriorities: taskPriorities.map((priority) => ({
         priority: priority.priority,

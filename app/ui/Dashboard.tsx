@@ -363,7 +363,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
     managerdeviceuuid: string;
     priority: string;
     dueDate?: string;
-    estimatedHours?: number;
     tags: string[];
   }) => {
     try {

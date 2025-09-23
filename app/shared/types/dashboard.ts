@@ -153,9 +153,6 @@ export interface Task {
   projectName?: string;
   tags?: string[];
   attachments?: string[];
-  estimatedHours?: number;
-  actualHours?: number;
-  stepFunctionArn?: string;
 }
 
 export interface User {

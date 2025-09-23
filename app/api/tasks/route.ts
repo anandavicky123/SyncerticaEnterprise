@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
       priority,
       assignedTo,
       dueDate,
-      estimatedHours,
       tags,
       projectId,
     } = body;
@@ -92,9 +91,7 @@ export async function POST(request: NextRequest) {
         managerdeviceuuid,
         assignedTo,
         dueDate,
-        estimatedHours,
         tags: tags || [],
-        actualHours: 0,
       },
       projectId
     );

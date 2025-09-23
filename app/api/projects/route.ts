@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, repository, status } = body;
+    const { name, description, repository, statusId } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         name,
         description,
         repository,
-        status: status || "active",
+        statusId: statusId || 5, // Default to active
       },
       actorId
     );
