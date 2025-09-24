@@ -46,7 +46,7 @@ export interface CreateNotificationParams {
  * Create a notification in DynamoDB Notifications table
  */
 export async function createNotification(
-  params: CreateNotificationParams
+  params: CreateNotificationParams,
 ): Promise<string> {
   const notifId = uuidv4();
   const createdAt = new Date().toISOString();
@@ -75,11 +75,11 @@ export async function createNotification(
       new PutCommand({
         TableName: "Notifications",
         Item: item,
-      })
+      }),
     );
 
     console.log(
-      `Created notification ${notifId} for manager ${params.managerUUID}`
+      `Created notification ${notifId} for manager ${params.managerUUID}`,
     );
     return notifId;
   } catch (error) {
@@ -93,7 +93,7 @@ export async function createNotification(
  */
 export async function getManagerNotifications(
   managerUUID: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<NotificationItem[]> {
   try {
     const pk = `MANAGER#${managerUUID}`;
@@ -105,7 +105,7 @@ export async function getManagerNotifications(
         ExpressionAttributeValues: { ":pk": pk },
         Limit: limit,
         ScanIndexForward: false, // Most recent first
-      })
+      }),
     );
 
     return (result.Items as NotificationItem[]) || [];
@@ -120,7 +120,7 @@ export async function getManagerNotifications(
  */
 export async function markNotificationAsRead(
   managerUUID: string,
-  notifId: string
+  notifId: string,
 ): Promise<boolean> {
   try {
     // First, find the notification by querying and filtering
@@ -129,7 +129,7 @@ export async function markNotificationAsRead(
 
     if (!notification) {
       console.warn(
-        `Notification ${notifId} not found for manager ${managerUUID}`
+        `Notification ${notifId} not found for manager ${managerUUID}`,
       );
       return false;
     }
@@ -144,7 +144,7 @@ export async function markNotificationAsRead(
         UpdateExpression: "SET #status = :read",
         ExpressionAttributeNames: { "#status": "status" },
         ExpressionAttributeValues: { ":read": "read" },
-      })
+      }),
     );
 
     console.log(`Marked notification ${notifId} as read`);
@@ -164,7 +164,7 @@ export async function createTaskUpdateNotification(
   taskId: string,
   workerName: string,
   taskTitle: string,
-  newStatus: string
+  newStatus: string,
 ): Promise<string> {
   const message = `${workerName} marked "${taskTitle}" as ${newStatus}`;
 
@@ -184,11 +184,11 @@ export async function createWorkerMessageNotification(
   managerUUID: string,
   workerId: string,
   workerName: string,
-  messageContent: string
+  messageContent: string,
 ): Promise<string> {
   const message = `New message from ${workerName}: ${messageContent.substring(
     0,
-    100
+    100,
   )}${messageContent.length > 100 ? "..." : ""}`;
 
   return createNotification({

@@ -4,11 +4,11 @@ import { StickyNote } from "../shared/types/dashboard";
 
 export const useStickyNotes = (
   stickyNotes: StickyNote[],
-  setStickyNotes: React.Dispatch<React.SetStateAction<StickyNote[]>>
+  setStickyNotes: React.Dispatch<React.SetStateAction<StickyNote[]>>,
 ) => {
   const addStickyNote = (
     content: string,
-    type: "text" | "checklist" = "text"
+    type: "text" | "checklist" = "text",
   ) => {
     const newNote: StickyNote = {
       id: Date.now(),
@@ -36,11 +36,11 @@ export const useStickyNotes = (
               items: note.items.map((item, index) =>
                 index === itemIndex
                   ? { ...item, completed: !item.completed }
-                  : item
+                  : item,
               ),
             }
-          : note
-      )
+          : note,
+      ),
     );
   };
 
@@ -50,7 +50,7 @@ export const useStickyNotes = (
 
   const updateNotePosition = (noteId: number, x: number, y: number) => {
     setStickyNotes((notes) =>
-      notes.map((note) => (note.id === noteId ? { ...note, x, y } : note))
+      notes.map((note) => (note.id === noteId ? { ...note, x, y } : note)),
     );
   };
 

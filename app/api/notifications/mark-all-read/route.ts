@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     if (!actorType || !actorId) {
       return NextResponse.json(
         { success: false, error: "Missing actor headers" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const unread = (notifications || []).filter((n) => n.status === "unread");
 
     await Promise.all(
-      unread.map((n) => markNotificationReadForUser(queryId, n.notifId))
+      unread.map((n) => markNotificationReadForUser(queryId, n.notifId)),
     );
 
     return NextResponse.json({ success: true, marked: unread.length });
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     console.error("mark-all-read error", err);
     return NextResponse.json(
       { success: false, error: String(err) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

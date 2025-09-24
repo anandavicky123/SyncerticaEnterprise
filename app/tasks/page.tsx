@@ -26,7 +26,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [worker, setWorker] = useState<{ name: string; email: string } | null>(
-    null
+    null,
   );
   const [filter, setFilter] = useState("all");
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -91,8 +91,8 @@ export default function TasksPage() {
                 ...task,
                 status: newStatus,
               }
-            : task
-        )
+            : task,
+        ),
       );
 
       // Persist the change to the server
@@ -191,13 +191,13 @@ export default function TasksPage() {
                         if (r.ok) {
                           const d = await r.json().catch(() => ({ unread: 0 }));
                           setChatUnread(
-                            typeof d.unread === "number" ? d.unread : 0
+                            typeof d.unread === "number" ? d.unread : 0,
                           );
                         }
                       } catch (e) {
                         console.debug(
                           "Failed to refresh unread after mark-fail",
-                          e
+                          e,
                         );
                       }
                     }
@@ -296,13 +296,13 @@ export default function TasksPage() {
                       if (r.ok) {
                         const d = await r.json().catch(() => ({ unread: 0 }));
                         setChatUnread(
-                          typeof d.unread === "number" ? d.unread : 0
+                          typeof d.unread === "number" ? d.unread : 0,
                         );
                       }
                     } catch (e) {
                       console.debug(
                         "Failed to refresh unread after mark-fail",
-                        e
+                        e,
                       );
                     }
                   }
@@ -373,7 +373,6 @@ export default function TasksPage() {
             </div>
           )}
 
-          
           <div className="mt-6">
             <div className="border-b border-gray-200">
               <nav className="-mb-px flex space-x-8">
@@ -461,7 +460,7 @@ export default function TasksPage() {
                             </h3>
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(
-                                task.priority
+                                task.priority,
                               )}`}
                             >
                               {task.priority}
@@ -523,7 +522,7 @@ export default function TasksPage() {
                               updateTaskStatus(task.id, e.target.value)
                             }
                             className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border-0 focus:ring-2 focus:ring-blue-500 ${getStatusColor(
-                              task.status
+                              task.status,
                             )}`}
                           >
                             <option value="todo">To Do</option>
@@ -539,10 +538,7 @@ export default function TasksPage() {
                           Created{" "}
                           {new Date(task.createdAt).toLocaleDateString()}
                         </span>
-                        <span>
-                          Updated{" "}
-                         
-                        </span>
+                        <span>Updated </span>
                       </div>
                     </div>
                   </div>

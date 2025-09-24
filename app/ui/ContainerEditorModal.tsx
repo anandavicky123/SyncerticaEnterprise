@@ -43,7 +43,7 @@ COPY . .
 EXPOSE 3000
 
 CMD ["npm", "start"]
-`
+`,
   );
   const [sha, setSha] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
@@ -90,8 +90,8 @@ CMD ["npm", "start"]
         try {
           const res = await fetch(
             `/api/github/contents?repo=${encodeURIComponent(
-              item.repository
-            )}&path=${encodeURIComponent(item.path)}`
+              item.repository,
+            )}&path=${encodeURIComponent(item.path)}`,
           );
           if (res.ok) {
             const data = await res.json();

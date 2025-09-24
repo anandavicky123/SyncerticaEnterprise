@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     if (!sessionId) {
       return NextResponse.json(
         { success: false, isLoggedIn: false },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     if (!session) {
       return NextResponse.json(
         { success: false, isLoggedIn: false },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     console.error("/api/auth/session - error:", err);
     return NextResponse.json(
       { success: false, isLoggedIn: false, error: String(err) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

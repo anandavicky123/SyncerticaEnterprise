@@ -112,7 +112,7 @@ export const useGitHubData = () => {
           // Fetch repositories first
           console.log("📂 Fetching repositories...");
           const reposResponse = await fetch(
-            "/api/repositories/github_repositories"
+            "/api/repositories/github_repositories",
           );
           console.log("📂 Repositories response status:", reposResponse.status);
 
@@ -125,11 +125,11 @@ export const useGitHubData = () => {
             // Fetch containers
             console.log("📦 Fetching containers...");
             const containersResponse = await fetch(
-              "/api/containers/github_containers"
+              "/api/containers/github_containers",
             );
             console.log(
               "📦 Container response status:",
-              containersResponse.status
+              containersResponse.status,
             );
 
             if (containersResponse.ok) {
@@ -146,14 +146,14 @@ export const useGitHubData = () => {
             console.log(
               "🔧 Fetching workflows and infrastructure for",
               fetchedRepositories.length,
-              "repositories (in parallel)"
+              "repositories (in parallel)",
             );
 
             const workflowPromises = fetchedRepositories.map(
               async (repo: Repository) => {
                 try {
                   const workflowResponse = await fetch(
-                    `/api/workflows/github_workflows?repo=${repo.full_name}`
+                    `/api/workflows/github_workflows?repo=${repo.full_name}`,
                   );
                   if (workflowResponse.ok) {
                     const workflowData = await workflowResponse.json();
@@ -161,24 +161,24 @@ export const useGitHubData = () => {
                       (workflow: Workflow) => ({
                         ...workflow,
                         repository: repo.full_name,
-                      })
+                      }),
                     );
                   }
                 } catch (error) {
                   console.error(
                     `Error fetching workflows for ${repo.full_name}:`,
-                    error
+                    error,
                   );
                 }
                 return [] as Workflow[];
-              }
+              },
             );
 
             const infraPromises = fetchedRepositories.map(
               async (repo: Repository) => {
                 try {
                   const infraResponse = await fetch(
-                    `/api/infrastructure/github_infrastructure?repo=${repo.full_name}`
+                    `/api/infrastructure/github_infrastructure?repo=${repo.full_name}`,
                   );
                   if (infraResponse.ok) {
                     const infraData = await infraResponse.json();
@@ -186,17 +186,17 @@ export const useGitHubData = () => {
                       (infra: Infrastructure) => ({
                         ...infra,
                         repository: repo.full_name,
-                      })
+                      }),
                     );
                   }
                 } catch (error) {
                   console.error(
                     `Error fetching infrastructure for ${repo.full_name}:`,
-                    error
+                    error,
                   );
                 }
                 return [] as Infrastructure[];
-              }
+              },
             );
 
             const workflowsByRepo = await Promise.all(workflowPromises);
@@ -207,7 +207,7 @@ export const useGitHubData = () => {
 
             console.log(`✅ Setting workflows: ${allWorkflows.length} total`);
             console.log(
-              `✅ Setting infrastructure: ${allInfrastructure.length} total`
+              `✅ Setting infrastructure: ${allInfrastructure.length} total`,
             );
             setWorkflows(allWorkflows);
             setInfrastructure(allInfrastructure);
@@ -234,7 +234,7 @@ export const useGitHubData = () => {
         console.log("🔄 RefreshData complete");
       }
     },
-    [checkConnection, lastFetchTime, containers.length]
+    [checkConnection, lastFetchTime, containers.length],
   );
 
   const connectToGitHub = useCallback(() => {

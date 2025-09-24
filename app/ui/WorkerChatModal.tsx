@@ -35,7 +35,7 @@ export default function WorkerChatModal({
   const [chatMessage, setChatMessage] = useState("");
   const [currentWorker, setCurrentWorker] = useState<Worker | null>(null);
   const [unreadBySender, setUnreadBySender] = useState<Record<string, number>>(
-    {}
+    {},
   );
   const [isModalLoading, setIsModalLoading] = useState(false);
   const [isChatsLoading, setIsChatsLoading] = useState(false);
@@ -43,7 +43,7 @@ export default function WorkerChatModal({
   // Normalize special contact IDs (e.g., manager:<uuid>) to match unread map keys
   const normalizeSenderId = (id: string) =>
     id.startsWith("manager:") ? id.substring(8) : id;
-  
+
   const getUnreadCount = (id: string) => {
     // Try multiple ID formats to handle different server key formats:
     // 1. Original ID as-is (e.g., "manager:uuid" or "worker-id")
@@ -51,14 +51,15 @@ export default function WorkerChatModal({
     // 3. Prefixed manager ID (e.g., "manager:uuid" from "uuid")
     const normalizedId = normalizeSenderId(id);
     const managerPrefixedId = id.startsWith("manager:") ? id : `manager:${id}`;
-    
-    const count = unreadBySender[id] || 
-                  unreadBySender[normalizedId] || 
-                  unreadBySender[managerPrefixedId] || 
-                  0;
-                  
+
+    const count =
+      unreadBySender[id] ||
+      unreadBySender[normalizedId] ||
+      unreadBySender[managerPrefixedId] ||
+      0;
+
     console.debug(
-      `Getting unread count for ${id}: ${count} (tried keys: ${id}, ${normalizedId}, ${managerPrefixedId})`
+      `Getting unread count for ${id}: ${count} (tried keys: ${id}, ${normalizedId}, ${managerPrefixedId})`,
     );
     console.debug("Current unreadBySender map:", unreadBySender);
     return count;
@@ -88,7 +89,7 @@ export default function WorkerChatModal({
               const managerContactId = `manager:${worker.managerDeviceUUID}`;
               console.debug(
                 "Creating manager contact with ID:",
-                managerContactId
+                managerContactId,
               );
               setManagerInfo({
                 id: managerContactId,
@@ -105,7 +106,7 @@ export default function WorkerChatModal({
               const allWorkers = await workersRes.json();
               // Filter out current worker and keep list as-is; Manager will be rendered separately at top
               const coWorkers = allWorkers.filter(
-                (w: Worker) => w.id !== worker.id
+                (w: Worker) => w.id !== worker.id,
               );
               if (mounted) setWorkers(coWorkers);
             }
@@ -147,7 +148,7 @@ export default function WorkerChatModal({
           console.warn(
             "Failed to fetch unread counts:",
             ubRes.status,
-            ubRes.statusText
+            ubRes.statusText,
           );
         }
       } catch (e) {
@@ -178,7 +179,7 @@ export default function WorkerChatModal({
             `/api/chat?receiverId=${encodeURIComponent(activeChat.id)}`,
             {
               credentials: "include",
-            }
+            },
           );
           if (res.ok) {
             const list = await res.json();
@@ -222,15 +223,22 @@ export default function WorkerChatModal({
         setUnreadBySender((prev) => {
           const updated = { ...prev } as Record<string, number>;
           const normalizedId = normalizeSenderId(worker.id);
-          const managerPrefixedId = worker.id.startsWith("manager:") ? worker.id : `manager:${worker.id}`;
-          
+          const managerPrefixedId = worker.id.startsWith("manager:")
+            ? worker.id
+            : `manager:${worker.id}`;
+
           // Clear all possible formats
           updated[worker.id] = 0;
           updated[actualSenderId] = 0;
           updated[normalizedId] = 0;
           updated[managerPrefixedId] = 0;
-          
-          console.debug("Cleared unread badges for keys:", [worker.id, actualSenderId, normalizedId, managerPrefixedId]);
+
+          console.debug("Cleared unread badges for keys:", [
+            worker.id,
+            actualSenderId,
+            normalizedId,
+            managerPrefixedId,
+          ]);
           return updated;
         });
       } catch (err) {
@@ -270,7 +278,7 @@ export default function WorkerChatModal({
               "/api/notifications/unread-by-conversation",
               {
                 credentials: "include",
-              }
+              },
             );
             if (ubRes.ok) {
               const data = await ubRes.json();
@@ -430,9 +438,9 @@ export default function WorkerChatModal({
                   </div>
                 ))
               )}
-              </div>
             </div>
           </div>
+        </div>
 
         {/* Right side - Chat area */}
         <div className="flex-1 flex flex-col">

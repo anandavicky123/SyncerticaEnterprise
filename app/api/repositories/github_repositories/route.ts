@@ -21,7 +21,7 @@ export async function GET() {
               Authorization: `Bearer ${accessToken}`,
               Accept: "application/vnd.github.v3+json",
             },
-          }
+          },
         );
 
         if (response.ok) {
@@ -50,7 +50,7 @@ export async function GET() {
             if (manager && manager.githubAppId) {
               managerInstallationId = manager.githubAppId;
               console.log(
-                `Using manager-specific installation ID: ${managerInstallationId}`
+                `Using manager-specific installation ID: ${managerInstallationId}`,
               );
             }
           }
@@ -60,7 +60,7 @@ export async function GET() {
           console.log("No installation ID found for current manager");
           return NextResponse.json(
             { error: "No GitHub App installation found for this manager" },
-            { status: 401 }
+            { status: 401 },
           );
         }
 
@@ -68,7 +68,7 @@ export async function GET() {
         try {
           // Get installation token for the manager's specific installation
           const installationToken = await getInstallationToken(
-            parseInt(managerInstallationId)
+            parseInt(managerInstallationId),
           );
 
           // Fetch repositories for this specific installation only
@@ -80,32 +80,32 @@ export async function GET() {
                 Accept: "application/vnd.github+json",
                 "X-GitHub-Api-Version": "2022-11-28",
               },
-            }
+            },
           );
 
           if (response.ok) {
             const data = await response.json();
             repositories = data.repositories || [];
             console.log(
-              `Fetched ${repositories.length} repositories for installation ${managerInstallationId}`
+              `Fetched ${repositories.length} repositories for installation ${managerInstallationId}`,
             );
           } else {
             console.error(
               `Failed to fetch repos for installation ${managerInstallationId}:`,
-              response.status
+              response.status,
             );
           }
         } catch (error) {
           console.error(
             `Failed to fetch repos for installation ${managerInstallationId}:`,
-            error
+            error,
           );
         }
       } catch (error) {
         console.error("GitHub App repository fetch failed:", error);
         return NextResponse.json(
           { error: "Not authenticated" },
-          { status: 401 }
+          { status: 401 },
         );
       }
     }
@@ -134,15 +134,15 @@ export async function GET() {
         }) => {
           const hasWorkflow = await checkForWorkflows(
             repo.full_name,
-            accessToken || null
+            accessToken || null,
           );
           const hasTerraform = await checkForTerraform(
             repo.full_name,
-            accessToken || null
+            accessToken || null,
           );
           const hasDockerfile = await checkForDockerfile(
             repo.full_name,
-            accessToken || null
+            accessToken || null,
           );
 
           return {
@@ -175,8 +175,8 @@ export async function GET() {
             url: repo.html_url,
             cloneUrl: repo.clone_url,
           };
-        }
-      )
+        },
+      ),
     );
 
     return NextResponse.json({
@@ -187,14 +187,14 @@ export async function GET() {
     console.error("Error fetching repositories:", error);
     return NextResponse.json(
       { error: "Failed to fetch repositories" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 async function checkForWorkflows(
   repoFullName: string,
-  accessToken: string | null
+  accessToken: string | null,
 ): Promise<boolean> {
   try {
     let response;
@@ -208,7 +208,7 @@ async function checkForWorkflows(
             Authorization: `Bearer ${accessToken}`,
             Accept: "application/vnd.github.v3+json",
           },
-        }
+        },
       );
     }
 
@@ -226,7 +226,7 @@ async function checkForWorkflows(
                 Accept: "application/vnd.github+json",
                 "X-GitHub-Api-Version": "2022-11-28",
               },
-            }
+            },
           );
           if (response.ok) break;
         }
@@ -243,7 +243,7 @@ async function checkForWorkflows(
 
 async function checkForTerraform(
   repoFullName: string,
-  accessToken: string | null
+  accessToken: string | null,
 ): Promise<boolean> {
   try {
     let response;
@@ -257,7 +257,7 @@ async function checkForTerraform(
             Authorization: `Bearer ${accessToken}`,
             Accept: "application/vnd.github.v3+json",
           },
-        }
+        },
       );
     }
 
@@ -275,7 +275,7 @@ async function checkForTerraform(
                 Accept: "application/vnd.github+json",
                 "X-GitHub-Api-Version": "2022-11-28",
               },
-            }
+            },
           );
           if (response.ok) break;
         }
@@ -296,7 +296,7 @@ async function checkForTerraform(
 
 async function checkForDockerfile(
   repoFullName: string,
-  accessToken: string | null
+  accessToken: string | null,
 ): Promise<boolean> {
   try {
     let response;
@@ -310,7 +310,7 @@ async function checkForDockerfile(
             Authorization: `Bearer ${accessToken}`,
             Accept: "application/vnd.github.v3+json",
           },
-        }
+        },
       );
     }
 
@@ -328,7 +328,7 @@ async function checkForDockerfile(
                 Accept: "application/vnd.github+json",
                 "X-GitHub-Api-Version": "2022-11-28",
               },
-            }
+            },
           );
           if (response.ok) break;
         }
@@ -356,7 +356,7 @@ export async function DELETE() {
     console.error("Error disconnecting GitHub:", error);
     return NextResponse.json(
       { error: "Failed to disconnect" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

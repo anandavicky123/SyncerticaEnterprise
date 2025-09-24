@@ -12,7 +12,12 @@ import {
   EyeOff,
 } from "lucide-react";
 
-type JobRole = "UI/UX Designer" | "Developer" | "IT Supports" | "QA" | "Data Analyst";
+type JobRole =
+  | "UI/UX Designer"
+  | "Developer"
+  | "IT Supports"
+  | "QA"
+  | "Data Analyst";
 
 interface Worker {
   id: string;
@@ -120,7 +125,7 @@ const AddWorkerModal = ({
       console.error("Error saving worker:", error);
       if (error instanceof Error && error.message === "WORKER_LIMIT_REACHED") {
         alert(
-          "You have reached the limit of 7 workers. Please upgrade to Pro to add more workers, or delete existing workers first."
+          "You have reached the limit of 7 workers. Please upgrade to Pro to add more workers, or delete existing workers first.",
         );
       } else {
         alert("Failed to save worker. Please try again.");
@@ -131,7 +136,7 @@ const AddWorkerModal = ({
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -351,8 +356,8 @@ const AddWorkerModal = ({
                 {loading
                   ? "Saving..."
                   : editingWorker
-                  ? "Update Worker"
-                  : "Add Worker"}
+                    ? "Update Worker"
+                    : "Add Worker"}
               </button>
             </div>
           </div>

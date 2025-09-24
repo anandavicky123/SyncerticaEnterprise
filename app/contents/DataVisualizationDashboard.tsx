@@ -36,7 +36,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
 );
 
 interface AnalyticsData {
@@ -84,7 +84,7 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
   className = "",
 }) => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +120,7 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
 
       try {
         const response = await fetch(
-          `/api/analytics/overview?managerUUID=${managerUUID}`
+          `/api/analytics/overview?managerUUID=${managerUUID}`,
         );
         if (!response.ok) {
           throw new Error("Failed to fetch analytics data");
@@ -130,7 +130,7 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
       } catch (error) {
         console.error("Error fetching analytics:", error);
         setError(
-          error instanceof Error ? error.message : "Failed to load analytics"
+          error instanceof Error ? error.message : "Failed to load analytics",
         );
       } finally {
         setLoading(false);
@@ -388,7 +388,7 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
               "rgba(239,68,68,0.95)", // Red-500
               "rgba(16,185,129,0.95)", // Green/Emerald-500
               "rgba(99,102,241,0.95)", // Violet/Indigo-500
-            ][i % 5]
+            ][i % 5],
         ),
         hoverBackgroundColor: teamEntries.map(
           (_, i) =>
@@ -398,7 +398,7 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
               "rgba(220,38,38,1)",
               "rgba(5,150,105,1)",
               "rgba(79,70,229,1)",
-            ][i % 5]
+            ][i % 5],
         ),
       },
     ],
@@ -621,7 +621,7 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
           <div className="text-center">
             <div className="text-2xl font-bold text-purple-600">
               {Math.round(
-                overview.totalTasks / Math.max(overview.activeProjects, 1)
+                overview.totalTasks / Math.max(overview.activeProjects, 1),
               )}
             </div>
             <div className="text-sm text-gray-600">Avg Tasks per Project</div>
@@ -650,7 +650,7 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
                     Total:{" "}
                     {Math.max(
                       overview.totalProjects - overview.activeProjects,
-                      0
+                      0,
                     )}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
@@ -716,7 +716,7 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
             <p className="text-sm text-blue-700 mt-2">
               {overview.activeProjects} active projects with an average of{" "}
               {Math.round(
-                overview.totalTasks / Math.max(overview.activeProjects, 1)
+                overview.totalTasks / Math.max(overview.activeProjects, 1),
               )}{" "}
               tasks per project.
             </p>

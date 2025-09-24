@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     if (!managerDeviceUUID) {
       return NextResponse.json(
         { error: "Missing managerDeviceUUID or unauthorized" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     console.error("GET /api/notifications error:", error);
     return NextResponse.json(
       { error: "Failed to fetch notifications" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -76,7 +76,7 @@ export async function PATCH(request: NextRequest) {
     if (!managerDeviceUUID) {
       return NextResponse.json(
         { error: "Missing managerDeviceUUID or unauthorized" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -85,7 +85,7 @@ export async function PATCH(request: NextRequest) {
     if (!notifId) {
       return NextResponse.json(
         { error: "notifId is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -93,7 +93,7 @@ export async function PATCH(request: NextRequest) {
     if (!ok) {
       return NextResponse.json(
         { error: "Notification not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -102,7 +102,7 @@ export async function PATCH(request: NextRequest) {
     console.error("PATCH /api/notifications error:", error);
     return NextResponse.json(
       { error: "Failed to update notification" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

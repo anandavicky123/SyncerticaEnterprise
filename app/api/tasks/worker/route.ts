@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     console.error("GET /api/tasks/worker error:", error);
     return NextResponse.json(
       { error: "Failed to fetch tasks" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

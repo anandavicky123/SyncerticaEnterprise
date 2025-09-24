@@ -15,8 +15,8 @@ const updateWorkerSchema = z.object({
 });
 
 export async function PUT(
-  req: Request, 
-  { params }: { params: Promise<{ id: string }> }
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const resolvedParams = await params;
@@ -25,7 +25,7 @@ export async function PUT(
     if (actorType !== "manager") {
       return NextResponse.json(
         { error: "Unauthorized - Manager access required" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -72,12 +72,12 @@ export async function PUT(
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid input", details: error.issues },
-        { status: 400 }
+        { status: 400 },
       );
     }
     return NextResponse.json(
       { error: "Failed to update worker" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

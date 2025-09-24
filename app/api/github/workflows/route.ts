@@ -19,7 +19,7 @@ if (!process.env.GITHUB_TOKEN && !process.env.GITHUB_APP_ID) {
       // ignore - if dotenv is not available or fails, process.env remains unchanged
       console.log(
         "Could not load .env via dotenv:",
-        e && (e as Error).message ? (e as Error).message : String(e)
+        e && (e as Error).message ? (e as Error).message : String(e),
       );
     }
   })();
@@ -33,7 +33,9 @@ const GITHUB_REPO =
   process.env.NEXT_PUBLIC_GITHUB_REPO || "SyncerticaEnterprise";
 
 if (!GITHUB_APP_ID && !GITHUB_TOKEN) {
-  console.warn("Neither GITHUB_APP_ID nor GITHUB_TOKEN is set in environment variables");
+  console.warn(
+    "Neither GITHUB_APP_ID nor GITHUB_TOKEN is set in environment variables",
+  );
 }
 
 async function githubRequest(endpoint: string, options: RequestInit = {}) {
@@ -57,11 +59,11 @@ async function githubRequest(endpoint: string, options: RequestInit = {}) {
       const remaining = response.headers.get("X-RateLimit-Remaining");
       const resetTime = response.headers.get("X-RateLimit-Reset");
       throw new Error(
-        `GitHub API rate limit exceeded. Remaining: ${remaining}, Reset: ${resetTime}`
+        `GitHub API rate limit exceeded. Remaining: ${remaining}, Reset: ${resetTime}`,
       );
     }
     throw new Error(
-      `GitHub API error: ${response.status} ${response.statusText}`
+      `GitHub API error: ${response.status} ${response.statusText}`,
     );
   }
 
@@ -76,7 +78,7 @@ export async function GET(request: NextRequest) {
     switch (action) {
       case "workflows": {
         const data = await githubRequest(
-          `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows`
+          `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows`,
         );
         return NextResponse.json(data);
       }
@@ -98,19 +100,19 @@ export async function GET(request: NextRequest) {
         if (!runId) {
           return NextResponse.json(
             { error: "runId is required" },
-            { status: 400 }
+            { status: 400 },
           );
         }
 
         const data = await githubRequest(
-          `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/runs/${runId}/jobs`
+          `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/runs/${runId}/jobs`,
         );
         return NextResponse.json(data);
       }
 
       case "repository": {
         const data = await githubRequest(
-          `/repos/${GITHUB_OWNER}/${GITHUB_REPO}`
+          `/repos/${GITHUB_OWNER}/${GITHUB_REPO}`,
         );
         return NextResponse.json(data);
       }
@@ -149,7 +151,7 @@ export async function GET(request: NextRequest) {
     console.error("GitHub API Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -186,7 +188,7 @@ export async function POST(request: NextRequest) {
         if (!workflowId && !filename) {
           return NextResponse.json(
             { error: "workflowId or filename is required" },
-            { status: 400 }
+            { status: 400 },
           );
         }
 
@@ -205,68 +207,97 @@ export async function POST(request: NextRequest) {
         // Use GitHub App authentication if available, otherwise fall back to PAT
         if (GITHUB_APP_ID) {
           console.log("Using GitHub App authentication");
-          
+
           // Try with workflowId first
           if (workflowId) {
-            const result = await triggerWorkflowWithApp(owner, repo, workflowId, ref, inputs);
-            
+            const result = await triggerWorkflowWithApp(
+              owner,
+              repo,
+              workflowId,
+              ref,
+              inputs,
+            );
+
             if (result.success) {
-              return NextResponse.json({ success: true, message: result.message });
+              return NextResponse.json({
+                success: true,
+                message: result.message,
+              });
             }
-            
+
             // If failed and we have a filename, try with filename
             if (filename) {
-              const fileIdentifier = filename.endsWith(".yml") || filename.endsWith(".yaml")
-                ? filename
-                : `${filename}.yml`;
-              
-              const filenameResult = await triggerWorkflowWithApp(owner, repo, fileIdentifier, ref, inputs);
-              
+              const fileIdentifier =
+                filename.endsWith(".yml") || filename.endsWith(".yaml")
+                  ? filename
+                  : `${filename}.yml`;
+
+              const filenameResult = await triggerWorkflowWithApp(
+                owner,
+                repo,
+                fileIdentifier,
+                ref,
+                inputs,
+              );
+
               if (filenameResult.success) {
-                return NextResponse.json({ success: true, message: filenameResult.message });
+                return NextResponse.json({
+                  success: true,
+                  message: filenameResult.message,
+                });
               }
-              
+
               return NextResponse.json(
-                { 
+                {
                   error: filenameResult.message,
-                  details: filenameResult.data 
+                  details: filenameResult.data,
                 },
-                { status: 400 }
+                { status: 400 },
               );
             }
-            
+
             return NextResponse.json(
-              { 
+              {
                 error: result.message,
-                details: result.data 
+                details: result.data,
               },
-              { status: 400 }
+              { status: 400 },
             );
           }
-          
+
           // Try with filename only
           if (filename) {
-            const fileIdentifier = filename.endsWith(".yml") || filename.endsWith(".yaml")
-              ? filename
-              : `${filename}.yml`;
-            
-            const result = await triggerWorkflowWithApp(owner, repo, fileIdentifier, ref, inputs);
-            
+            const fileIdentifier =
+              filename.endsWith(".yml") || filename.endsWith(".yaml")
+                ? filename
+                : `${filename}.yml`;
+
+            const result = await triggerWorkflowWithApp(
+              owner,
+              repo,
+              fileIdentifier,
+              ref,
+              inputs,
+            );
+
             if (result.success) {
-              return NextResponse.json({ success: true, message: result.message });
+              return NextResponse.json({
+                success: true,
+                message: result.message,
+              });
             }
-            
+
             return NextResponse.json(
-              { 
+              {
                 error: result.message,
-                details: result.data 
+                details: result.data,
               },
-              { status: 400 }
+              { status: 400 },
             );
           }
         } else if (GITHUB_TOKEN) {
           console.log("Using Personal Access Token authentication");
-          
+
           // Legacy PAT-based authentication (fallback)
           // Try using the provided workflowId (which may be numeric) first
           if (workflowId) {
@@ -299,7 +330,7 @@ export async function POST(request: NextRequest) {
                   error: `Failed to trigger workflow: ${response.status} ${response.statusText}`,
                   details: errorText,
                 },
-                { status: response.status }
+                { status: response.status },
               );
             }
           }
@@ -327,7 +358,7 @@ export async function POST(request: NextRequest) {
 
             console.log(
               "GitHub API response status (filename attempt):",
-              response2.status
+              response2.status,
             );
             if (response2.ok) {
               return NextResponse.json({ success: true });
@@ -340,21 +371,22 @@ export async function POST(request: NextRequest) {
                 error: `Failed to trigger workflow: ${response2.status} ${response2.statusText}`,
                 details: errorText2,
               },
-              { status: response2.status }
+              { status: response2.status },
             );
           }
         } else {
           return NextResponse.json(
-            { 
-              error: "No authentication configured. Please set up either GITHUB_APP_ID (recommended) or GITHUB_TOKEN in your environment variables." 
+            {
+              error:
+                "No authentication configured. Please set up either GITHUB_APP_ID (recommended) or GITHUB_TOKEN in your environment variables.",
             },
-            { status: 500 }
+            { status: 500 },
           );
         }
 
         return NextResponse.json(
           { error: "Workflow not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
     }
@@ -367,7 +399,7 @@ export async function POST(request: NextRequest) {
       if (!workflowId) {
         return NextResponse.json(
           { error: "workflowId is required" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -382,7 +414,7 @@ export async function POST(request: NextRequest) {
             "User-Agent": "Syncertica-Enterprise-Dashboard",
           },
           body: JSON.stringify({ ref, inputs }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -390,7 +422,7 @@ export async function POST(request: NextRequest) {
       } else {
         return NextResponse.json(
           { error: `Failed to trigger workflow: ${response.statusText}` },
-          { status: response.status }
+          { status: response.status },
         );
       }
     }
@@ -400,7 +432,7 @@ export async function POST(request: NextRequest) {
     console.error("GitHub API Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

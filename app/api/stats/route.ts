@@ -9,16 +9,16 @@ export async function GET(request: Request) {
     // Try to get managerDeviceUUID from query string first, then cookies
     const url = new URL(request.url);
     const qsManagerUUID = url.searchParams.get("managerDeviceUUID");
-  const cookieJar = await cookies();
-  const cookieManager = cookieJar.get("managerDeviceUUID")?.value;
-  const managerDeviceUUID = qsManagerUUID || cookieManager || null;
+    const cookieJar = await cookies();
+    const cookieManager = cookieJar.get("managerDeviceUUID")?.value;
+    const managerDeviceUUID = qsManagerUUID || cookieManager || null;
 
     console.debug("/api/stats - managerDeviceUUID:", managerDeviceUUID);
 
     if (!managerDeviceUUID) {
       return NextResponse.json(
         { error: "Missing managerDeviceUUID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
     console.error("Error fetching database stats:", error);
     return NextResponse.json(
       { error: "Failed to fetch database statistics" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

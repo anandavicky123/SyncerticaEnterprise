@@ -7,7 +7,7 @@ export async function GET() {
   if (!clientId) {
     return NextResponse.json(
       { error: "GitHub Client ID not configured" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 

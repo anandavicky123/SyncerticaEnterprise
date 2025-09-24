@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       if (!worker) {
         return NextResponse.json(
           { error: "Worker not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
       managerDeviceUUID = worker.managerDeviceUUID;
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching tasks:", error);
     return NextResponse.json(
       { error: "Failed to fetch tasks" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     if (actorType !== "manager") {
       return NextResponse.json(
         { error: "Only managers can create tasks" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     if (!title || !description || !assignedTo) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         dueDate,
         tags: tags || [],
       },
-      projectId
+      projectId,
     );
 
     // Retrieve project name for response
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating task:", error);
     return NextResponse.json(
       { error: "Failed to create task" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -125,7 +125,7 @@ export async function PUT(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { error: "Task ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -189,10 +189,10 @@ export async function PUT(request: NextRequest) {
             id,
             worker.name,
             currentTask.title,
-            updates.status
+            updates.status,
           );
           console.log(
-            `Created task update notification for manager ${worker.managerDeviceUUID}`
+            `Created task update notification for manager ${worker.managerDeviceUUID}`,
           );
         }
       } catch (notifError) {
@@ -207,7 +207,7 @@ export async function PUT(request: NextRequest) {
     console.error("Error updating task:", error);
     return NextResponse.json(
       { error: "Failed to update task" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -221,7 +221,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { error: "Task ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -237,7 +237,7 @@ export async function DELETE(request: NextRequest) {
     console.error("Error deleting task:", error);
     return NextResponse.json(
       { error: "Failed to delete task" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

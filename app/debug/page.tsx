@@ -139,7 +139,7 @@ export default function DebugPage() {
                 containerData: containers.slice(0, 3), // Show first 3 containers
               },
               null,
-              2
+              2,
             )}
           </pre>
         </div>

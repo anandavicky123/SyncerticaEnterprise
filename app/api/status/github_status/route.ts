@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getInstallations, uninstallGitHubApp } from "@/lib/github-app";
-import { getSession } from '@/lib/dynamodb';
-import { prisma } from '@/lib/rds-database';
+import { getSession } from "@/lib/dynamodb";
+import { prisma } from "@/lib/rds-database";
 
 export async function GET() {
   try {
@@ -40,17 +40,17 @@ export async function GET() {
       if (installations && installations.length > 0) {
         // Check current manager's session
         const cookieStore = await cookies();
-        const sessionId = cookieStore.get('session-id')?.value;
+        const sessionId = cookieStore.get("session-id")?.value;
         let currentManagerId = null;
         let currentManager = null;
 
         if (sessionId) {
           const session = await getSession(sessionId);
-          if (session && session.actorType === 'manager') {
+          if (session && session.actorType === "manager") {
             currentManagerId = session.actorId;
             currentManager = await prisma.manager.findUnique({
               where: { deviceUUID: currentManagerId },
-              select: { githubAppId: true }
+              select: { githubAppId: true },
             });
           }
         }
@@ -61,11 +61,11 @@ export async function GET() {
 
         for (const installation of installations) {
           const installationId = String(installation.id);
-          
+
           // Check if this installation is already claimed by any manager
           const existingManager = await prisma.manager.findFirst({
             where: { githubAppId: installationId },
-            select: { deviceUUID: true, githubAppId: true }
+            select: { deviceUUID: true, githubAppId: true },
           });
 
           if (existingManager) {
@@ -85,27 +85,40 @@ export async function GET() {
         }
 
         // Determine which installation to use
-        let installationToUse = alreadyOwnedInstallation || availableInstallation;
+        let installationToUse =
+          alreadyOwnedInstallation || availableInstallation;
 
         if (!installationToUse) {
           // No available installations - all are claimed by other managers
           return NextResponse.json({
             connected: false,
-            error: "All GitHub App installations are already claimed by other managers"
+            error:
+              "All GitHub App installations are already claimed by other managers",
           });
         }
 
         // Auto-persist installation ID if current manager doesn't have one and installation is available
-        if (currentManager && !currentManager.githubAppId && availableInstallation && !alreadyOwnedInstallation && currentManagerId) {
+        if (
+          currentManager &&
+          !currentManager.githubAppId &&
+          availableInstallation &&
+          !alreadyOwnedInstallation &&
+          currentManagerId
+        ) {
           try {
             await prisma.manager.update({
               where: { deviceUUID: currentManagerId },
-              data: { githubAppId: String(availableInstallation.id) }
+              data: { githubAppId: String(availableInstallation.id) },
             });
-            console.log(`Auto-persisted installation ID ${availableInstallation.id} for manager ${currentManagerId}`);
+            console.log(
+              `Auto-persisted installation ID ${availableInstallation.id} for manager ${currentManagerId}`,
+            );
             installationToUse = availableInstallation;
           } catch (persistError) {
-            console.error('Error auto-persisting installation ID:', persistError);
+            console.error(
+              "Error auto-persisting installation ID:",
+              persistError,
+            );
             // If persistence fails, still return the available installation info
           }
         }
@@ -160,20 +173,26 @@ export async function DELETE() {
     // Clear manager mapping in RDS for the current session (best-effort)
     try {
       const cookieStore = await cookies();
-      const sessionId = cookieStore.get('session-id')?.value;
+      const sessionId = cookieStore.get("session-id")?.value;
       if (sessionId) {
         const session = await getSession(sessionId);
-        if (session && session.actorType === 'manager') {
+        if (session && session.actorType === "manager") {
           const managerDelegate: any = (prisma as any).manager;
           await managerDelegate.update({
             where: { deviceUUID: session.actorId },
             data: { githubAppId: null },
           });
-          console.log('Cleared github_app fields for manager from status DELETE', session.actorId);
+          console.log(
+            "Cleared github_app fields for manager from status DELETE",
+            session.actorId,
+          );
         }
       }
     } catch (err) {
-      console.error('Error clearing github fields during status DELETE disconnect:', err);
+      console.error(
+        "Error clearing github fields during status DELETE disconnect:",
+        err,
+      );
     }
 
     // Remove the per-browser disconnect flag since we've actually uninstalled
@@ -192,7 +211,7 @@ export async function DELETE() {
         error: error instanceof Error ? error.message : "Unknown error",
         uninstalled: false,
       },
-      { status: 500 }
+      { status: 500 },
     );
 
     response.cookies.delete("github_access_token");

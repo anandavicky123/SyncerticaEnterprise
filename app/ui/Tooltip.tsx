@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 
 interface TooltipProps {
@@ -134,7 +134,7 @@ const Tooltip: React.FC<TooltipProps> = ({
           >
             {content}
           </div>,
-          document.body
+          document.body,
         )}
     </div>
   );

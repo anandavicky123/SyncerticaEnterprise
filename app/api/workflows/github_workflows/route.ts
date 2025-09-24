@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     if (!authHeaders) {
       return NextResponse.json(
         { error: "Not authenticated", workflows: [] },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
           ...authHeaders,
           "User-Agent": "SyncerticaEnterprise",
         },
-      }
+      },
     );
 
     let workflowFiles: any[] = [];
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
         ? dirContents.filter(
             (file: any) =>
               file.type === "file" &&
-              (file.name.endsWith(".yml") || file.name.endsWith(".yaml"))
+              (file.name.endsWith(".yml") || file.name.endsWith(".yaml")),
           )
         : [];
 
@@ -99,19 +99,19 @@ export async function GET(request: NextRequest) {
             ...authHeaders,
             "User-Agent": "SyncerticaEnterprise",
           },
-        }
+        },
       );
 
       if (actionsResponse.ok) {
         const actionsData = await actionsResponse.json();
         workflowRuns = actionsData.workflows || [];
         console.log(
-          `⚙️ Found ${workflowRuns.length} workflow definitions via Actions API`
+          `⚙️ Found ${workflowRuns.length} workflow definitions via Actions API`,
         );
       }
     } catch {
       console.log(
-        "⚠️ Could not fetch workflow runs (repo might not have Actions enabled)"
+        "⚠️ Could not fetch workflow runs (repo might not have Actions enabled)",
       );
     }
 
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
     const transformedWorkflows = workflowFiles.map((file: any) => {
       // Try to find matching workflow run data
       const matchingRun = workflowRuns.find(
-        (run: any) => run.path === `.github/workflows/${file.name}`
+        (run: any) => run.path === `.github/workflows/${file.name}`,
       );
 
       return {
@@ -145,8 +145,8 @@ export async function GET(request: NextRequest) {
       .filter(
         (run: any) =>
           !workflowFiles.some(
-            (file: any) => run.path === `.github/workflows/${file.name}`
-          )
+            (file: any) => run.path === `.github/workflows/${file.name}`,
+          ),
       )
       .map((run: any) => ({
         id: `${repo}-workflow-${run.id}`,
@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
     });
 
     console.log(
-      `✅ Workflow fetch complete. Found ${allWorkflows.length} workflows for ${repo}`
+      `✅ Workflow fetch complete. Found ${allWorkflows.length} workflows for ${repo}`,
     );
 
     return NextResponse.json({
@@ -197,7 +197,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       { error: "Failed to fetch workflows", workflows: [] },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -214,7 +214,7 @@ async function getAllWorkflows(authHeaders: any) {
           ...authHeaders,
           "User-Agent": "SyncerticaEnterprise",
         },
-      }
+      },
     );
 
     if (!reposResponse.ok) {
@@ -239,7 +239,7 @@ async function getAllWorkflows(authHeaders: any) {
               ...authHeaders,
               "User-Agent": "SyncerticaEnterprise",
             },
-          }
+          },
         );
 
         if (workflowDirResponse.ok) {
@@ -248,7 +248,7 @@ async function getAllWorkflows(authHeaders: any) {
             ? dirContents.filter(
                 (file: any) =>
                   file.type === "file" &&
-                  (file.name.endsWith(".yml") || file.name.endsWith(".yaml"))
+                  (file.name.endsWith(".yml") || file.name.endsWith(".yaml")),
               )
             : [];
 
@@ -269,20 +269,20 @@ async function getAllWorkflows(authHeaders: any) {
 
           allWorkflows.push(...transformedWorkflows);
           console.log(
-            `⚙️ Found ${transformedWorkflows.length} workflows in ${repo.full_name}`
+            `⚙️ Found ${transformedWorkflows.length} workflows in ${repo.full_name}`,
           );
         }
       } catch (error) {
         console.error(
           `❌ Error checking workflows in ${repo.full_name}:`,
-          error
+          error,
         );
         continue;
       }
     }
 
     console.log(
-      `✅ Workflow search complete. Found ${allWorkflows.length} total workflows`
+      `✅ Workflow search complete. Found ${allWorkflows.length} total workflows`,
     );
 
     return NextResponse.json({
@@ -293,7 +293,7 @@ async function getAllWorkflows(authHeaders: any) {
     console.error("❌ Error fetching all workflows:", error);
     return NextResponse.json(
       { error: "Failed to fetch workflows", workflows: [] },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

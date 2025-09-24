@@ -28,7 +28,7 @@ const defaultSettings: UserSettings = {
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(
-  undefined
+  undefined,
 );
 
 export const useSettings = () => {

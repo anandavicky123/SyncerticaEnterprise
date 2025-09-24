@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     if (!actorType || !actorId) {
       return NextResponse.json(
         { error: "Missing actor headers" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 

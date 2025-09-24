@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     console.error("/api/auth/logout - error:", err);
     return NextResponse.json(
       { success: false, error: String(err) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

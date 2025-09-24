@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   if (!managerDeviceUUID) {
     return NextResponse.json(
       { error: "managerDeviceUUID required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       "[manager/settings GET] prefs for",
       managerDeviceUUID,
       "->",
-      manager
+      manager,
     );
 
     const response: any = {};
@@ -52,7 +52,7 @@ export async function PUT(req: NextRequest) {
   if (!managerDeviceUUID) {
     return NextResponse.json(
       { error: "managerDeviceUUID required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -70,7 +70,7 @@ export async function PUT(req: NextRequest) {
         "[manager/settings PUT] updating prefs for",
         managerDeviceUUID,
         "->",
-        updateData
+        updateData,
       );
       await prisma.manager.update({
         where: { deviceUUID: managerDeviceUUID },

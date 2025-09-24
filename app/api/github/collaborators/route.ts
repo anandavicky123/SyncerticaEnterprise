@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     if (!inst)
       return NextResponse.json(
         { error: "No installation for repo" },
-        { status: 403 }
+        { status: 403 },
       );
 
     const collabRes = await fetch(
@@ -24,24 +24,29 @@ export async function GET(request: NextRequest) {
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
         },
-      }
+      },
     );
-    
+
     if (!collabRes.ok) {
       const errorText = await collabRes.text();
-      console.error(`Failed to fetch collaborators for ${owner}/${name}:`, collabRes.status, errorText);
+      console.error(
+        `Failed to fetch collaborators for ${owner}/${name}:`,
+        collabRes.status,
+        errorText,
+      );
       return NextResponse.json(
-        { 
+        {
           error: `Failed to fetch collaborators: ${collabRes.status}`,
           details: errorText,
-          suggestion: collabRes.status === 403 
-            ? "GitHub App may lack 'Members' permission. Check App settings in GitHub."
-            : "Check repository access and permissions."
-        }, 
-        { status: collabRes.status }
+          suggestion:
+            collabRes.status === 403
+              ? "GitHub App may lack 'Members' permission. Check App settings in GitHub."
+              : "Check repository access and permissions.",
+        },
+        { status: collabRes.status },
       );
     }
-    
+
     const collaborators = await collabRes.json();
 
     // Also fetch pending invitations
@@ -53,15 +58,18 @@ export async function GET(request: NextRequest) {
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
         },
-      }
+      },
     );
-    
+
     // Invitations might fail if no permission, but don't fail the whole request
     let invitations = [];
     if (invitesRes.ok) {
       invitations = await invitesRes.json();
     } else {
-      console.warn(`Failed to fetch invitations for ${owner}/${name}:`, invitesRes.status);
+      console.warn(
+        `Failed to fetch invitations for ${owner}/${name}:`,
+        invitesRes.status,
+      );
     }
 
     return NextResponse.json({ collaborators, invitations });
@@ -88,13 +96,13 @@ export async function POST(request: NextRequest) {
           error:
             "Inviting by email is not supported for repositories. Please provide the collaborator's GitHub username.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
     if (!username) {
       return NextResponse.json(
         { error: "username is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const [owner, name] = (repo as string).split("/");
@@ -102,13 +110,13 @@ export async function POST(request: NextRequest) {
     if (!inst)
       return NextResponse.json(
         { error: "No installation for repo" },
-        { status: 403 }
+        { status: 403 },
       );
 
     // username path (invite or add collaborator)
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${name}/collaborators/${encodeURIComponent(
-        username
+        username,
       )}`,
       {
         method: "PUT",
@@ -119,7 +127,7 @@ export async function POST(request: NextRequest) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ permission }),
-      }
+      },
     );
 
     if (res.status === 204) {
@@ -141,7 +149,7 @@ export async function DELETE(request: NextRequest) {
     if (!repo || !username) {
       return NextResponse.json(
         { error: "repo and username required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const [owner, name] = (repo as string).split("/");
@@ -149,12 +157,12 @@ export async function DELETE(request: NextRequest) {
     if (!inst)
       return NextResponse.json(
         { error: "No installation for repo" },
-        { status: 403 }
+        { status: 403 },
       );
 
     const res = await fetch(
       `https://api.github.com/repos/${owner}/${name}/collaborators/${encodeURIComponent(
-        username
+        username,
       )}`,
       {
         method: "DELETE",
@@ -163,7 +171,7 @@ export async function DELETE(request: NextRequest) {
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
         },
-      }
+      },
     );
 
     if (res.status === 204) return NextResponse.json({ success: true });

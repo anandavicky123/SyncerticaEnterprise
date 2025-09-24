@@ -1,32 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createSession, getSession } from '@/lib/dynamodb';
+import { NextResponse } from "next/server";
+import { createSession, getSession } from "@/lib/dynamodb";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    console.log('Testing session creation and retrieval...');
-    
+    console.log("Testing session creation and retrieval...");
+
     // Test creating a session
-    const sessionId = await createSession('manager', 'test-manager-123');
-    console.log('Created session:', sessionId);
-    
+    const sessionId = await createSession("manager", "test-manager-123");
+    console.log("Created session:", sessionId);
+
     // Test retrieving the session
     const session = await getSession(sessionId);
-    console.log('Retrieved session:', session);
-    
+    console.log("Retrieved session:", session);
+
     return NextResponse.json({
       success: true,
       sessionId,
       session,
-      message: 'Session test completed successfully'
+      message: "Session test completed successfully",
     });
   } catch (error) {
-    console.error('Session test error:', error);
+    console.error("Session test error:", error);
     return NextResponse.json(
-      { 
-        error: 'Session test failed', 
-        details: error instanceof Error ? error.message : 'Unknown error'
+      {
+        error: "Session test failed",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

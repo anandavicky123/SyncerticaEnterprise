@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     if (!receiverId) {
       return NextResponse.json(
         { error: "receiverId is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       if (!currentWorker) {
         return NextResponse.json(
           { error: "Worker not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
         if (currentWorker.managerDeviceUUID !== managerId) {
           return NextResponse.json(
             { error: "Can only chat with your own manager" },
-            { status: 403 }
+            { status: 403 },
           );
         }
       } else {
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         if (!receiverWorker) {
           return NextResponse.json(
             { error: "Worker not found" },
-            { status: 404 }
+            { status: 404 },
           );
         }
 
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         ) {
           return NextResponse.json(
             { error: "Can only chat with workers under same manager" },
-            { status: 403 }
+            { status: 403 },
           );
         }
       }
@@ -83,14 +83,14 @@ export async function GET(request: NextRequest) {
       if (!receiverWorker) {
         return NextResponse.json(
           { error: "Worker not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
       if (receiverWorker.managerDeviceUUID !== managerId) {
         return NextResponse.json(
           { error: "Can only chat with your own workers" },
-          { status: 403 }
+          { status: 403 },
         );
       }
     } else {
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
     console.error("GET /api/chat error:", error);
     return NextResponse.json(
       { error: "Failed to fetch chats" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
     if (!receiverId || !content) {
       return NextResponse.json(
         { error: "receiverId and content are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
       if (!currentWorker) {
         return NextResponse.json(
           { error: "Worker not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
         if (currentWorker.managerDeviceUUID !== managerId) {
           return NextResponse.json(
             { error: "Can only chat with your own manager" },
-            { status: 403 }
+            { status: 403 },
           );
         }
       } else {
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
         if (!receiverWorker) {
           return NextResponse.json(
             { error: "Worker not found" },
-            { status: 404 }
+            { status: 404 },
           );
         }
 
@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
         ) {
           return NextResponse.json(
             { error: "Can only chat with workers under same manager" },
-            { status: 403 }
+            { status: 403 },
           );
         }
       }
@@ -257,14 +257,14 @@ export async function POST(request: NextRequest) {
       if (!receiverWorker) {
         return NextResponse.json(
           { error: "Worker not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
       if (receiverWorker.managerDeviceUUID !== managerId) {
         return NextResponse.json(
           { error: "Can only chat with your own workers" },
-          { status: 403 }
+          { status: 403 },
         );
       }
     } else {
@@ -358,10 +358,10 @@ export async function POST(request: NextRequest) {
             managerId,
             actorId as string,
             workerInfo.name,
-            content
+            content,
           );
           console.log(
-            `Created worker message notification for manager ${managerId}`
+            `Created worker message notification for manager ${managerId}`,
           );
         }
       } catch (ndErr) {
@@ -395,13 +395,13 @@ export async function POST(request: NextRequest) {
         createdAt: chat.created_at.toISOString(),
         isFromCurrentUser: true,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("POST /api/chat error:", error);
     return NextResponse.json(
       { error: "Failed to create chat" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

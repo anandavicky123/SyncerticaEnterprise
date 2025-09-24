@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     if (!repo || !path) {
       return NextResponse.json(
         { error: "repo and path are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const [owner, name] = repo.split("/");
@@ -18,12 +18,12 @@ export async function GET(request: NextRequest) {
     if (!inst)
       return NextResponse.json(
         { error: "No installation for repo" },
-        { status: 403 }
+        { status: 403 },
       );
 
     const gh = await fetch(
       `https://api.github.com/repos/${owner}/${name}/contents/${encodeURIComponent(
-        path
+        path,
       )}`,
       {
         headers: {
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
         },
-      }
+      },
     );
     const data = await gh.json();
     return NextResponse.json(data, { status: gh.status });
@@ -49,7 +49,7 @@ export async function PUT(request: NextRequest) {
     if (!repo || !path || !content || !message) {
       return NextResponse.json(
         { error: "repo, path, content, message required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const [owner, name] = (repo as string).split("/");
@@ -57,12 +57,12 @@ export async function PUT(request: NextRequest) {
     if (!inst)
       return NextResponse.json(
         { error: "No installation for repo" },
-        { status: 403 }
+        { status: 403 },
       );
 
     const gh = await fetch(
       `https://api.github.com/repos/${owner}/${name}/contents/${encodeURIComponent(
-        path
+        path,
       )}`,
       {
         method: "PUT",
@@ -73,7 +73,7 @@ export async function PUT(request: NextRequest) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ message, content, sha }),
-      }
+      },
     );
 
     const data = await gh.json().catch(() => ({}));

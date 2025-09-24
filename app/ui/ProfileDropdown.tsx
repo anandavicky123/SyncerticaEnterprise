@@ -14,7 +14,10 @@ interface ProfileDropdownProps {
   onLogout?: () => void;
 }
 
-const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onLogout }) => {
+const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
+  user,
+  onLogout,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -95,7 +98,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onLogout }) => 
             </div>
             <div
               className={`text-xs px-2 py-0.5 rounded inline-block ${getRoleColor(
-                user.role
+                user.role,
               )}`}
             >
               {roleLabel}
@@ -125,7 +128,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onLogout }) => 
                 </div>
                 <div
                   className={`text-xs px-2 py-1 rounded mt-1 inline-block ${getRoleColor(
-                    user.role
+                    user.role,
                   )}`}
                 >
                   {roleLabel} - {user.department}
@@ -154,16 +157,16 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, onLogout }) => 
           <div className="border-t border-gray-200 dark:border-gray-700 p-2">
             <button
               onClick={() => {
-                  setIsOpen(false);
-                  // Prefer client-side navigation to the login page. If a logout handler
-                  // was provided (for clearing auth state), call it, but still navigate.
-                  try {
-                    if (onLogout) onLogout();
-                  } catch {
-                    // ignore handler errors
-                  }
-                  router.push('/login');
-                }}
+                setIsOpen(false);
+                // Prefer client-side navigation to the login page. If a logout handler
+                // was provided (for clearing auth state), call it, but still navigate.
+                try {
+                  if (onLogout) onLogout();
+                } catch {
+                  // ignore handler errors
+                }
+                router.push("/login");
+              }}
               className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             >
               <LogOut className="w-4 h-4" />

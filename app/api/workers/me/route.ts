@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     console.error("GET /api/workers/me error:", error);
     return NextResponse.json(
       { error: "Failed to fetch worker" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

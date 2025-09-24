@@ -76,7 +76,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
           setCurrentManagerUUID(sessionData.session.actorId);
           console.log(
             "✅ Dashboard - Current manager UUID:",
-            sessionData.session.actorId
+            sessionData.session.actorId,
           );
         }
       }
@@ -115,19 +115,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
 
   const { draggedNote, handleMouseDown } = useDragAndDrop(updateNotePosition);
 
-  const {
-    connectionStatus,
-    connectToGitHub,
-    disconnectFromGitHub,
-    refreshData,
-  } = useGitHubData();
+  const { connectionStatus, refreshData } = useGitHubData();
 
   // Function to update sidebar statistics from database
   const updateSidebarStats = async (managerUUID?: string) => {
     try {
       if (!managerUUID) {
         console.warn(
-          "updateSidebarStats called without managerUUID - skipping update"
+          "updateSidebarStats called without managerUUID - skipping update",
         );
         return;
       }
@@ -173,12 +168,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
 
     window.addEventListener(
       "syncertica:stats-changed",
-      handler as EventListener
+      handler as EventListener,
     );
     return () => {
       window.removeEventListener(
         "syncertica:stats-changed",
-        handler as EventListener
+        handler as EventListener,
       );
     };
   }, [currentManagerUUID]);
@@ -280,7 +275,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
   const handleSaveWorkflow = async (
     content: string,
     filename?: string,
-    repository?: string
+    repository?: string,
   ) => {
     if (!repository) {
       alert("Please select a repository");
@@ -318,7 +313,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
           window.dispatchEvent(
             new CustomEvent("syncertica:github-item-created", {
               detail: createdItem,
-            })
+            }),
           );
         } catch {
           /* ignore event dispatch errors */
@@ -332,14 +327,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
 
         setTimeout(() => {
           alert(
-            `${result.message}\n\nFile saved to: ${result.file.path}\nView on GitHub: ${result.file.url}`
+            `${result.message}\n\nFile saved to: ${result.file.path}\nView on GitHub: ${result.file.url}`,
           );
         }, 0);
       } else {
         throw new Error(
           `Failed to save workflow: ${result.error}${
             result.details ? "\n" + result.details : ""
-          }`
+          }`,
         );
       }
     } catch (error) {
@@ -348,7 +343,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
         alert(error.message);
       } else {
         alert(
-          "Failed to save workflow. Please check your connection and try again."
+          "Failed to save workflow. Please check your connection and try again.",
         );
       }
       throw error; // Re-throw so modal can handle it
@@ -392,7 +387,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
   const handleAddWorker = async (workerData: {
     name: string;
     pronouns: string | null;
-    jobRole: "UI/UX Designer" | "Developer" | "IT Supports" | "QA" | "Data Analyst";
+    jobRole:
+      | "UI/UX Designer"
+      | "Developer"
+      | "IT Supports"
+      | "QA"
+      | "Data Analyst";
     email: string;
     password?: string;
   }) => {
@@ -541,7 +541,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
             window.dispatchEvent(
               new CustomEvent("syncertica:github-item-created", {
                 detail: createdItem,
-              })
+              }),
             );
           } catch {}
           // Start background refresh and close modal immediately so UI doesn't stay stuck
@@ -566,7 +566,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout = () => {} }) => {
             window.dispatchEvent(
               new CustomEvent("syncertica:github-item-created", {
                 detail: createdItem,
-              })
+              }),
             );
           } catch {}
           // Start background refresh and close modal immediately so UI doesn't stay stuck

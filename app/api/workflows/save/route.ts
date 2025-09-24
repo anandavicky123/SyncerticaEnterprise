@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         console.warn(
           "No OAuth token and failed to read request body for app fallback",
-          e
+          e,
         );
       }
     }
@@ -29,20 +29,20 @@ export async function POST(request: NextRequest) {
         try {
           const installationToken = await getInstallationTokenForRepo(
             owner,
-            repo
+            repo,
           );
           if (installationToken && installationToken.token) {
             accessToken = installationToken.token;
             console.debug(
               "Using GitHub App installation token for",
-              repository
+              repository,
             );
           }
         } catch (err) {
           console.error(
             "Error fetching installation token for repo:",
             repository,
-            err
+            err,
           );
         }
       }
@@ -54,14 +54,14 @@ export async function POST(request: NextRequest) {
           error:
             "GitHub token not found. Either connect via OAuth or install the GitHub App on the target repository.",
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     if (!content || !filename || !repository) {
       return NextResponse.json(
         { error: "Content, filename, and repository are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
           Accept: "application/vnd.github.v3+json",
           "User-Agent": "SyncerticaEnterprise",
         },
-      }
+      },
     );
 
     let sha: string | undefined;
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
           content: Buffer.from(content).toString("base64"),
           sha: sha, // Include SHA if updating existing file
         }),
-      }
+      },
     );
 
     if (!createFileResponse.ok) {
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
           error: "Failed to save workflow to GitHub",
           details: errorData.message,
         },
-        { status: createFileResponse.status }
+        { status: createFileResponse.status },
       );
     }
 
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
     console.error("Error saving workflow:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

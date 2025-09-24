@@ -19,7 +19,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
 
   const handleSubmit = () => {
     const contentElement = document.getElementById(
-      "noteContent"
+      "noteContent",
     ) as HTMLTextAreaElement;
     const content = contentElement?.value;
     if (content?.trim()) {

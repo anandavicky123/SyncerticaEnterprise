@@ -48,7 +48,7 @@ export async function GET() {
       console.log("❌ No authentication available");
       return NextResponse.json(
         { error: "Not authenticated", containers: [] },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -64,16 +64,16 @@ export async function GET() {
             ...authHeaders,
             "User-Agent": "SyncerticaEnterprise",
           },
-        }
+        },
       );
 
       if (!reposResponse.ok) {
         const text = await reposResponse.text().catch(() => "<no body>");
         console.error(
-          `❌ Installation repos fetch failed: status=${reposResponse.status} body=${text}`
+          `❌ Installation repos fetch failed: status=${reposResponse.status} body=${text}`,
         );
         throw new Error(
-          `Failed to fetch repositories: ${reposResponse.status}`
+          `Failed to fetch repositories: ${reposResponse.status}`,
         );
       }
 
@@ -87,16 +87,16 @@ export async function GET() {
             ...authHeaders,
             "User-Agent": "SyncerticaEnterprise",
           },
-        }
+        },
       );
 
       if (!reposResponse.ok) {
         const text = await reposResponse.text().catch(() => "<no body>");
         console.error(
-          `❌ User repos fetch failed: status=${reposResponse.status} body=${text}`
+          `❌ User repos fetch failed: status=${reposResponse.status} body=${text}`,
         );
         throw new Error(
-          `Failed to fetch repositories: ${reposResponse.status}`
+          `Failed to fetch repositories: ${reposResponse.status}`,
         );
       }
 
@@ -120,7 +120,7 @@ export async function GET() {
               Accept: "application/vnd.github.v3+json",
               "User-Agent": "SyncerticaEnterprise",
             },
-          }
+          },
         );
 
         if (dockerfileResponse.ok) {
@@ -156,7 +156,7 @@ export async function GET() {
                   Accept: "application/vnd.github.v3+json",
                   "User-Agent": "SyncerticaEnterprise",
                 },
-              }
+              },
             );
 
             if (composeResponse.ok) {
@@ -179,7 +179,7 @@ export async function GET() {
             // Continue if this specific file doesn't exist
             console.debug(
               `🟡 compose file check error for ${repo.full_name}:`,
-              _error
+              _error,
             );
             continue;
           }
@@ -195,7 +195,7 @@ export async function GET() {
                 Accept: "application/vnd.github.v3+json",
                 "User-Agent": "SyncerticaEnterprise",
               },
-            }
+            },
           );
 
           if (k8sResponse.ok) {
@@ -203,7 +203,7 @@ export async function GET() {
             if (Array.isArray(k8sData)) {
               const yamlFiles = k8sData.filter(
                 (file: any) =>
-                  file.name.endsWith(".yaml") || file.name.endsWith(".yml")
+                  file.name.endsWith(".yaml") || file.name.endsWith(".yml"),
               );
 
               for (const yamlFile of yamlFiles.slice(0, 3)) {
@@ -220,7 +220,7 @@ export async function GET() {
                   size: yamlFile.size,
                 });
                 console.log(
-                  `📦 Found K8s file ${yamlFile.name} in ${repo.full_name}`
+                  `📦 Found K8s file ${yamlFile.name} in ${repo.full_name}`,
                 );
               }
             }
@@ -240,7 +240,7 @@ export async function GET() {
                 Accept: "application/vnd.github.v3+json",
                 "User-Agent": "SyncerticaEnterprise",
               },
-            }
+            },
           );
 
           if (dockerignoreResponse.ok) {
@@ -262,20 +262,20 @@ export async function GET() {
           // .dockerignore might not exist, continue
           console.debug(
             `🟡 .dockerignore check error for ${repo.full_name}:`,
-            _error
+            _error,
           );
         }
       } catch (error) {
         console.error(
           `❌ Error checking container files in ${repo.full_name}:`,
-          error
+          error,
         );
         continue;
       }
     }
 
     console.log(
-      `✅ Container search complete. Found ${allContainers.length} total containers`
+      `✅ Container search complete. Found ${allContainers.length} total containers`,
     );
 
     // Cache the results
@@ -304,7 +304,7 @@ export async function GET() {
 
     return NextResponse.json(
       { error: "Failed to fetch containers", containers: [] },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

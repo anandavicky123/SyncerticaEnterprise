@@ -33,18 +33,18 @@ export async function getCurrentManagerInstallation(): Promise<{
 
     if (!manager || !manager.githubAppId) {
       console.log(
-        `No GitHub App installation ID found for manager ${session.actorId}`
+        `No GitHub App installation ID found for manager ${session.actorId}`,
       );
       return null;
     }
 
     // Get installation token for this specific installation
     const installationToken = await getInstallationToken(
-      parseInt(manager.githubAppId)
+      parseInt(manager.githubAppId),
     );
 
     console.log(
-      `Using installation ID ${manager.githubAppId} for manager ${session.actorId}`
+      `Using installation ID ${manager.githubAppId} for manager ${session.actorId}`,
     );
 
     return {

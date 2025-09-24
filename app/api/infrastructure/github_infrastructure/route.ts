@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     if (!authHeaders) {
       return NextResponse.json(
         { error: "Not authenticated", infrastructure: [] },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -68,12 +68,12 @@ export async function GET(request: NextRequest) {
           ...authHeaders,
           "User-Agent": "SyncerticaEnterprise",
         },
-      }
+      },
     );
 
     if (!treeResponse.ok) {
       throw new Error(
-        `Failed to fetch repository tree: ${treeResponse.status}`
+        `Failed to fetch repository tree: ${treeResponse.status}`,
       );
     }
 
@@ -131,18 +131,18 @@ export async function GET(request: NextRequest) {
       if (file.type !== "blob") return false;
 
       return infrastructurePatterns.some(({ pattern }) =>
-        pattern.test(file.path)
+        pattern.test(file.path),
       );
     });
 
     console.log(
-      `🏗️ Found ${infrastructureFiles.length} infrastructure files in ${repoName}`
+      `🏗️ Found ${infrastructureFiles.length} infrastructure files in ${repoName}`,
     );
 
     // Transform to our format
     const transformedFiles = infrastructureFiles.map((file: any) => {
       const matchedPattern = infrastructurePatterns.find(({ pattern }) =>
-        pattern.test(file.path)
+        pattern.test(file.path),
       );
 
       return {
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
     console.error("❌ Error fetching infrastructure:", error);
     return NextResponse.json(
       { error: "Failed to fetch infrastructure", infrastructure: [] },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
 async function getAllInfrastructure(authHeaders: any) {
   try {
     console.log(
-      "🏗️ Fetching infrastructure from manager-specific repositories..."
+      "🏗️ Fetching infrastructure from manager-specific repositories...",
     );
 
     // Get repositories for this manager's installation only
@@ -192,7 +192,7 @@ async function getAllInfrastructure(authHeaders: any) {
           ...authHeaders,
           "User-Agent": "SyncerticaEnterprise",
         },
-      }
+      },
     );
 
     if (!reposResponse.ok) {
@@ -216,7 +216,7 @@ async function getAllInfrastructure(authHeaders: any) {
               ...authHeaders,
               "User-Agent": "SyncerticaEnterprise",
             },
-          }
+          },
         );
 
         if (treeResponse.ok) {
@@ -236,13 +236,13 @@ async function getAllInfrastructure(authHeaders: any) {
           const infrastructureFiles = allFiles.filter((file: any) => {
             if (file.type !== "blob") return false;
             return infrastructurePatterns.some(({ pattern }) =>
-              pattern.test(file.path)
+              pattern.test(file.path),
             );
           });
 
           const transformedFiles = infrastructureFiles.map((file: any) => {
             const matchedPattern = infrastructurePatterns.find(({ pattern }) =>
-              pattern.test(file.path)
+              pattern.test(file.path),
             );
 
             return {
@@ -261,20 +261,20 @@ async function getAllInfrastructure(authHeaders: any) {
 
           allInfrastructure.push(...transformedFiles);
           console.log(
-            `🏗️ Found ${transformedFiles.length} infrastructure files in ${repo.full_name}`
+            `🏗️ Found ${transformedFiles.length} infrastructure files in ${repo.full_name}`,
           );
         }
       } catch (error) {
         console.error(
           `❌ Error checking infrastructure in ${repo.full_name}:`,
-          error
+          error,
         );
         continue;
       }
     }
 
     console.log(
-      `✅ Infrastructure search complete. Found ${allInfrastructure.length} total files`
+      `✅ Infrastructure search complete. Found ${allInfrastructure.length} total files`,
     );
 
     return NextResponse.json({
@@ -285,7 +285,7 @@ async function getAllInfrastructure(authHeaders: any) {
     console.error("❌ Error fetching all infrastructure:", error);
     return NextResponse.json(
       { error: "Failed to fetch infrastructure", infrastructure: [] },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

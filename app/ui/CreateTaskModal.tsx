@@ -7,7 +7,12 @@ interface Worker {
   id: string;
   name: string;
   pronouns: string;
-  jobRole: "UI/UX Designer" | "Developer" | "IT Supports" | "QA" | "Data Analyst";
+  jobRole:
+    | "UI/UX Designer"
+    | "Developer"
+    | "IT Supports"
+    | "QA"
+    | "Data Analyst";
   email?: string;
 }
 
@@ -128,7 +133,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({

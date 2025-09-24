@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       if (!worker) {
         return NextResponse.json(
           { error: "Worker not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
       managerDeviceUUID = worker.managerDeviceUUID;
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching projects:", error);
     return NextResponse.json(
       { error: "Failed to fetch projects" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     if (actorType !== "manager") {
       return NextResponse.json(
         { error: "Only managers can create projects" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     if (!name) {
       return NextResponse.json(
         { error: "Project name is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         repository,
         statusId: statusId || 5, // Default to active
       },
-      actorId
+      actorId,
     );
 
     return NextResponse.json(project, { status: 201 });
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating project:", error);
     return NextResponse.json(
       { error: "Failed to create project" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -39,7 +39,7 @@ const InfrastructureEditorModal: React.FC<Props> = ({
 #   ami           = "ami-0c94855f8b36c9bb3"
 #   instance_type = "t2.micro"
 # }
-`
+`,
   );
   const [sha, setSha] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
@@ -82,8 +82,8 @@ const InfrastructureEditorModal: React.FC<Props> = ({
         try {
           const res = await fetch(
             `/api/github/contents?repo=${encodeURIComponent(
-              item.repository
-            )}&path=${encodeURIComponent(item.path)}`
+              item.repository,
+            )}&path=${encodeURIComponent(item.path)}`,
           );
           if (res.ok) {
             const data = await res.json();

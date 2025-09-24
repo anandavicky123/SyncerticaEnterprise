@@ -36,7 +36,12 @@ export interface Worker {
   managerDeviceUUID: string;
   name: string;
   pronouns?: string;
-  jobRole: "UI/UX Designer" | "Developer" | "IT Supports" | "QA" | "Data Analyst";
+  jobRole:
+    | "UI/UX Designer"
+    | "Developer"
+    | "IT Supports"
+    | "QA"
+    | "Data Analyst";
   email: string;
   createdAt: string;
 }
@@ -66,15 +71,24 @@ export class DatabaseManager {
   // Helper function to map status IDs to names
   getStatusName(statusId: number): string {
     switch (statusId) {
-      case 1: return "todo";
-      case 2: return "doing";  
-      case 3: return "done";
-      case 4: return "blocked";
-      case 5: return "active";
-      case 6: return "on-hold";
-      case 7: return "completed";
-      case 8: return "archived";
-      default: return "unknown";
+      case 1:
+        return "todo";
+      case 2:
+        return "doing";
+      case 3:
+        return "done";
+      case 4:
+        return "blocked";
+      case 5:
+        return "active";
+      case 6:
+        return "on-hold";
+      case 7:
+        return "completed";
+      case 8:
+        return "archived";
+      default:
+        return "unknown";
     }
   }
 
@@ -113,7 +127,7 @@ export class DatabaseManager {
   }
 
   async createWorker(
-    worker: Omit<Worker, "id" | "createdAt">
+    worker: Omit<Worker, "id" | "createdAt">,
   ): Promise<Worker> {
     const created = await prisma.worker.create({
       data: {
@@ -136,7 +150,7 @@ export class DatabaseManager {
 
   async updateWorker(
     id: string,
-    updates: Partial<Omit<Worker, "id" | "managerDeviceUUID">>
+    updates: Partial<Omit<Worker, "id" | "managerDeviceUUID">>,
   ): Promise<boolean> {
     try {
       await prisma.worker.update({
@@ -210,7 +224,7 @@ export class DatabaseManager {
       createdAt: task.createdAt.toISOString(),
       dueDate: task.dueDate?.toISOString(),
       tags: task.tags,
-  // estimatedHours/actualHours/stepFunctionArn removed from schema
+      // estimatedHours/actualHours/stepFunctionArn removed from schema
       projectId: task.projectId || undefined,
       projectName: task.project?.name || undefined,
     };
@@ -219,7 +233,7 @@ export class DatabaseManager {
   async createTask(
     managerDeviceUUID: string,
     task: Omit<Task, "id" | "createdAt">,
-    projectId?: string
+    projectId?: string,
   ): Promise<Task> {
     // Ensure the manager exists first
     let manager = await prisma.manager.findUnique({
@@ -265,9 +279,9 @@ export class DatabaseManager {
       return ["workflow", "tasks", "task_status", "general", "status"];
     };
 
-  // Do NOT auto-create a default project anymore.
-  // If a projectId is not provided or is invalid, we'll leave the task.projectId as null
-  // so tasks can be created without being attached to a project.
+    // Do NOT auto-create a default project anymore.
+    // If a projectId is not provided or is invalid, we'll leave the task.projectId as null
+    // so tasks can be created without being attached to a project.
 
     // Get or create status
     let status = await prisma.status.findFirst({
@@ -291,7 +305,7 @@ export class DatabaseManager {
       }
       if (!createdStatusLocal) {
         throw new Error(
-          "Failed to create status due to category check constraint. Please adjust allowed categories or seed statuses."
+          "Failed to create status due to category check constraint. Please adjust allowed categories or seed statuses.",
         );
       }
       status = createdStatusLocal;
@@ -316,7 +330,7 @@ export class DatabaseManager {
       });
       if (!existingProject) {
         throw new Error(
-          "No project found for this manager. Create a project first or provide projectId."
+          "No project found for this manager. Create a project first or provide projectId.",
         );
       }
       projectToUseId = existingProject.id;
@@ -350,12 +364,16 @@ export class DatabaseManager {
       },
     });
 
-    const createdAny = created as unknown as { status?: { name?: string }; project?: { name?: string } };
+    const createdAny = created as unknown as {
+      status?: { name?: string };
+      project?: { name?: string };
+    };
     return {
       id: created.id,
       title: created.title,
       description: created.description,
-      status: (createdAny.status?.name as Task["status"]) || String(created.statusId),
+      status:
+        (createdAny.status?.name as Task["status"]) || String(created.statusId),
       priority: created.priority as Task["priority"],
       assignedTo: created.assignedTo,
       managerdeviceuuid: created.assignedBy,
@@ -369,7 +387,7 @@ export class DatabaseManager {
 
   async updateTask(
     id: string,
-    updates: Partial<Omit<Task, "id" | "createdAt">>
+    updates: Partial<Omit<Task, "id" | "createdAt">>,
   ): Promise<boolean> {
     try {
       // Fetch existing task + manager to validate project ownership if needed
@@ -384,7 +402,9 @@ export class DatabaseManager {
 
       if (updates.status) {
         // managerDeviceUUID available in local variable `managerDeviceUUID`
-        let status = await prisma.status.findFirst({ where: { name: updates.status } });
+        let status = await prisma.status.findFirst({
+          where: { name: updates.status },
+        });
 
         if (!status) {
           const rows = await prisma.$queryRaw<Array<{ def: string }>>`
@@ -416,7 +436,7 @@ export class DatabaseManager {
           }
           if (!newStatus) {
             throw new Error(
-              "Failed to create status due to category check constraint. Please adjust allowed categories or seed statuses."
+              "Failed to create status due to category check constraint. Please adjust allowed categories or seed statuses.",
             );
           }
           status = newStatus;
@@ -456,7 +476,11 @@ export class DatabaseManager {
         // Respect explicit updatedAt when provided by caller
         const maybeAny = maybeUpdates as unknown as Record<string, unknown>;
         if (maybeAny.updatedAt !== undefined) {
-          const incoming = maybeAny.updatedAt as string | number | null | undefined;
+          const incoming = maybeAny.updatedAt as
+            | string
+            | number
+            | null
+            | undefined;
           if (incoming === null) data.updatedAt = null;
           else if (incoming) data.updatedAt = new Date(incoming);
         }
@@ -568,7 +592,7 @@ export class DatabaseManager {
 
   async getProjectById(
     id: string,
-    managerDeviceUUID?: string
+    managerDeviceUUID?: string,
   ): Promise<Project | null> {
     const project = await prisma.project.findUnique({
       where: { id },
@@ -593,7 +617,7 @@ export class DatabaseManager {
 
   async createProject(
     project: Omit<Project, "id" | "createdAt">,
-    managerDeviceUUID: string
+    managerDeviceUUID: string,
   ): Promise<Project> {
     const created = await prisma.project.create({
       data: {
@@ -620,7 +644,7 @@ export class DatabaseManager {
   async updateProject(
     id: string,
     updates: Partial<Omit<Project, "id" | "createdAt">>,
-    managerDeviceUUID: string
+    managerDeviceUUID: string,
   ): Promise<Project | null> {
     // Ensure the project belongs to this manager
     const existing = await prisma.project.findFirst({

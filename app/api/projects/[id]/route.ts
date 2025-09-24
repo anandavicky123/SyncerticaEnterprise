@@ -3,7 +3,7 @@ import { getDatabase } from "@/lib/database";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const actorType = request.headers.get("x-actor-type");
@@ -22,7 +22,10 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const project = await db.getProjectById(resolvedParams.id, managerDeviceUUID);
+    const project = await db.getProjectById(
+      resolvedParams.id,
+      managerDeviceUUID,
+    );
     if (!project)
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(project);
@@ -34,7 +37,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const actorType = request.headers.get("x-actor-type");
@@ -42,7 +45,7 @@ export async function PATCH(
     if (actorType !== "manager" || !actorId) {
       return NextResponse.json(
         { error: "Only managers can update projects" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -61,7 +64,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const actorType = request.headers.get("x-actor-type");
@@ -69,7 +72,7 @@ export async function DELETE(
     if (actorType !== "manager" || !actorId) {
       return NextResponse.json(
         { error: "Only managers can delete projects" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 

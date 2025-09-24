@@ -58,7 +58,7 @@ export default function DashboardSelectPage() {
       setError(
         error instanceof Error
           ? error.message
-          : "Failed to access manager dashboard"
+          : "Failed to access manager dashboard",
       );
     } finally {
       setLoading(false);

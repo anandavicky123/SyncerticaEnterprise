@@ -8,7 +8,7 @@ interface DragState {
 }
 
 export const useDragAndDrop = (
-  updateNotePosition: (noteId: number, x: number, y: number) => void
+  updateNotePosition: (noteId: number, x: number, y: number) => void,
 ) => {
   const [dragState, setDragState] = useState<DragState>({
     draggedNote: null,
@@ -43,11 +43,11 @@ export const useDragAndDrop = (
         updateNotePosition(
           dragState.draggedNote,
           Math.max(0, Math.min(newX, rect.width - 192)),
-          Math.max(0, Math.min(newY, rect.height - 128))
+          Math.max(0, Math.min(newY, rect.height - 128)),
         );
       }
     },
-    [dragState.draggedNote, dragState.dragOffset, updateNotePosition]
+    [dragState.draggedNote, dragState.dragOffset, updateNotePosition],
   );
 
   const handleMouseUp = React.useCallback(() => {

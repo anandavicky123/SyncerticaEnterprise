@@ -55,7 +55,7 @@ export async function middleware(request: NextRequest) {
       if (pathname.startsWith("/api")) {
         return NextResponse.json(
           { error: "Invalid or expired session" },
-          { status: 401 }
+          { status: 401 },
         );
       }
 
@@ -81,7 +81,7 @@ export async function middleware(request: NextRequest) {
     if (session.actorType === "worker") {
       if (pathname.startsWith("/dashboard")) {
         console.log(
-          "Middleware - Worker attempting to access dashboard, redirecting to tasks"
+          "Middleware - Worker attempting to access dashboard, redirecting to tasks",
         );
         // If this is an API call, return 403 JSON
         if (pathname.startsWith("/api")) {

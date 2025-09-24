@@ -51,7 +51,7 @@ export function getAllPossibleInstallUrls(): string[] {
   ];
 
   return possibleSlugs.map(
-    (slug) => `https://github.com/apps/${slug}/installations/new`
+    (slug) => `https://github.com/apps/${slug}/installations/new`,
   );
 }
 
@@ -102,7 +102,7 @@ export async function checkGitHubAppInstallation(): Promise<{
  */
 export function handleGitHubAppCallback(
   code: string,
-  installationId?: string
+  installationId?: string,
 ): Promise<{ success: boolean; error?: string; data?: unknown }> {
   return fetch("/api/github/app/callback", {
     method: "POST",

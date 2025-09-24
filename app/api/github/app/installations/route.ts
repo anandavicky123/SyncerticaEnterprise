@@ -1,22 +1,22 @@
-import { NextResponse } from 'next/server';
-import { getInstallations } from '@/lib/github-app';
+import { NextResponse } from "next/server";
+import { getInstallations } from "@/lib/github-app";
 
 /**
  * Get GitHub App installations for the authenticated app
  */
 export async function GET() {
   try {
-    console.log('Checking GitHub App installations...');
-    
+    console.log("Checking GitHub App installations...");
+
     // Get all installations for this GitHub App
     const installations = await getInstallations();
-    
+
     console.log(`Found ${installations.length} installations`);
-    
+
     return NextResponse.json({
       success: true,
       installed: installations.length > 0,
-      installations: installations.map(installation => ({
+      installations: installations.map((installation) => ({
         id: installation.id,
         account: {
           login: installation.account.login,
@@ -32,17 +32,20 @@ export async function GET() {
       count: installations.length,
     });
   } catch (error) {
-    console.error('Error fetching GitHub App installations:', error);
-    
+    console.error("Error fetching GitHub App installations:", error);
+
     return NextResponse.json(
       {
         success: false,
         installed: false,
         installations: [],
         count: 0,
-        error: error instanceof Error ? error.message : 'Failed to fetch installations',
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch installations",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

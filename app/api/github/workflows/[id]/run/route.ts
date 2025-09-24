@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     if (!GITHUB_TOKEN) {
       return NextResponse.json(
         { error: "GitHub token not configured" },
-        { status: 401 }
+        { status: 401 },
       );
     }
     // Extract workflow id from the request path. The route is mounted at
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
           "User-Agent": "Syncertica-Enterprise-Dashboard",
         },
         body: JSON.stringify({ ref, inputs }),
-      }
+      },
     );
 
     if (response.ok) {
@@ -48,14 +48,14 @@ export async function POST(request: NextRequest) {
           error: `Failed to trigger workflow: ${response.status} ${response.statusText}`,
           details: errorText,
         },
-        { status: response.status }
+        { status: response.status },
       );
     }
   } catch (error) {
     console.error("Error triggering workflow:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

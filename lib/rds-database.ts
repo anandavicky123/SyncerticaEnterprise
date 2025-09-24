@@ -88,7 +88,7 @@ export class DatabaseManager {
   }
 
   async createWorker(
-    worker: Partial<Worker> & { managerDeviceUUID: string }
+    worker: Partial<Worker> & { managerDeviceUUID: string },
   ): Promise<Worker> {
     const created = await prisma.worker.create({
       data: {
@@ -115,7 +115,7 @@ export class DatabaseManager {
 
   async updateWorker(
     id: string,
-    updates: Partial<Omit<Worker, "id" | "managerDeviceUUID">>
+    updates: Partial<Omit<Worker, "id" | "managerDeviceUUID">>,
   ): Promise<boolean> {
     try {
       await prisma.worker.update({
@@ -194,7 +194,7 @@ export class DatabaseManager {
       description: string;
       tags: string[];
     },
-    projectId?: string
+    projectId?: string,
   ): Promise<Task> {
     // ensure manager exists
     let manager = await prisma.manager.findUnique({
@@ -211,44 +211,29 @@ export class DatabaseManager {
       });
     }
 
-    // ensure default project exists
-    let defaultProject = await prisma.project.findFirst({
-      where: { managerDeviceUUID, name: "Default Project" },
-    });
-    if (!defaultProject) {
-      defaultProject = await prisma.project.create({
-        data: {
-          id: crypto.randomUUID(),
-          managerDeviceUUID,
-          name: "Default Project",
-          description: "Auto-created default project",
-          status: "active",
-        },
-      });
-    }
-
     // get or create status
     let status = await prisma.status.findFirst({
-      where: { name: task.status, managerDeviceUUID },
+      where: { name: task.status },
     });
     if (!status) {
-      // provide a default category to satisfy DB constraints and connect manager
+      // provide a default category to satisfy DB constraints
       status = await prisma.status.create({
         data: {
           name: task.status,
           category: "task_status",
-          manager: { connect: { deviceUUID: managerDeviceUUID } },
         },
       });
     }
 
     // validate provided projectId belongs to manager
-    let projectToUseId = defaultProject.id;
-    if (projectId) {
-      const projectCheck = await prisma.project.findFirst({
-        where: { id: projectId, managerDeviceUUID },
-      });
-      if (projectCheck) projectToUseId = projectCheck.id;
+    if (!projectId) {
+      throw new Error("projectId is required - no default project available");
+    }
+    const projectCheck = await prisma.project.findFirst({
+      where: { id: projectId, managerDeviceUUID },
+    });
+    if (!projectCheck) {
+      throw new Error("Project not found or not accessible");
     }
 
     const created = await prisma.task.create({
@@ -262,8 +247,8 @@ export class DatabaseManager {
         statusId: status.id,
         tags: task.tags || [],
         dueDate: task.dueDate ? new Date(task.dueDate) : null,
-  // estimatedHours/actualHours/stepFunctionArn removed
-        projectId: projectToUseId,
+        // estimatedHours/actualHours/stepFunctionArn removed
+        projectId: projectCheck.id,
       },
       include: { status: true, project: true },
     });
@@ -296,7 +281,7 @@ export class DatabaseManager {
       // handle status updates
       if (updates.status) {
         let status = await prisma.status.findFirst({
-          where: { name: updates.status, managerDeviceUUID },
+          where: { name: updates.status },
         });
         if (!status) {
           status = await prisma.status.create({
@@ -340,42 +325,15 @@ export class DatabaseManager {
         if ((updates as any).projectId !== undefined) {
           const incoming = (updates as any).projectId;
           if (!incoming) {
-            let defaultProject = await prisma.project.findFirst({
-              where: { managerDeviceUUID, name: "Default Project" },
-            });
-            if (!defaultProject) {
-              defaultProject = await prisma.project.create({
-                data: {
-                  id: crypto.randomUUID(),
-                  managerDeviceUUID,
-                  name: "Default Project",
-                  description: "Auto-created default project",
-                  status: "active",
-                },
-              });
-            }
-            (data as any).projectId = defaultProject.id;
+            // Remove project assignment - this may not be allowed by DB constraints
+            throw new Error("Cannot remove project assignment from task");
           } else {
             const projectCheck = await prisma.project.findFirst({
               where: { id: incoming, managerDeviceUUID },
             });
             if (projectCheck) (data as any).projectId = projectCheck.id;
             else {
-              let defaultProject = await prisma.project.findFirst({
-                where: { managerDeviceUUID, name: "Default Project" },
-              });
-              if (!defaultProject) {
-                defaultProject = await prisma.project.create({
-                  data: {
-                    id: crypto.randomUUID(),
-                    managerDeviceUUID,
-                    name: "Default Project",
-                    description: "Auto-created default project",
-                    status: "active",
-                  },
-                });
-              }
-              (data as any).projectId = defaultProject.id;
+              throw new Error("Project not found or not accessible");
             }
           }
         }
@@ -409,7 +367,9 @@ export class DatabaseManager {
       description: p.description || undefined,
       repository: p.repository || undefined,
       statusId: (p as unknown as { statusId: number }).statusId || 5,
-      statusName: this.getStatusName((p as unknown as { statusId: number }).statusId || 5),
+      statusName: this.getStatusName(
+        (p as unknown as { statusId: number }).statusId || 5,
+      ),
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
     }));
@@ -418,16 +378,16 @@ export class DatabaseManager {
   private getStatusName(statusId: number): string {
     const statusMap: Record<number, string> = {
       5: "active",
-      6: "on-hold", 
+      6: "on-hold",
       7: "completed",
-      8: "archived"
+      8: "archived",
     };
     return statusMap[statusId] || "active";
   }
 
   async getProjectById(
     id: string,
-    managerDeviceUUID?: string
+    managerDeviceUUID?: string,
   ): Promise<Project | null> {
     const p = await prisma.project.findUnique({ where: { id } });
     if (!p) return null;
@@ -439,14 +399,16 @@ export class DatabaseManager {
       description: p.description || undefined,
       repository: p.repository || undefined,
       statusId: (p as unknown as { statusId: number }).statusId || 5,
-      statusName: this.getStatusName((p as unknown as { statusId: number }).statusId || 5),
+      statusName: this.getStatusName(
+        (p as unknown as { statusId: number }).statusId || 5,
+      ),
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
     };
   }
 
   async createProject(
-    project: Partial<Project> & { managerDeviceUUID: string }
+    project: Partial<Project> & { managerDeviceUUID: string },
   ): Promise<Project> {
     const created = await prisma.project.create({
       data: {
@@ -464,7 +426,9 @@ export class DatabaseManager {
       description: created.description || undefined,
       repository: created.repository || undefined,
       statusId: (created as unknown as { statusId: number }).statusId || 5,
-      statusName: this.getStatusName((created as unknown as { statusId: number }).statusId || 5),
+      statusName: this.getStatusName(
+        (created as unknown as { statusId: number }).statusId || 5,
+      ),
       createdAt: created.createdAt.toISOString(),
       updatedAt: created.updatedAt.toISOString(),
     };

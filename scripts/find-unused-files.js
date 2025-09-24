@@ -133,7 +133,7 @@ function main() {
   // also mark anything referenced in package.json scripts
   try {
     const pkg = JSON.parse(
-      readFileSyncSafe(path.join(root, "package.json")) || "{}"
+      readFileSyncSafe(path.join(root, "package.json")) || "{}",
     );
     const scripts = pkg.scripts || {};
     Object.values(scripts).forEach((s) => {
@@ -174,13 +174,13 @@ function main() {
     JSON.stringify(
       { generatedAt: new Date().toISOString(), candidates: unused },
       null,
-      2
-    )
+      2,
+    ),
   );
   console.log(
     "Wrote unused-files-report.json with",
     unused.length,
-    "candidates"
+    "candidates",
   );
 }
 

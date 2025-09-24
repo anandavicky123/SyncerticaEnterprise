@@ -25,7 +25,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ toolbarItems }) => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const isClickInsideAnyDropdown = Object.values(dropdownRefs.current).some(
-        (ref) => ref && ref.contains(event.target as Node)
+        (ref) => ref && ref.contains(event.target as Node),
       );
 
       if (!isClickInsideAnyDropdown) {
@@ -77,9 +77,9 @@ const Toolbar: React.FC<ToolbarProps> = ({ toolbarItems }) => {
                       window.dispatchEvent(
                         new CustomEvent("syncertica:toolbar-click", {
                           detail: { toolName: tool.name },
-                        })
+                        }),
                       );
-                    } catch (e) {
+                    } catch {
                       // ignore
                     }
                   }
@@ -89,8 +89,8 @@ const Toolbar: React.FC<ToolbarProps> = ({ toolbarItems }) => {
                   tool.disabled && !tool.dropdown
                     ? "text-gray-400 cursor-not-allowed"
                     : tool.dropdown
-                    ? "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                      ? "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                 }`}
               >
                 <tool.icon className="w-4 h-4" />
@@ -121,10 +121,10 @@ const Toolbar: React.FC<ToolbarProps> = ({ toolbarItems }) => {
                                     toolName: tool.name,
                                     itemLabel: item.label,
                                   },
-                                }
-                              )
+                                },
+                              ),
                             );
-                          } catch (e) {
+                          } catch {
                             // ignore
                           }
                           setActiveDropdown(null);

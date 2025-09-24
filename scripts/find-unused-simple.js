@@ -149,12 +149,12 @@ function main() {
   const out = { generatedAt: new Date().toISOString(), candidates: unused };
   fs.writeFileSync(
     path.join(root, "unused-files-report.json"),
-    JSON.stringify(out, null, 2)
+    JSON.stringify(out, null, 2),
   );
   console.log(
     "Wrote unused-files-report.json with",
     unused.length,
-    "candidates"
+    "candidates",
   );
 }
 

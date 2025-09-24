@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     if (!actorType || !actorId) {
       return NextResponse.json(
         { error: "Missing actor headers" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -31,12 +31,12 @@ export async function POST(req: Request) {
         (it) =>
           it.status === "unread" &&
           it.type === "worker_message" &&
-          it.workerId === senderId
+          it.workerId === senderId,
       );
       await Promise.all(
         unreadForSender.map((it) =>
-          markNotificationReadForUser(`manager:${managerId}`, it.notifId)
-        )
+          markNotificationReadForUser(`manager:${managerId}`, it.notifId),
+        ),
       );
       return NextResponse.json({
         success: true,
@@ -48,12 +48,12 @@ export async function POST(req: Request) {
     const workerId = String(actorId);
     const items = await getNotifications(workerId, 200);
     const unreadFromSender = items.filter(
-      (it) => it.status === "unread" && it.triggeredBy === senderId
+      (it) => it.status === "unread" && it.triggeredBy === senderId,
     );
     await Promise.all(
       unreadFromSender.map((it) =>
-        markNotificationReadForUser(workerId, it.notifId)
-      )
+        markNotificationReadForUser(workerId, it.notifId),
+      ),
     );
     return NextResponse.json({
       success: true,

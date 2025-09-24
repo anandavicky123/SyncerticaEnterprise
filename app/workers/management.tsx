@@ -23,7 +23,12 @@ interface Worker {
   managerDeviceUUID: string;
   name: string;
   pronouns: string | null;
-  jobRole: "UI/UX Designer" | "Developer" | "IT Supports" | "QA" | "Data Analyst";
+  jobRole:
+    | "UI/UX Designer"
+    | "Developer"
+    | "IT Supports"
+    | "QA"
+    | "Data Analyst";
   email: string;
   createdAt: string;
   updatedAt: string;
@@ -44,7 +49,7 @@ export default function WorkersManagement({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showCallChat, setShowCallChat] = useState(false);
   const [modalMemberId, setModalMemberId] = useState<string | undefined>(
-    undefined
+    undefined,
   );
   const [modalMode, setModalMode] = useState<"chat" | "call">("chat");
   const [managerProfile, setManagerProfile] = useState<{
@@ -191,7 +196,9 @@ export default function WorkersManagement({
         }
 
         setWorkers((prev) =>
-          prev.map((worker) => (worker.id === editingWorker.id ? data : worker))
+          prev.map((worker) =>
+            worker.id === editingWorker.id ? data : worker,
+          ),
         );
         setEditingWorker(null);
         setErrorMessage(null);
@@ -203,7 +210,7 @@ export default function WorkersManagement({
           window.dispatchEvent(
             new CustomEvent("syncertica:stats-changed", {
               detail: { managerUUID: data.managerDeviceUUID || undefined },
-            })
+            }),
           );
         } catch (e) {
           console.debug("Could not dispatch stats-changed event:", e);
@@ -248,7 +255,7 @@ export default function WorkersManagement({
           window.dispatchEvent(
             new CustomEvent("syncertica:stats-changed", {
               detail: { managerUUID: data.managerDeviceUUID || undefined },
-            })
+            }),
           );
         } catch (e) {
           console.debug("Could not dispatch stats-changed event:", e);
@@ -308,7 +315,7 @@ export default function WorkersManagement({
       });
       try {
         window.dispatchEvent(
-          new CustomEvent("syncertica:stats-changed", { detail: {} })
+          new CustomEvent("syncertica:stats-changed", { detail: {} }),
         );
       } catch (e) {
         console.debug("Could not dispatch stats-changed event:", e);
@@ -331,10 +338,13 @@ export default function WorkersManagement({
 
   // Calculate statistics
   const totalWorkers = workers.length;
-  const workersByRole = workers.reduce((acc, worker) => {
-    acc[worker.jobRole] = (acc[worker.jobRole] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const workersByRole = workers.reduce(
+    (acc, worker) => {
+      acc[worker.jobRole] = (acc[worker.jobRole] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
   const getJobRoleIcon = (role: Worker["jobRole"]) => {
     switch (role) {
@@ -517,7 +527,7 @@ export default function WorkersManagement({
                       <div className="mt-2">
                         <span
                           className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border ${getJobRoleColor(
-                            worker.jobRole
+                            worker.jobRole,
                           )}`}
                         >
                           {getJobRoleIcon(worker.jobRole)}

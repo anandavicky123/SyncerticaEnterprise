@@ -6,11 +6,16 @@ const prisma = new PrismaClient();
 // Helper function to map status IDs to names
 function getStatusName(statusId: number): string {
   switch (statusId) {
-    case 5: return "active";
-    case 6: return "on-hold";
-    case 7: return "completed";
-    case 8: return "archived";
-    default: return "unknown";
+    case 5:
+      return "active";
+    case 6:
+      return "on-hold";
+    case 7:
+      return "completed";
+    case 8:
+      return "archived";
+    default:
+      return "unknown";
   }
 }
 
@@ -22,7 +27,7 @@ export async function GET(request: Request) {
     if (!managerUUID) {
       return NextResponse.json(
         { error: "Manager UUID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -32,7 +37,7 @@ export async function GET(request: Request) {
     });
     if (!manager) {
       console.warn(
-        `Manager with UUID ${managerUUID} not found — creating a new manager record.`
+        `Manager with UUID ${managerUUID} not found — creating a new manager record.`,
       );
       manager = await prisma.manager.create({
         data: {
@@ -137,7 +142,7 @@ export async function GET(request: Request) {
       const d = new Date(t.createdAt);
       const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(
         2,
-        "0"
+        "0",
       )}-${String(d.getUTCDate()).padStart(2, "0")}`;
       creationCounts[key] = (creationCounts[key] ?? 0) + 1;
     }
@@ -169,7 +174,7 @@ export async function GET(request: Request) {
       const d = new Date(t.updatedAt);
       const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(
         2,
-        "0"
+        "0",
       )}-${String(d.getUTCDate()).padStart(2, "0")}`;
       completionCounts[key] = (completionCounts[key] ?? 0) + 1;
     }
@@ -263,11 +268,11 @@ export async function GET(request: Request) {
         ? Math.round(
             ((recentTasksCompleted - previousTasksCompleted) /
               previousTasksCompleted) *
-              100
+              100,
           )
         : recentTasksCompleted > 0
-        ? 100
-        : 0;
+          ? 100
+          : 0;
 
     return NextResponse.json({
       overview: {
@@ -302,7 +307,10 @@ export async function GET(request: Request) {
       })),
       projectStatuses: projectStatuses.map((status: any) => ({
         status: getStatusName(status.statusId || status.status),
-        count: typeof status._count === 'number' ? status._count : (status._count as any)?._all || (status._count as any)?.id || 0,
+        count:
+          typeof status._count === "number"
+            ? status._count
+            : (status._count as any)?._all || (status._count as any)?.id || 0,
       })),
       taskPriorities: taskPriorities.map((priority) => ({
         priority: priority.priority,
@@ -328,7 +336,7 @@ export async function GET(request: Request) {
     console.error("Error fetching analytics:", error);
     return NextResponse.json(
       { error: "Failed to fetch analytics data" },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     await prisma.$disconnect();

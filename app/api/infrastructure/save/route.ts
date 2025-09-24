@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     if (!accessToken) {
       return NextResponse.json(
         { error: "GitHub token not found" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     if (!content || !filename || !repository) {
       return NextResponse.json(
         { error: "Content, filename, and repository are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
           Accept: "application/vnd.github.v3+json",
           "User-Agent": "SyncerticaEnterprise",
         },
-      }
+      },
     );
 
     let sha: string | undefined;
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
           content: Buffer.from(content).toString("base64"),
           sha: sha, // Include SHA if updating existing file
         }),
-      }
+      },
     );
 
     if (!createFileResponse.ok) {
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
           error: "Failed to save infrastructure file to GitHub",
           details: errorData.message,
         },
-        { status: createFileResponse.status }
+        { status: createFileResponse.status },
       );
     }
 
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     console.error("Error saving infrastructure file:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

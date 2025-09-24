@@ -51,10 +51,10 @@ async function fixWorkerPasswords() {
 
       if (isBcryptHash) {
         console.log(
-          `⚠️  Worker ${worker.email} has bcryptjs hash, needs to be reset`
+          `⚠️  Worker ${worker.email} has bcryptjs hash, needs to be reset`,
         );
         console.log(
-          `❗ Please manually reset password for ${worker.email} using the UI`
+          `❗ Please manually reset password for ${worker.email} using the UI`,
         );
         console.log(`   Default password suggestion: "password123"`);
       } else if (worker.passwordHash.startsWith("$argon2id$")) {
@@ -66,10 +66,10 @@ async function fixWorkerPasswords() {
 
     console.log("\n🎯 Summary:");
     console.log(
-      "- If any workers have bcryptjs hashes, they need password reset"
+      "- If any workers have bcryptjs hashes, they need password reset",
     );
     console.log(
-      "- You can delete and recreate workers, or manually reset via UI"
+      "- You can delete and recreate workers, or manually reset via UI",
     );
     console.log("- New workers will automatically use argon2id hashing");
   } catch (error) {

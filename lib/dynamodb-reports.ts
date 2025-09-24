@@ -24,14 +24,18 @@ export interface ReportSummary {
 }
 
 // TODO: Implement actual DynamoDB querying logic
-export async function queryUserActivityReports(managerUUID: string): Promise<UserActivityReport[]> {
+export async function queryUserActivityReports(
+  managerUUID: string,
+): Promise<UserActivityReport[]> {
   console.log(`Querying user activity reports for manager: ${managerUUID}`);
   // Return empty array for now
   return [];
 }
 
 // TODO: Implement actual report summary generation logic
-export async function generateReportSummary(managerUUID: string): Promise<ReportSummary> {
+export async function generateReportSummary(
+  managerUUID: string,
+): Promise<ReportSummary> {
   console.log(`Generating report summary for manager: ${managerUUID}`);
   // Return minimal summary for now
   return {
@@ -40,9 +44,9 @@ export async function generateReportSummary(managerUUID: string): Promise<Report
     uniqueUsers: 0,
     dateRange: {
       start: new Date().toISOString(),
-      end: new Date().toISOString()
+      end: new Date().toISOString(),
     },
     activities: {},
-    actionCounts: {}
+    actionCounts: {},
   };
 }

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     if (!managerId) {
       return NextResponse.json(
         { error: "Manager ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     console.error("Subscription status check error:", error);
     return NextResponse.json(
       { error: "Failed to check subscription status" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

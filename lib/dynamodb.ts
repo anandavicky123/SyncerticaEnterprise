@@ -18,7 +18,7 @@ const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
 if (!awsAccessKeyId || !awsSecretAccessKey) {
   throw new Error(
-    "Missing AWS credentials: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set"
+    "Missing AWS credentials: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set",
   );
 }
 
@@ -45,7 +45,7 @@ export interface Session {
 
 export async function createSession(
   actorType: "manager" | "worker",
-  actorId: string
+  actorId: string,
 ): Promise<string> {
   const sessionId = uuidv4();
   const now = new Date();
@@ -68,7 +68,7 @@ export async function createSession(
         ...session,
         TTL: Math.floor(expiresAt.getTime() / 1000), // DynamoDB TTL (must be enabled on table)
       },
-    })
+    }),
   );
 
   return sessionId;
@@ -80,7 +80,7 @@ export async function getSession(sessionId: string): Promise<Session | null> {
       new GetCommand({
         TableName: "sessions",
         Key: { sessionId },
-      })
+      }),
     );
 
     if (!result.Item) return null;
@@ -107,7 +107,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
       new DeleteCommand({
         TableName: "sessions",
         Key: { sessionId },
-      })
+      }),
     );
   } catch (error) {
     console.error("Error deleting session:", error);
@@ -137,7 +137,7 @@ export async function putUserActivityReport(item: UserActivityReport) {
       new PutCommand({
         TableName: "user_activity_reports",
         Item: item,
-      })
+      }),
     );
   } catch (error) {
     console.error("Error putting user activity report:", error);
@@ -146,7 +146,7 @@ export async function putUserActivityReport(item: UserActivityReport) {
 
 export async function queryUserActivityReports(
   userId: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<UserActivityReport[]> {
   try {
     const result = await docClient.send(
@@ -156,7 +156,7 @@ export async function queryUserActivityReports(
         ExpressionAttributeValues: { ":uid": userId },
         Limit: limit,
         ScanIndexForward: false,
-      })
+      }),
     );
     return (result.Items as UserActivityReport[]) || [];
   } catch (error) {
@@ -184,7 +184,7 @@ export async function putProjectTaskReport(item: ProjectTaskReport) {
       new PutCommand({
         TableName: "project_task_reports",
         Item: item,
-      })
+      }),
     );
   } catch (error) {
     console.error("Error putting project task report:", error);
@@ -193,7 +193,7 @@ export async function putProjectTaskReport(item: ProjectTaskReport) {
 
 export async function queryProjectReports(
   projectId: string,
-  limit: number = 100
+  limit: number = 100,
 ): Promise<ProjectTaskReport[]> {
   try {
     const result = await docClient.send(
@@ -203,7 +203,7 @@ export async function queryProjectReports(
         ExpressionAttributeValues: { ":pid": projectId },
         Limit: limit,
         ScanIndexForward: false,
-      })
+      }),
     );
 
     return (result.Items as ProjectTaskReport[]) || [];
@@ -267,7 +267,7 @@ export async function putNotification(item: NotificationWriteItem) {
           SK: sk,
           ...attributes,
         },
-      })
+      }),
     );
   } catch (error) {
     console.error("Error putting notification:", error);
@@ -295,7 +295,7 @@ export interface DynamoNotificationItem {
  */
 export async function getNotifications(
   userId: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<DynamoNotificationItem[]> {
   try {
     let pk: string;
@@ -313,7 +313,7 @@ export async function getNotifications(
         ExpressionAttributeValues: { ":pk": pk },
         Limit: limit,
         ScanIndexForward: false,
-      })
+      }),
     );
     return (result.Items as DynamoNotificationItem[]) || [];
   } catch (error) {
@@ -325,7 +325,7 @@ export async function getNotifications(
 // New helpers for Notifications table which uses a partition key format MANAGER#<managerUUID>
 export async function queryManagerNotifications(
   managerUUID: string,
-  limit: number = 20
+  limit: number = 20,
 ): Promise<DynamoNotificationItem[]> {
   try {
     const pk = `MANAGER#${managerUUID}`;
@@ -336,7 +336,7 @@ export async function queryManagerNotifications(
         ExpressionAttributeValues: { ":pk": pk },
         Limit: limit,
         ScanIndexForward: false,
-      })
+      }),
     );
 
     return (result.Items as DynamoNotificationItem[]) || [];
@@ -348,7 +348,7 @@ export async function queryManagerNotifications(
 
 export async function markNotificationRead(
   managerUUID: string,
-  notifId: string
+  notifId: string,
 ): Promise<boolean> {
   try {
     // We need to find the SK for this notifId. For simplicity, query for items with PK and filter client-side.
@@ -363,7 +363,7 @@ export async function markNotificationRead(
         UpdateExpression: "SET #s = :read",
         ExpressionAttributeNames: { "#s": "status" },
         ExpressionAttributeValues: { ":read": "read" },
-      })
+      }),
     );
     return true;
   } catch (error) {
@@ -378,7 +378,7 @@ export async function markNotificationRead(
  */
 export async function markNotificationReadForUser(
   userId: string,
-  notifId: string
+  notifId: string,
 ): Promise<boolean> {
   try {
     // Reuse getNotifications which understands 'manager:' prefix
@@ -393,7 +393,7 @@ export async function markNotificationReadForUser(
         UpdateExpression: "SET #s = :read",
         ExpressionAttributeNames: { "#s": "status" },
         ExpressionAttributeValues: { ":read": "read" },
-      })
+      }),
     );
 
     return true;
@@ -419,7 +419,7 @@ export async function putPerformanceMetric(item: PerformanceMetric) {
       new PutCommand({
         TableName: "performance_metrics",
         Item: item,
-      })
+      }),
     );
   } catch (error) {
     console.error("Error putting performance metric:", error);
@@ -428,7 +428,7 @@ export async function putPerformanceMetric(item: PerformanceMetric) {
 
 export async function queryPerformanceMetrics(
   entityId_period: string,
-  limit: number = 100
+  limit: number = 100,
 ): Promise<PerformanceMetric[]> {
   try {
     const result = await docClient.send(
@@ -438,7 +438,7 @@ export async function queryPerformanceMetrics(
         ExpressionAttributeValues: { ":eid": entityId_period },
         Limit: limit,
         ScanIndexForward: false,
-      })
+      }),
     );
     return (result.Items as PerformanceMetric[]) || [];
   } catch (error) {

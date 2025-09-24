@@ -66,11 +66,11 @@ jobs:
     
     - name: Deploy to production
       run: echo "Deploying to production..."
-`
+`,
   );
 
   const [filename, setFilename] = useState(
-    workflow?.filename || "ci-cd-pipeline.yml"
+    workflow?.filename || "ci-cd-pipeline.yml",
   );
   const [repository, setRepository] = useState(workflow?.repository || "");
   const [saving, setSaving] = useState(false);

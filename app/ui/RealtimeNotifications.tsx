@@ -100,8 +100,8 @@ const RealtimeNotifications: React.FC<RealtimeNotificationsProps> = ({
     // Optimistic update
     setNotifications((prev) =>
       prev.map((notification) =>
-        notification.id === id ? { ...notification, read: true } : notification
-      )
+        notification.id === id ? { ...notification, read: true } : notification,
+      ),
     );
 
     // Update server
@@ -149,7 +149,7 @@ const RealtimeNotifications: React.FC<RealtimeNotificationsProps> = ({
                 onClick={async () => {
                   // Optimistically mark all as read locally
                   setNotifications((prev) =>
-                    prev.map((n) => ({ ...n, read: true }))
+                    prev.map((n) => ({ ...n, read: true })),
                   );
                   try {
                     await fetch("/api/notifications/mark-all-read", {
@@ -184,7 +184,7 @@ const RealtimeNotifications: React.FC<RealtimeNotificationsProps> = ({
               <div className="space-y-3">
                 {notifications
                   .filter(
-                    (n) => n.type === "message" || n.type === "notification"
+                    (n) => n.type === "message" || n.type === "notification",
                   )
                   .slice(0, 10)
                   .map((notification) => (
@@ -210,7 +210,7 @@ const RealtimeNotifications: React.FC<RealtimeNotificationsProps> = ({
                           </p>
                           <p className="text-xs text-gray-400 mt-1">
                             {new Date(
-                              notification.timestamp
+                              notification.timestamp,
                             ).toLocaleTimeString()}
                           </p>
                         </div>

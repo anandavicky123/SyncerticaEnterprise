@@ -83,7 +83,7 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
             "/api/notifications/unread-by-conversation",
             {
               credentials: "include",
-            }
+            },
           );
           if (ubRes.ok) {
             const ub = await ubRes.json();
@@ -184,7 +184,7 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
         });
         // Optimistically clear local badge
         setTeamMembers((prev) =>
-          prev.map((p) => (p.id === member.id ? { ...p, unread: 0 } : p))
+          prev.map((p) => (p.id === member.id ? { ...p, unread: 0 } : p)),
         );
       } catch (err) {
         console.debug("Failed to mark sender notifications read", err);
@@ -276,70 +276,95 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {isModalLoading ? (
               <div className="flex items-center justify-center p-8">
-                <div role="status" aria-live="polite" className="flex items-center gap-3">
-                  <svg className="animate-spin -ml-1 h-6 w-6 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex items-center gap-3"
+                >
+                  <svg
+                    className="animate-spin -ml-1 h-6 w-6 text-gray-600"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    ></path>
                   </svg>
-                  <div className="text-sm text-gray-600">Loading team members…</div>
+                  <div className="text-sm text-gray-600">
+                    Loading team members…
+                  </div>
                 </div>
               </div>
-            ) : teamMembers.map((member) => (
-              <div
-                key={member.id}
-                className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="relative">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                    <User className="w-5 h-5 text-white" />
+            ) : (
+              teamMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="relative">
+                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <div
+                      className={`absolute -bottom-1 -right-1 w-3 h-3 ${getStatusColor(
+                        member.status,
+                      )} rounded-full border-2 border-white`}
+                    />
                   </div>
-                  <div
-                    className={`absolute -bottom-1 -right-1 w-3 h-3 ${getStatusColor(
-                      member.status
-                    )} rounded-full border-2 border-white`}
-                  />
-                </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">
-                    {member.name}
-                  </div>
-                  <div className={`text-xs ${getRoleColor(member.role)}`}>
-                    {member.role.charAt(0).toUpperCase() + member.role.slice(1)}{" "}
-                    • {member.department}
-                  </div>
-                  <div className="text-xs text-gray-500 capitalize">
-                    {member.status}
-                  </div>
-                </div>
-
-                {/* Unread badge for this team member (manager view) */}
-                {member.unread && member.unread > 0 && (
-                  <div className="ml-2 flex items-center">
-                    <div className="bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
-                      {member.unread > 9 ? "9+" : member.unread}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900 truncate">
+                      {member.name}
+                    </div>
+                    <div className={`text-xs ${getRoleColor(member.role)}`}>
+                      {member.role.charAt(0).toUpperCase() +
+                        member.role.slice(1)}{" "}
+                      • {member.department}
+                    </div>
+                    <div className="text-xs text-gray-500 capitalize">
+                      {member.status}
                     </div>
                   </div>
-                )}
 
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => handleStartChat(member)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Start Chat"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleStartCall(member)}
-                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                    title="Start Call"
-                  >
-                    <Phone className="w-4 h-4" />
-                  </button>
+                  {/* Unread badge for this team member (manager view) */}
+                  {member.unread && member.unread > 0 && (
+                    <div className="ml-2 flex items-center">
+                      <div className="bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
+                        {member.unread > 9 ? "9+" : member.unread}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleStartChat(member)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Start Chat"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleStartCall(member)}
+                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      title="Start Call"
+                    >
+                      <Phone className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -374,12 +399,34 @@ const CallChatModal: React.FC<CallChatModalProps> = ({
                 <div className="flex flex-col gap-3">
                   {isChatsLoading ? (
                     <div className="p-6 flex items-center justify-center">
-                      <div role="status" aria-live="polite" className="flex items-center gap-3">
-                        <svg className="animate-spin -ml-1 h-6 w-6 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        className="flex items-center gap-3"
+                      >
+                        <svg
+                          className="animate-spin -ml-1 h-6 w-6 text-gray-600"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                          ></path>
                         </svg>
-                        <div className="text-sm text-gray-600">Loading messages…</div>
+                        <div className="text-sm text-gray-600">
+                          Loading messages…
+                        </div>
                       </div>
                     </div>
                   ) : chats.length === 0 ? (

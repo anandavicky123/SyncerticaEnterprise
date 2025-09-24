@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { Shield, UserCircle2 } from "lucide-react";
+import { Shield, UserCircle2, Loader2, Database } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -12,6 +12,7 @@ export default function LoginPage() {
     password: "",
   });
   const [loading, setLoading] = useState(false);
+  const [isGeneratingMockData, setIsGeneratingMockData] = useState(false);
   const [error, setError] = useState("");
 
   const handleManagerLogin = async () => {
@@ -21,9 +22,16 @@ export default function LoginPage() {
     try {
       // Get or generate manager UUID
       let managerUUID = localStorage.getItem("manager-uuid");
+      const isNewManager = !managerUUID;
+
       if (!managerUUID) {
         managerUUID = uuidv4();
         localStorage.setItem("manager-uuid", managerUUID);
+      }
+
+      // If this is a new manager, show mock data generation message
+      if (isNewManager) {
+        setIsGeneratingMockData(true);
       }
 
       // Create or get manager session
@@ -64,10 +72,11 @@ export default function LoginPage() {
       setError(
         error instanceof Error
           ? error.message
-          : "Failed to access manager dashboard"
+          : "Failed to access manager dashboard",
       );
     } finally {
       setLoading(false);
+      setIsGeneratingMockData(false);
     }
   };
 
@@ -138,9 +147,38 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full flex items-center justify-center px-4 py-6 border border-gray-300 shadow-sm text-lg font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
           >
-            <Shield className="w-6 h-6 mr-3 text-indigo-600" />
-            <span>{loading ? "Authenticating..." : "Continue as Manager"}</span>
+            {loading ? (
+              <>
+                {isGeneratingMockData ? (
+                  <Database className="w-6 h-6 mr-3 text-indigo-600 animate-pulse" />
+                ) : (
+                  <Loader2 className="w-6 h-6 mr-3 text-indigo-600 animate-spin" />
+                )}
+                <span>
+                  {isGeneratingMockData
+                    ? "Generating Mock Data..."
+                    : "Authenticating..."}
+                </span>
+              </>
+            ) : (
+              <>
+                <Shield className="w-6 h-6 mr-3 text-indigo-600" />
+                <span>Continue as Manager</span>
+              </>
+            )}
           </button>
+
+          {/* Mock Data Generation Info */}
+          {loading && isGeneratingMockData && (
+            <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-700 font-medium">
+                Setting up your portfolio workspace...
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                Creating sample projects, tasks, workers, and conversations
+              </p>
+            </div>
+          )}
 
           {!showWorkerForm ? (
             <button

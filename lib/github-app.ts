@@ -43,7 +43,7 @@ export function getGitHubAppConfig(): GitHubAppConfig {
 
   if (!appId || !clientId || !privateKey) {
     throw new Error(
-      "Missing GitHub App configuration. Please set GITHUB_APP_ID, GITHUB_APP_CLIENT_ID, and GITHUB_APP_PRIVATE_KEY in your environment variables."
+      "Missing GitHub App configuration. Please set GITHUB_APP_ID, GITHUB_APP_CLIENT_ID, and GITHUB_APP_PRIVATE_KEY in your environment variables.",
     );
   }
 
@@ -112,11 +112,11 @@ export function generateAppJWT(): string {
     // Safe debug logging - don't throw from logging
     try {
       console.debug(
-        `🔑 GitHub App JWT payload: iat=${payload.iat} exp=${payload.exp} iss=${payload.iss}`
+        `🔑 GitHub App JWT payload: iat=${payload.iat} exp=${payload.exp} iss=${payload.iss}`,
       );
       if (!privateKey || !privateKey.includes("BEGIN")) {
         console.warn(
-          "⚠️ GitHub private key may be malformed or missing BEGIN/END header. Did you forget to normalize newlines?"
+          "⚠️ GitHub private key may be malformed or missing BEGIN/END header. Did you forget to normalize newlines?",
         );
       }
     } catch {
@@ -148,7 +148,7 @@ export async function getInstallations(): Promise<GitHubInstallation[]> {
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(
-        `Failed to fetch installations: ${response.status} ${errorText}`
+        `Failed to fetch installations: ${response.status} ${errorText}`,
       );
     }
 
@@ -164,7 +164,7 @@ export async function getInstallations(): Promise<GitHubInstallation[]> {
  * Get an installation access token for a specific installation
  */
 export async function getInstallationToken(
-  installationId: number
+  installationId: number,
 ): Promise<InstallationToken> {
   const jwt = generateAppJWT();
 
@@ -178,13 +178,13 @@ export async function getInstallationToken(
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
         },
-      }
+      },
     );
 
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(
-        `Failed to get installation token: ${response.status} ${errorText}`
+        `Failed to get installation token: ${response.status} ${errorText}`,
       );
     }
 
@@ -201,7 +201,7 @@ export async function getInstallationToken(
  */
 export async function getInstallationTokenForRepo(
   owner: string,
-  repo: string
+  repo: string,
 ): Promise<InstallationToken | null> {
   try {
     const installations = await getInstallations();
@@ -227,7 +227,7 @@ export async function getInstallationTokenForRepo(
               Accept: "application/vnd.github+json",
               "X-GitHub-Api-Version": "2022-11-28",
             },
-          }
+          },
         );
 
         if (repoResponse.ok) {
@@ -236,7 +236,7 @@ export async function getInstallationTokenForRepo(
       } catch {
         // Continue to next installation
         console.warn(
-          `Installation ${installation.id} doesn't have access to ${owner}/${repo}`
+          `Installation ${installation.id} doesn't have access to ${owner}/${repo}`,
         );
       }
     }
@@ -254,7 +254,7 @@ export async function getInstallationTokenForRepo(
 export async function makeGitHubAppRequest(
   url: string,
   options: RequestInit = {},
-  installationId?: number
+  installationId?: number,
 ): Promise<Response> {
   let token: string;
 
@@ -316,14 +316,14 @@ export async function uninstallGitHubApp(): Promise<{
               Accept: "application/vnd.github+json",
               "X-GitHub-Api-Version": "2022-11-28",
             },
-          }
+          },
         );
 
         if (response.ok || response.status === 404) {
           // 404 means already uninstalled, which is fine
           uninstalledCount++;
           console.log(
-            `✅ Uninstalled app from ${installation.account.login} (installation ${installation.id})`
+            `✅ Uninstalled app from ${installation.account.login} (installation ${installation.id})`,
           );
         } else {
           const errorText = await response.text();
@@ -374,7 +374,7 @@ export async function triggerWorkflowWithApp(
   repo: string,
   workflowId: string | number,
   ref: string = "main",
-  inputs: Record<string, string | number | boolean> = {}
+  inputs: Record<string, string | number | boolean> = {},
 ): Promise<{ success: boolean; message: string; data?: unknown }> {
   try {
     // Get installation token for this repository

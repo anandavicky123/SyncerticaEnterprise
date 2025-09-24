@@ -22,7 +22,7 @@ export function saveManagerUUIDToStorage(uuid: string): void {
 
 export async function createOrGetManager(
   deviceUUID: string,
-  name?: string
+  name?: string,
 ): Promise<any> {
   try {
     // Try to find existing manager
@@ -44,7 +44,43 @@ export async function createOrGetManager(
         name: manager.name,
         email: manager.email,
       });
-      // Manager creation — audit logging removed
+
+      // Generate mock data for the new manager
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { generateMockData } = require("../scripts/generate-mock-data");
+        console.log(
+          "[auth.createOrGetManager] Generating mock data for new manager...",
+        );
+
+        const mockDataResult = await generateMockData(deviceUUID, {
+          verbose: false, // Set to false to reduce console output in production
+          prisma: prisma, // Pass the existing prisma instance
+        });
+
+        if (mockDataResult.success) {
+          console.log(
+            "[auth.createOrGetManager] Mock data generated successfully:",
+            {
+              workers: mockDataResult.data?.workers,
+              projects: mockDataResult.data?.projects,
+              tasks: mockDataResult.data?.tasks,
+              chats: mockDataResult.data?.chats,
+            },
+          );
+        } else {
+          console.error(
+            "[auth.createOrGetManager] Mock data generation failed:",
+            mockDataResult.message,
+          );
+        }
+      } catch (mockDataError) {
+        console.error(
+          "[auth.createOrGetManager] Error generating mock data:",
+          mockDataError,
+        );
+        // Continue execution even if mock data generation fails
+      }
     } else {
       console.log("[auth.createOrGetManager] Found existing manager:", {
         deviceUUID,
@@ -80,7 +116,7 @@ export async function hashPassword(password: string): Promise<string> {
     console.error("Error hashing password:", error);
     console.error(
       "Stack trace:",
-      error instanceof Error ? error.stack : "No stack trace"
+      error instanceof Error ? error.stack : "No stack trace",
     );
     throw error;
   }
@@ -88,7 +124,7 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPassword(
   hash: string,
-  password: string
+  password: string,
 ): Promise<boolean> {
   try {
     console.log("Verifying password hash...");
@@ -101,7 +137,7 @@ export async function verifyPassword(
     console.error("Error verifying password:", error);
     console.error(
       "Stack trace:",
-      error instanceof Error ? error.stack : "No stack trace"
+      error instanceof Error ? error.stack : "No stack trace",
     );
     return false;
   }
@@ -113,7 +149,7 @@ export async function createWorker(
   password: string,
   name: string,
   jobRole: string,
-  pronouns?: string
+  pronouns?: string,
 ): Promise<any> {
   try {
     // Check worker limit (7 workers per manager)
@@ -164,7 +200,7 @@ export async function createWorker(
 
 export async function authenticateWorker(
   email: string,
-  password: string
+  password: string,
 ): Promise<any> {
   try {
     // Find worker by email
@@ -203,7 +239,7 @@ export async function authenticateWorker(
 }
 
 export async function getWorkersByManager(
-  managerDeviceUUID: string
+  managerDeviceUUID: string,
 ): Promise<any[]> {
   try {
     return await prisma.worker.findMany({
@@ -226,7 +262,7 @@ export async function getWorkersByManager(
 
 export async function deleteWorker(
   workerId: string,
-  managerDeviceUUID: string
+  managerDeviceUUID: string,
 ): Promise<void> {
   try {
     // Verify the worker belongs to this manager

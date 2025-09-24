@@ -63,7 +63,7 @@ const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
 
           // Mark as notified
           setEvents((prev) =>
-            prev.map((e) => (e.id === event.id ? { ...e, notified: true } : e))
+            prev.map((e) => (e.id === event.id ? { ...e, notified: true } : e)),
           );
         }
       });
@@ -103,7 +103,7 @@ const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
     const clickedDate = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth(),
-      day
+      day,
     );
     setSelectedDate(clickedDate);
     setShowEventForm(true);
@@ -143,7 +143,7 @@ const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
       const date = new Date(
         currentDate.getFullYear(),
         currentDate.getMonth(),
-        day
+        day,
       );
       const dateStr = formatDate(date);
       const isToday = dateStr === formatDate(new Date());
@@ -157,13 +157,13 @@ const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
             isToday
               ? "bg-blue-500 text-white"
               : dayEvents.length > 0
-              ? "bg-yellow-300 text-gray-900 font-bold"
-              : "hover:bg-gray-100"
+                ? "bg-yellow-300 text-gray-900 font-bold"
+                : "hover:bg-gray-100"
           }`}
           title={dayEvents.map((e) => e.title).join(", ")}
         >
           {day}
-        </div>
+        </div>,
       );
     }
 
@@ -189,8 +189,8 @@ const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
                 setCurrentDate(
                   new Date(
                     currentDate.getFullYear(),
-                    currentDate.getMonth() - 1
-                  )
+                    currentDate.getMonth() - 1,
+                  ),
                 )
               }
               className="p-2 hover:bg-gray-100 rounded"
@@ -208,8 +208,8 @@ const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
                 setCurrentDate(
                   new Date(
                     currentDate.getFullYear(),
-                    currentDate.getMonth() + 1
-                  )
+                    currentDate.getMonth() + 1,
+                  ),
                 )
               }
               className="p-2 hover:bg-gray-100 rounded"

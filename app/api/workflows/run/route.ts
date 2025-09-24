@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       console.log("❌ No GitHub token found in cookies");
       return NextResponse.json(
         { error: "GitHub token not found. Please connect to GitHub first." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       console.log("❌ Missing repository or workflow parameter");
       return NextResponse.json(
         { error: "Repository and workflow parameters are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
           Authorization: `Bearer ${githubToken}`,
           Accept: "application/vnd.github.v3+json",
         },
-      }
+      },
     );
 
     console.log("📡 Workflows API response status:", workflowsResponse.status);
@@ -48,10 +48,10 @@ export async function POST(request: NextRequest) {
     if (!workflowsResponse.ok) {
       console.log(
         "❌ Failed to fetch workflows:",
-        workflowsResponse.statusText
+        workflowsResponse.statusText,
       );
       throw new Error(
-        `Failed to fetch workflows: ${workflowsResponse.statusText}`
+        `Failed to fetch workflows: ${workflowsResponse.statusText}`,
       );
     }
 
@@ -62,26 +62,26 @@ export async function POST(request: NextRequest) {
         name: w.name,
         path: w.path,
         id: w.id,
-      }))
+      })),
     );
 
     const targetWorkflow = workflowsData.workflows?.find(
-      (w: any) => w.path.includes(workflow) || w.name === workflow
+      (w: any) => w.path.includes(workflow) || w.name === workflow,
     );
 
     console.log(
       "🎯 Target workflow:",
-      targetWorkflow ? `Found: ${targetWorkflow.name}` : "Not found"
+      targetWorkflow ? `Found: ${targetWorkflow.name}` : "Not found",
     );
 
     if (!targetWorkflow) {
       console.log(
         "❌ Workflow not found. Available workflows:",
-        workflowsData.workflows?.map((w: any) => w.name)
+        workflowsData.workflows?.map((w: any) => w.name),
       );
       return NextResponse.json(
         { error: "Workflow not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
           ref: "main", // Default to main branch, could be made configurable
           inputs: inputs,
         }),
-      }
+      },
     );
 
     console.log("📡 Dispatch response status:", dispatchResponse.status);
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       const errorText = await dispatchResponse.text();
       console.log("❌ Dispatch failed:", errorText);
       throw new Error(
-        `Failed to trigger workflow: ${dispatchResponse.statusText} - ${errorText}`
+        `Failed to trigger workflow: ${dispatchResponse.statusText} - ${errorText}`,
       );
     }
 
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
         error: "Failed to run workflow",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

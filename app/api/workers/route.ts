@@ -7,7 +7,13 @@ import { z } from "zod";
 const createWorkerSchema = z.object({
   name: z.string().min(1, "Name is required"),
   pronouns: z.string().nullable(),
-  jobRole: z.enum(["UI/UX Designer", "Developer", "IT Supports", "QA", "Data Analyst"]),
+  jobRole: z.enum([
+    "UI/UX Designer",
+    "Developer",
+    "IT Supports",
+    "QA",
+    "Data Analyst",
+  ]),
   email: z.string().email("Invalid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   githubUsername: z.string().nullable().optional(),
@@ -53,7 +59,7 @@ export async function GET(request: NextRequest) {
       if (!currentWorker) {
         return NextResponse.json(
           { error: "Worker not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -78,14 +84,14 @@ export async function GET(request: NextRequest) {
     } else {
       return NextResponse.json(
         { error: "Unauthorized - Manager or Worker access required" },
-        { status: 401 }
+        { status: 401 },
       );
     }
   } catch (error) {
     console.error("Get workers error:", error);
     return NextResponse.json(
       { error: "Failed to get workers" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -99,7 +105,7 @@ export async function DELETE(request: NextRequest) {
     if (actorType !== "manager") {
       return NextResponse.json(
         { error: "Unauthorized - Manager access required" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -109,7 +115,7 @@ export async function DELETE(request: NextRequest) {
     if (!workerId) {
       return NextResponse.json(
         { error: "Worker ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -133,7 +139,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json(
       { error: "Failed to delete worker" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -152,14 +158,14 @@ export async function POST(req: NextRequest) {
     if (!sessionId || !actorType || !actorId) {
       return NextResponse.json(
         { error: "Unauthorized - No valid session found" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     if (actorType !== "manager") {
       return NextResponse.json(
         { error: "Unauthorized - Manager access required" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -184,7 +190,7 @@ export async function POST(req: NextRequest) {
     if (existingWorker) {
       return NextResponse.json(
         { error: "A worker with this email already exists" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -225,7 +231,7 @@ export async function POST(req: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid input", details: error.issues },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -236,7 +242,7 @@ export async function POST(req: NextRequest) {
     ) {
       return NextResponse.json(
         { error: "A worker with this email already exists" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -244,13 +250,13 @@ export async function POST(req: NextRequest) {
     if (error instanceof Error && error.message === "WORKER_LIMIT_REACHED") {
       return NextResponse.json(
         { error: "Worker limit reached. Please upgrade to add more workers." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     return NextResponse.json(
       { error: "Internal server error while creating worker" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

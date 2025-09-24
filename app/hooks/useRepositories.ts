@@ -44,7 +44,7 @@ export const useRepositories = (): UseRepositoriesReturn => {
     } catch (err) {
       console.error("Error fetching repositories:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to fetch repositories"
+        err instanceof Error ? err.message : "Failed to fetch repositories",
       );
       setRepositories([]);
     } finally {

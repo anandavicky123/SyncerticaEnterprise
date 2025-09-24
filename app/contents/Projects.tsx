@@ -85,13 +85,13 @@ const Projects: React.FC<{
   useEffect(() => setWorkflows(remoteWorkflows), [remoteWorkflows]);
   useEffect(
     () => setInfrastructure(remoteInfrastructure),
-    [remoteInfrastructure]
+    [remoteInfrastructure],
   );
   useEffect(() => setContainers(remoteContainers), [remoteContainers]);
 
   // refs to hold latest callbacks so toolbar event listeners can call them
   const refreshDataRef = useRef<((force?: boolean) => Promise<void>) | null>(
-    null
+    null,
   );
   const checkAppInstallationRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -111,10 +111,10 @@ const Projects: React.FC<{
             id: String(
               detail.id ||
                 detail.path ||
-                `${detail.repository}/${detail.filename}`
+                `${detail.repository}/${detail.filename}`,
             ),
             name: String(
-              detail.name || detail.filename || detail.path || "new-workflow"
+              detail.name || detail.filename || detail.path || "new-workflow",
             ),
             filename: String(detail.filename || detail.path || ""),
             path: String(detail.path || detail.filename || ""),
@@ -128,7 +128,7 @@ const Projects: React.FC<{
           // prepend if not exists
           setWorkflows((prev) => {
             const exists = prev.some(
-              (w) => w.path === newWorkflow.path || w.id === newWorkflow.id
+              (w) => w.path === newWorkflow.path || w.id === newWorkflow.id,
             );
             if (exists) return prev;
             return [newWorkflow, ...prev];
@@ -138,7 +138,7 @@ const Projects: React.FC<{
         if (t === "infrastructure") {
           const newInfra: Infrastructure = {
             id: String(
-              detail.id || detail.path || `${detail.repository}/${detail.name}`
+              detail.id || detail.path || `${detail.repository}/${detail.name}`,
             ),
             name: String(detail.name || detail.path || "new-infra"),
             type: "",
@@ -148,7 +148,7 @@ const Projects: React.FC<{
           };
           setInfrastructure((prev) => {
             const exists = prev.some(
-              (i) => i.path === newInfra.path || i.id === newInfra.id
+              (i) => i.path === newInfra.path || i.id === newInfra.id,
             );
             if (exists) return prev;
             return [newInfra, ...prev];
@@ -158,7 +158,7 @@ const Projects: React.FC<{
         if (t === "container") {
           const newContainer: Container = {
             id: String(
-              detail.id || detail.path || `${detail.repository}/${detail.name}`
+              detail.id || detail.path || `${detail.repository}/${detail.name}`,
             ),
             name: String(detail.name || detail.path || "new-container"),
             type: "",
@@ -168,7 +168,7 @@ const Projects: React.FC<{
           };
           setContainers((prev) => {
             const exists = prev.some(
-              (c) => c.path === newContainer.path || c.id === newContainer.id
+              (c) => c.path === newContainer.path || c.id === newContainer.id,
             );
             if (exists) return prev;
             return [newContainer, ...prev];
@@ -177,19 +177,19 @@ const Projects: React.FC<{
       } catch (err) {
         console.error(
           "Error handling optimistic github-item-created event:",
-          err
+          err,
         );
       }
     };
 
     window.addEventListener(
       "syncertica:github-item-created",
-      handler as EventListener
+      handler as EventListener,
     );
     return () =>
       window.removeEventListener(
         "syncertica:github-item-created",
-        handler as EventListener
+        handler as EventListener,
       );
   }, []);
 
@@ -213,21 +213,11 @@ const Projects: React.FC<{
   const getStatusName = (statusId: number): string => {
     const statusMap: Record<number, string> = {
       5: "active",
-      6: "on-hold", 
+      6: "on-hold",
       7: "completed",
-      8: "archived"
+      8: "archived",
     };
     return statusMap[statusId] || "active";
-  };
-
-  const getStatusId = (statusName: string): number => {
-    const statusMap: Record<string, number> = {
-      "active": 5,
-      "on-hold": 6,
-      "completed": 7,
-      "archived": 8
-    };
-    return statusMap[statusName] || 5;
   };
 
   // Modal states
@@ -253,7 +243,7 @@ const Projects: React.FC<{
     item?: Container | null;
   } | null>(null);
   const [manageAccessRepo, setManageAccessRepo] = useState<Repository | null>(
-    null
+    null,
   );
   type Collaborator = { id?: number; login: string };
   type Invitation = { id: number; invitee?: { login: string }; email?: string };
@@ -293,7 +283,7 @@ const Projects: React.FC<{
         !workflow.filename.includes(".yaml")
       ) {
         alert(
-          "This workflow file format is not supported for manual triggering."
+          "This workflow file format is not supported for manual triggering.",
         );
         return;
       }
@@ -311,7 +301,7 @@ const Projects: React.FC<{
         "Using workflow identifier:",
         workflowIdentifier,
         "for workflow:",
-        workflow.name
+        workflow.name,
       );
 
       // Try the simplified endpoint approach
@@ -333,7 +323,7 @@ const Projects: React.FC<{
       console.log("Response status:", response.status);
       console.log(
         "Response headers:",
-        Object.fromEntries(response.headers.entries())
+        Object.fromEntries(response.headers.entries()),
       );
 
       // try JSON first, fall back to text
@@ -353,7 +343,7 @@ const Projects: React.FC<{
       if (response.ok) {
         // success
         alert(
-          `Workflow "${workflow.name}" has been triggered successfully! Check the Actions tab in GitHub to see the progress.`
+          `Workflow "${workflow.name}" has been triggered successfully! Check the Actions tab in GitHub to see the progress.`,
         );
         await refreshData();
         return;
@@ -362,7 +352,7 @@ const Projects: React.FC<{
       // Handle common GitHub errors with actionable messages
       if (response.status === 401) {
         alert(
-          `Authentication failed (401): Bad credentials.\n\nAction: Ensure your GITHUB_TOKEN is set and valid in your environment (restart dev server after changes).`
+          `Authentication failed (401): Bad credentials.\n\nAction: Ensure your GITHUB_TOKEN is set and valid in your environment (restart dev server after changes).`,
         );
         return;
       }
@@ -373,10 +363,10 @@ const Projects: React.FC<{
         const ghMessage = errorObj?.details
           ? errorObj.details
           : errorObj?.message
-          ? errorObj.message
-          : JSON.stringify(payload);
+            ? errorObj.message
+            : JSON.stringify(payload);
         alert(
-          `Permission denied (403): ${ghMessage}\n\nAction: The authenticated user needs admin or write rights on the target repository, or use a token with appropriate scopes (repo + workflow). If using a GitHub App, ensure it's installed on the repository with Actions/workflows write permission.`
+          `Permission denied (403): ${ghMessage}\n\nAction: The authenticated user needs admin or write rights on the target repository, or use a token with appropriate scopes (repo + workflow). If using a GitHub App, ensure it's installed on the repository with Actions/workflows write permission.`,
         );
         return;
       }
@@ -387,7 +377,7 @@ const Projects: React.FC<{
             payload && typeof payload === "object"
               ? JSON.stringify(payload)
               : payload
-          }`
+          }`,
         );
         return;
       }
@@ -400,14 +390,14 @@ const Projects: React.FC<{
           payload && typeof payload === "object"
             ? JSON.stringify(payload)
             : payload
-        }`
+        }`,
       );
     } catch (error) {
       console.error("Error running workflow:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
       alert(
-        `Failed to run workflow: ${errorMessage}\n\nNote: Only workflows with 'workflow_dispatch' trigger can be run manually.`
+        `Failed to run workflow: ${errorMessage}\n\nNote: Only workflows with 'workflow_dispatch' trigger can be run manually.`,
       );
     } finally {
       setRunningWorkflow(null);
@@ -420,7 +410,7 @@ const Projects: React.FC<{
 
   const handleViewContent = (
     type: "infrastructure" | "container",
-    item: Infrastructure | Container
+    item: Infrastructure | Container,
   ) => {
     setShowContentViewer({ type, item });
   };
@@ -458,7 +448,9 @@ const Projects: React.FC<{
         console.warn("GitHub App installation check failed:", result.error);
         // If the error indicates all installations are claimed, show a user-friendly message
         if (result.error.includes("already claimed by other managers")) {
-          console.warn("All GitHub App installations are claimed by other managers");
+          console.warn(
+            "All GitHub App installations are claimed by other managers",
+          );
         }
         return;
       }
@@ -478,18 +470,27 @@ const Projects: React.FC<{
           if (persistResponse.ok) {
             const persistResult = await persistResponse.json();
             if (persistResult.success) {
-              console.log(`Successfully persisted installation ID ${installationId}`);
+              console.log(
+                `Successfully persisted installation ID ${installationId}`,
+              );
             }
           } else if (persistResponse.status === 409) {
             // Installation already persisted to another manager - check the error message
             const errorResult = await persistResponse.json();
-            if (errorResult.error?.includes("already linked to another manager")) {
-              console.warn("This GitHub App installation is already linked to another manager");
+            if (
+              errorResult.error?.includes("already linked to another manager")
+            ) {
+              console.warn(
+                "This GitHub App installation is already linked to another manager",
+              );
             } else {
               console.log("Installation ID already persisted for this manager");
             }
           } else {
-            console.warn("Failed to persist installation ID:", persistResponse.status);
+            console.warn(
+              "Failed to persist installation ID:",
+              persistResponse.status,
+            );
           }
         } catch (persistError) {
           console.error("Error persisting installation ID:", persistError);
@@ -526,7 +527,7 @@ const Projects: React.FC<{
       setStatusId(5); // Reset to active
       try {
         window.dispatchEvent(
-          new CustomEvent("syncertica:stats-changed", { detail: {} })
+          new CustomEvent("syncertica:stats-changed", { detail: {} }),
         );
       } catch (e) {
         console.debug("Could not dispatch stats-changed event:", e);
@@ -553,7 +554,7 @@ const Projects: React.FC<{
       if (!res.ok) throw new Error(await res.text());
       const updated: Project = await res.json();
       setProjectsList((prev) =>
-        prev.map((p) => (p.id === updated.id ? updated : p))
+        prev.map((p) => (p.id === updated.id ? updated : p)),
       );
       setShowAdd(false);
       setEditingProject(null);
@@ -585,26 +586,28 @@ const Projects: React.FC<{
     try {
       setLoadingCollabs(true);
       const res = await fetch(
-        `/api/github/collaborators?repo=${encodeURIComponent(fullName)}`
+        `/api/github/collaborators?repo=${encodeURIComponent(fullName)}`,
       );
       if (res.ok) {
         const data = await res.json();
         setCollaborators(
-          Array.isArray(data.collaborators) ? data.collaborators : []
+          Array.isArray(data.collaborators) ? data.collaborators : [],
         );
         setInvitations(Array.isArray(data.invitations) ? data.invitations : []);
       } else {
         const errorText = await res.text();
         console.error("Failed to fetch collaborators:", res.status, errorText);
-        
+
         // Show user-friendly error messages based on status code
         if (res.status === 403) {
-          console.warn("GitHub App lacks permission to read repository collaborators. Check App permissions in GitHub settings.");
+          console.warn(
+            "GitHub App lacks permission to read repository collaborators. Check App permissions in GitHub settings.",
+          );
         }
-        
+
         setCollaborators([]);
         setInvitations([]);
-        
+
         // For debugging, you might want to show an alert (uncomment next line if needed)
         // alert(`Failed to load collaborators: ${res.status} - Check console for details`);
       }
@@ -664,11 +667,11 @@ const Projects: React.FC<{
       invitations.some(
         (i) =>
           (username ? i.invitee?.login === username : false) ||
-          (email ? i.email === email : false)
+          (email ? i.email === email : false),
       );
     if (already) {
       alert(
-        "This person is already a collaborator or has a pending invitation."
+        "This person is already a collaborator or has a pending invitation.",
       );
       return;
     }
@@ -680,7 +683,7 @@ const Projects: React.FC<{
     if (!res.ok) {
       const txt = await res.text();
       console.error("Add collaborator failed:", res.status, txt);
-      
+
       // Parse the error response to provide better user feedback
       let errorMessage = `Failed to add collaborator: ${res.status}`;
       try {
@@ -688,24 +691,32 @@ const Projects: React.FC<{
         if (errorData.message) {
           errorMessage = errorData.message;
         }
-        
+
         // Provide specific guidance based on error type
-        if (res.status === 403 && errorData.message?.includes("Resource not accessible by integration")) {
-          errorMessage = "GitHub App lacks permission to manage repository collaborators.\n\nTo fix this:\n1. Go to your GitHub App settings\n2. Enable 'Members' permission with Read & Write access\n3. Reinstall the app on your repositories\n\nNote: The person may already be a collaborator if you see this error.";
+        if (
+          res.status === 403 &&
+          errorData.message?.includes("Resource not accessible by integration")
+        ) {
+          errorMessage =
+            "GitHub App lacks permission to manage repository collaborators.\n\nTo fix this:\n1. Go to your GitHub App settings\n2. Enable 'Members' permission with Read & Write access\n3. Reinstall the app on your repositories\n\nNote: The person may already be a collaborator if you see this error.";
         } else if (res.status === 404) {
-          errorMessage = "User not found. Please check the GitHub username is correct.";
+          errorMessage =
+            "User not found. Please check the GitHub username is correct.";
         } else if (res.status === 422) {
-          errorMessage = "Cannot add collaborator. They may already have access or there may be an organization policy restriction.";
+          errorMessage =
+            "Cannot add collaborator. They may already have access or there may be an organization policy restriction.";
         }
       } catch {
         // Use the original text if JSON parsing fails
         errorMessage = `Failed to add collaborator: ${res.status} ${txt}`;
       }
-      
+
       alert(errorMessage);
     } else {
       // Success - provide feedback
-      alert(`Successfully ${username ? `added ${username}` : 'sent invitation'} as collaborator!`);
+      alert(
+        `Successfully ${username ? `added ${username}` : "sent invitation"} as collaborator!`,
+      );
     }
     await fetchCollaborators(repoFullName);
   };
@@ -837,20 +848,20 @@ const Projects: React.FC<{
 
     window.addEventListener(
       "syncertica:toolbar-click",
-      onToolbarClick as EventListener
+      onToolbarClick as EventListener,
     );
     window.addEventListener(
       "syncertica:toolbar-dropdown-click",
-      onToolbarDropdown as EventListener
+      onToolbarDropdown as EventListener,
     );
     return () => {
       window.removeEventListener(
         "syncertica:toolbar-click",
-        onToolbarClick as EventListener
+        onToolbarClick as EventListener,
       );
       window.removeEventListener(
         "syncertica:toolbar-dropdown-click",
-        onToolbarDropdown as EventListener
+        onToolbarDropdown as EventListener,
       );
     };
   }, []);
@@ -1038,13 +1049,14 @@ const Projects: React.FC<{
                               project.statusId === 5
                                 ? "bg-green-100 text-green-800"
                                 : project.statusId === 6
-                                ? "bg-yellow-100 text-yellow-800"
-                                : project.statusId === 7
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-gray-100 text-gray-800"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : project.statusId === 7
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-gray-100 text-gray-800"
                             }`}
                           >
-                            {project.statusName || getStatusName(project.statusId)}
+                            {project.statusName ||
+                              getStatusName(project.statusId)}
                           </span>
                         </div>
                         {project.description && (
@@ -1211,7 +1223,8 @@ const Projects: React.FC<{
                   return (
                     <div
                       key={String(
-                        workflow.id ?? `${workflow.repository}/${workflow.path}`
+                        workflow.id ??
+                          `${workflow.repository}/${workflow.path}`,
                       )}
                       className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                     >
@@ -1310,7 +1323,7 @@ const Projects: React.FC<{
                 {infrastructure.map((infra: Infrastructure) => (
                   <div
                     key={String(
-                      infra.id ?? `${infra.repository}/${infra.path}`
+                      infra.id ?? `${infra.repository}/${infra.path}`,
                     )}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
@@ -1389,7 +1402,7 @@ const Projects: React.FC<{
                   <div
                     key={String(
                       container.id ??
-                        `${container.repository}/${container.path}`
+                        `${container.repository}/${container.path}`,
                     )}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
@@ -1690,7 +1703,7 @@ const Projects: React.FC<{
                             } else {
                               // Warn and show manual input so user can fill the username
                               alert(
-                                "This worker doesn't have Github Username, please input first"
+                                "This worker doesn't have Github Username, please input first",
                               );
                               setShowWorkerSelection(false);
                               setShowEmailInput(true);
@@ -1962,8 +1975,8 @@ const Projects: React.FC<{
             // Fetch sha first
             const infoRes = await fetch(
               `/api/github/contents?repo=${encodeURIComponent(
-                repository!
-              )}&path=${encodeURIComponent(wf.path)}`
+                repository!,
+              )}&path=${encodeURIComponent(wf.path)}`,
             );
             const info = infoRes.ok ? await infoRes.json() : {};
             const sha = info.sha;

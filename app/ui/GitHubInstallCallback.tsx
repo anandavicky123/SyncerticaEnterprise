@@ -20,7 +20,9 @@ export default function GitHubInstallCallback({
   const [error, setError] = useState<string | null>(null);
 
   async function fetchInstallations() {
-    const res = await fetch("/api/github/app/installations", { credentials: "include" });
+    const res = await fetch("/api/github/app/installations", {
+      credentials: "include",
+    });
     if (!res.ok) throw new Error("Failed to fetch installations");
     const data = await res.json();
     return data.installations as Installation[];
@@ -43,7 +45,9 @@ export default function GitHubInstallCallback({
     try {
       const installations = await fetchInstallations();
       if (!installations || installations.length === 0) {
-        setStatus("No installations found for this GitHub App yet. Try again in a few seconds.");
+        setStatus(
+          "No installations found for this GitHub App yet. Try again in a few seconds.",
+        );
         setLoading(false);
         return;
       }
@@ -51,12 +55,19 @@ export default function GitHubInstallCallback({
       // Prefer a match by managerGitHubLogin if provided
       let chosen = null as Installation | null;
       if (managerGitHubLogin) {
-        chosen = installations.find((i) => i.account?.login === managerGitHubLogin) ?? null;
+        chosen =
+          installations.find((i) => i.account?.login === managerGitHubLogin) ??
+          null;
       }
 
       // fallback: choose the most recent by created_at
       if (!chosen) {
-        chosen = installations.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] || null;
+        chosen =
+          installations.sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime(),
+          )[0] || null;
       }
 
       if (!chosen) {
@@ -65,7 +76,9 @@ export default function GitHubInstallCallback({
         return;
       }
 
-      setStatus(`Persisting installation ${chosen.id} (account ${chosen.account.login})`);
+      setStatus(
+        `Persisting installation ${chosen.id} (account ${chosen.account.login})`,
+      );
       const result = await persistInstallation(chosen.id);
 
       if (result.success) {

@@ -90,7 +90,7 @@ class GitHubActionsService {
 
   private async request<T>(
     action: string,
-    params: Record<string, string> = {}
+    params: Record<string, string> = {},
   ): Promise<T> {
     const searchParams = new URLSearchParams({ action, ...params });
     const url = `${this.baseUrl}?${searchParams}`;
@@ -106,7 +106,7 @@ class GitHubActionsService {
           .catch(() => ({ error: "Unknown error" }));
         throw new Error(
           errorData.error ||
-            `API error: ${response.status} ${response.statusText}`
+            `API error: ${response.status} ${response.statusText}`,
         );
       }
 
@@ -126,7 +126,7 @@ class GitHubActionsService {
         "runs",
         {
           limit: limit.toString(),
-        }
+        },
       );
       return data.workflow_runs;
     } catch (error) {
@@ -218,7 +218,7 @@ class GitHubActionsService {
   async triggerWorkflow(
     workflowId: string | number,
     ref: string = "main",
-    inputs: Record<string, string | number | boolean> = {}
+    inputs: Record<string, string | number | boolean> = {},
   ): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}?action=trigger`, {
@@ -239,7 +239,7 @@ class GitHubActionsService {
           .catch(() => ({ error: "Unknown error" }));
         throw new Error(
           errorData.error ||
-            `Failed to trigger workflow: ${response.statusText}`
+            `Failed to trigger workflow: ${response.statusText}`,
         );
       }
 
@@ -280,7 +280,7 @@ class GitHubActionsService {
    */
   private convertStatus(
     status: string,
-    conclusion: string | null
+    conclusion: string | null,
   ): Pipeline["status"] {
     if (status === "queued") return "pending";
     if (status === "in_progress") return "running";
@@ -317,7 +317,7 @@ class GitHubActionsService {
         (run) =>
           run.name.toLowerCase().includes("deploy") ||
           run.name.toLowerCase().includes("ci") ||
-          run.name.toLowerCase().includes("cd")
+          run.name.toLowerCase().includes("cd"),
       );
 
       const latestRun = deploymentRuns[0];
@@ -335,8 +335,8 @@ class GitHubActionsService {
         status === "success"
           ? "running"
           : status === "running"
-          ? "deploying"
-          : "stopped";
+            ? "deploying"
+            : "stopped";
 
       return {
         ecr: {
@@ -376,7 +376,7 @@ class GitHubActionsService {
 
       // Calculate average duration for completed runs
       const completedRuns = runs.filter(
-        (r) => r.status === "completed" && r.run_started_at
+        (r) => r.status === "completed" && r.run_started_at,
       );
       const totalDuration = completedRuns.reduce((sum, run) => {
         const start = new Date(run.run_started_at!).getTime();

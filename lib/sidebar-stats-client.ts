@@ -20,7 +20,7 @@ export interface DatabaseStats {
 }
 
 export async function getDatabaseStats(
-  managerDeviceUUID?: string
+  managerDeviceUUID?: string,
 ): Promise<DatabaseStats> {
   // Server expects managerDeviceUUID; prefer callers to pass it.
   const url = managerDeviceUUID
@@ -39,7 +39,7 @@ export async function getDatabaseStats(
 }
 
 export function generateDynamicSidebarItems(
-  stats: DatabaseStats
+  stats: DatabaseStats,
 ): SidebarSection[] {
   return [
     {

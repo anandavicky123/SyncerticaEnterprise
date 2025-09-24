@@ -37,7 +37,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
   >("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentManagerUUID, setCurrentManagerUUID] = useState<string>(
-    "11111111-1111-1111-1111-111111111111"
+    "11111111-1111-1111-1111-111111111111",
   ); // Default fallback
 
   // Fetch current user session to get their device UUID
@@ -93,7 +93,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
         if (!Array.isArray(normalized)) {
           console.warn(
             "TaskManager: unexpected tasks response shape",
-            tasksData
+            tasksData,
           );
           setTasks([]);
         } else {
@@ -145,7 +145,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
             window.dispatchEvent(
               new CustomEvent("syncertica:stats-changed", {
                 detail: { managerUUID: currentManagerUUID },
-              })
+              }),
             );
           } catch (e) {
             console.debug("Could not dispatch stats-changed event:", e);
@@ -153,7 +153,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
         } catch (e) {
           console.error(
             "Error handling created task response, reloading list:",
-            e
+            e,
           );
           await fetchTasks();
         }
@@ -162,7 +162,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
           window.dispatchEvent(
             new CustomEvent("syncertica:stats-changed", {
               detail: { managerUUID: currentManagerUUID },
-            })
+            }),
           );
         } catch (e) {
           console.debug("Could not dispatch stats-changed event:", e);
@@ -171,7 +171,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
         const errorData = await response.json().catch(() => ({}));
         console.error("API Error:", errorData);
         throw new Error(
-          `Failed to create task: ${errorData.error || response.statusText}`
+          `Failed to create task: ${errorData.error || response.statusText}`,
         );
       }
     } catch (error) {
@@ -208,14 +208,14 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
       if (response.ok) {
         const updatedTask = await response.json();
         setTasks((prev) =>
-          prev.map((task) => (task.id === taskData.id ? updatedTask : task))
+          prev.map((task) => (task.id === taskData.id ? updatedTask : task)),
         );
         console.log("✅ Task updated successfully:", updatedTask);
         try {
           window.dispatchEvent(
             new CustomEvent("syncertica:stats-changed", {
               detail: { managerUUID: currentManagerUUID },
-            })
+            }),
           );
         } catch (e) {
           console.debug("Could not dispatch stats-changed event:", e);
@@ -246,7 +246,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
           window.dispatchEvent(
             new CustomEvent("syncertica:stats-changed", {
               detail: { managerUUID: currentManagerUUID },
-            })
+            }),
           );
         } catch (e) {
           console.debug("Could not dispatch stats-changed event:", e);
@@ -313,7 +313,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
       };
       return acc;
     },
-    {} as Record<string, UserType>
+    {} as Record<string, UserType>,
   );
 
   const filteredTasks = tasks.filter((task) => {
@@ -379,7 +379,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
 
   const updateTaskStatus = async (
     taskId: string,
-    newStatus: Task["status"]
+    newStatus: Task["status"],
   ) => {
     try {
       const response = await fetch("/api/tasks", {
@@ -396,12 +396,12 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
       if (response.ok) {
         const updatedTask = await response.json();
         setTasks((prev) =>
-          prev.map((task) => (task.id === taskId ? updatedTask : task))
+          prev.map((task) => (task.id === taskId ? updatedTask : task)),
         );
 
         // Simulate AWS Step Functions workflow
         console.log(
-          `🔄 AWS Step Functions: Task ${taskId} status changed to ${newStatus}`
+          `🔄 AWS Step Functions: Task ${taskId} status changed to ${newStatus}`,
         );
         console.log(`📊 Triggering CloudWatch metrics update`);
         console.log(`📨 SNS notification sent to stakeholders`);
@@ -520,7 +520,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
                       | "todo"
                       | "doing"
                       | "done"
-                      | "blocked"
+                      | "blocked",
                   )
                 }
                 className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -571,7 +571,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
                       </h3>
                       <div
                         className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(
-                          task.priority
+                          task.priority,
                         )}`}
                       >
                         <div className="flex items-center gap-1">
@@ -595,7 +595,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ className = "" }) => {
                           >
                             {tag}
                           </span>
-                        )
+                        ),
                       )}
                     </div>
                     <div className="flex items-center gap-6 text-sm text-gray-500">
