@@ -36,6 +36,12 @@ export const useRepositories = (): UseRepositoriesReturn => {
       const response = await fetch("/api/repositories/github_repositories");
 
       if (!response.ok) {
+        // Handle 401 specifically - this means GitHub is not connected yet
+        if (response.status === 401) {
+          setRepositories([]);
+          setError(null); // Don't show error for 401, just empty repositories
+          return;
+        }
         throw new Error(`Failed to fetch repositories: ${response.status}`);
       }
 

@@ -1,33 +1,76 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getManagerGitHubAuthHeaders } from "@/lib/github-manager-auth";
+import {
+  getManagerGitHubAuthHeaders,
+  getCurrentManagerInstallation,
+} from "@/lib/github-manager-auth";
+import { getSession } from "@/lib/dynamodb";
 
-// Simple in-memory cache to avoid hitting GitHub API too frequently
-let containerCache: {
-  data: any[];
-  timestamp: number;
-} | null = null;
+// Manager-specific cache to avoid hitting GitHub API too frequently
+// Key: managerDeviceUUID, Value: cache data
+const containerCacheByManager: Map<
+  string,
+  {
+    data: any[];
+    timestamp: number;
+  }
+> = new Map();
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export async function GET() {
   console.log("🔍 Container API called");
 
-  // Check cache first
-  if (
-    containerCache &&
-    Date.now() - containerCache.timestamp < CACHE_DURATION
-  ) {
-    console.log("📦 Returning cached container data");
-    return NextResponse.json({
-      containers: containerCache.data,
-      total: containerCache.data.length,
-      cached: true,
-    });
-  }
-
   try {
+    // Get the current session and manager
     const cookieStore = await cookies();
+    const sessionId = cookieStore.get("session-id")?.value;
+
+    if (!sessionId) {
+      console.log("❌ No session ID found");
+      return NextResponse.json(
+        { error: "Not authenticated", containers: [] },
+        { status: 401 },
+      );
+    }
+
+    const session = await getSession(sessionId);
+    if (!session || session.actorType !== "manager") {
+      console.log("❌ No valid manager session found");
+      return NextResponse.json(
+        { error: "Not authenticated as manager", containers: [] },
+        { status: 401 },
+      );
+    }
+
+    const managerDeviceUUID = session.actorId;
+    console.log(`✅ Authenticated as manager: ${managerDeviceUUID}`);
+
+    // Check manager-specific cache first
+    const managerCache = containerCacheByManager.get(managerDeviceUUID);
+    if (managerCache && Date.now() - managerCache.timestamp < CACHE_DURATION) {
+      console.log("📦 Returning cached container data for manager");
+      return NextResponse.json({
+        containers: managerCache.data,
+        total: managerCache.data.length,
+        cached: true,
+      });
+    }
+
+    // Get manager's GitHub App installation
+    const installation = await getCurrentManagerInstallation();
+    if (!installation) {
+      console.log("❌ No GitHub App installation found for manager");
+      return NextResponse.json(
+        { error: "GitHub App not installed for this manager", containers: [] },
+        { status: 401 },
+      );
+    }
+
+    console.log(
+      `✅ Using installation ID ${installation.installationId} for manager ${managerDeviceUUID}`,
+    );
+
     const githubToken = cookieStore.get("github_access_token")?.value;
 
     // Try OAuth first, then GitHub App
@@ -38,10 +81,12 @@ export async function GET() {
         Authorization: `Bearer ${githubToken}`,
         Accept: "application/vnd.github.v3+json",
       };
+      console.log("🔑 Using OAuth token for authentication");
     } else {
       // Use manager-specific GitHub App authentication
       authHeaders = await getManagerGitHubAuthHeaders();
       isInstallationAuth = !!authHeaders;
+      console.log("🔑 Using GitHub App installation token for authentication");
     }
 
     if (!authHeaders) {
@@ -275,14 +320,14 @@ export async function GET() {
     }
 
     console.log(
-      `✅ Container search complete. Found ${allContainers.length} total containers`,
+      `✅ Container search complete. Found ${allContainers.length} total containers for manager ${managerDeviceUUID}`,
     );
 
-    // Cache the results
-    containerCache = {
+    // Cache the results for this specific manager
+    containerCacheByManager.set(managerDeviceUUID, {
       data: allContainers,
       timestamp: Date.now(),
-    };
+    });
 
     return NextResponse.json({
       containers: allContainers,
@@ -291,15 +336,23 @@ export async function GET() {
   } catch (error) {
     console.error("❌ Error fetching containers:", error);
 
-    // If we have cached data, return it on error
-    if (containerCache) {
-      console.log("🔄 API error, returning cached data");
-      return NextResponse.json({
-        containers: containerCache.data,
-        total: containerCache.data.length,
-        cached: true,
-        error: "API temporarily unavailable, showing cached data",
-      });
+    // If we have cached data for this manager, return it on error
+    const cookieStore = await cookies();
+    const sessionId = cookieStore.get("session-id")?.value;
+    if (sessionId) {
+      const session = await getSession(sessionId);
+      if (session?.actorType === "manager") {
+        const managerCache = containerCacheByManager.get(session.actorId);
+        if (managerCache) {
+          console.log("🔄 API error, returning cached data for manager");
+          return NextResponse.json({
+            containers: managerCache.data,
+            total: managerCache.data.length,
+            cached: true,
+            error: "API temporarily unavailable, showing cached data",
+          });
+        }
+      }
     }
 
     return NextResponse.json(

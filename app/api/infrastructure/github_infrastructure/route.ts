@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getManagerGitHubAuthHeaders } from "@/lib/github-manager-auth";
+import {
+  getManagerGitHubAuthHeaders,
+  getCurrentManagerInstallation,
+} from "@/lib/github-manager-auth";
+import { getSession } from "@/lib/dynamodb";
 
-// Simple in-memory cache to avoid hitting GitHub API too frequently
-const infrastructureCache: Map<
+// Manager-specific cache to avoid hitting GitHub API too frequently
+// Key: `${managerDeviceUUID}-${repoName}`, Value: cache data
+const infrastructureCacheByManager: Map<
   string,
   {
     data: any[];
@@ -15,10 +20,47 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export async function GET(request: NextRequest) {
   try {
+    // Get the current session and manager first
     const cookieStore = await cookies();
+    const sessionId = cookieStore.get("session-id")?.value;
+
+    if (!sessionId) {
+      console.log("❌ No session ID found");
+      return NextResponse.json(
+        { error: "Not authenticated", infrastructure: [] },
+        { status: 401 },
+      );
+    }
+
+    const session = await getSession(sessionId);
+    if (!session || session.actorType !== "manager") {
+      console.log("❌ No valid manager session found");
+      return NextResponse.json(
+        { error: "Not authenticated as manager", infrastructure: [] },
+        { status: 401 },
+      );
+    }
+
+    const managerDeviceUUID = session.actorId;
+    console.log(`✅ Authenticated as manager: ${managerDeviceUUID}`);
+
+    // Verify manager's GitHub App installation
+    const installation = await getCurrentManagerInstallation();
+    if (!installation) {
+      console.log("❌ No GitHub App installation found for manager");
+      return NextResponse.json(
+        {
+          error: "GitHub App not installed for this manager",
+          infrastructure: [],
+        },
+        { status: 401 },
+      );
+    }
+
     const accessToken = cookieStore.get("github_access_token")?.value;
     const { searchParams } = new URL(request.url);
     const repoName = searchParams.get("repo");
+    const forceRefresh = searchParams.get("force") === "true";
 
     // Try OAuth first, then GitHub App
     let authHeaders = null;
@@ -27,9 +69,11 @@ export async function GET(request: NextRequest) {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/vnd.github.v3+json",
       };
+      console.log("🔑 Using OAuth token for authentication");
     } else {
       // Use manager-specific GitHub App authentication
       authHeaders = await getManagerGitHubAuthHeaders();
+      console.log("🔑 Using GitHub App installation token for authentication");
     }
 
     if (!authHeaders) {
@@ -43,19 +87,28 @@ export async function GET(request: NextRequest) {
 
     // If no specific repo, get infrastructure from all repos
     if (!repoName) {
-      return await getAllInfrastructure(authHeaders);
+      return await getAllInfrastructure(authHeaders, managerDeviceUUID);
     }
 
-    // Check cache first
-    const cacheKey = repoName;
-    const cachedData = infrastructureCache.get(cacheKey);
-    if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
+    // Check manager-specific cache first
+    const cacheKey = `${managerDeviceUUID}-${repoName}`;
+    const cachedData = infrastructureCacheByManager.get(cacheKey);
+    if (
+      !forceRefresh &&
+      cachedData &&
+      Date.now() - cachedData.timestamp < CACHE_DURATION
+    ) {
       console.log("🏗️ Returning cached infrastructure data for", repoName);
       return NextResponse.json({
         infrastructure: cachedData.data,
         total: cachedData.data.length,
         cached: true,
       });
+    }
+
+    if (forceRefresh && cachedData) {
+      console.log("🔄 Force refresh requested, clearing cache for", repoName);
+      infrastructureCacheByManager.delete(cacheKey);
     }
 
     console.log("🏗️ Fetching infrastructure files for:", repoName);
@@ -101,7 +154,6 @@ export async function GET(request: NextRequest) {
       { pattern: /terraform\.rc$/, type: "Terraform Config" },
       { pattern: /cloudformation\.ya?ml$/, type: "CloudFormation" },
       { pattern: /cloudformation\.json$/, type: "CloudFormation" },
-      { pattern: /template\.ya?ml$/, type: "CloudFormation Template" },
       { pattern: /serverless\.ya?ml$/, type: "Serverless" },
       { pattern: /ansible\.ya?ml$/, type: "Ansible" },
       { pattern: /playbook\.ya?ml$/, type: "Ansible Playbook" },
@@ -120,21 +172,46 @@ export async function GET(request: NextRequest) {
       { pattern: /\.circleci\/config\.ya?ml$/, type: "CircleCI" },
       { pattern: /azure-pipelines\.ya?ml$/, type: "Azure DevOps" },
       { pattern: /\.gitlab-ci\.ya?ml$/, type: "GitLab CI" },
-      { pattern: /Jenkinsfile$/, type: "Jenkins" },
       { pattern: /infrastructure\/.*\.ya?ml$/, type: "Infrastructure Config" },
       { pattern: /terraform\/.*\.tf$/, type: "Terraform Module" },
       { pattern: /modules\/.*\.tf$/, type: "Terraform Module" },
+      // Additional common infrastructure patterns
+      { pattern: /deploy\.ya?ml$/, type: "Deployment Config" },
+      { pattern: /deployment\.ya?ml$/, type: "Kubernetes Deployment" },
+      { pattern: /service\.ya?ml$/, type: "Kubernetes Service" },
+      { pattern: /ingress\.ya?ml$/, type: "Kubernetes Ingress" },
+      { pattern: /configmap\.ya?ml$/, type: "Kubernetes ConfigMap" },
+      { pattern: /secret\.ya?ml$/, type: "Kubernetes Secret" },
+      { pattern: /namespace\.ya?ml$/, type: "Kubernetes Namespace" },
+      { pattern: /k8s\/.*\.ya?ml$/, type: "Kubernetes" },
+      { pattern: /kubernetes\/.*\.ya?ml$/, type: "Kubernetes" },
+      { pattern: /manifests\/.*\.ya?ml$/, type: "Kubernetes Manifest" },
+      { pattern: /.*\.nomad$/, type: "Nomad Job" },
+      { pattern: /.*\.jsonnet$/, type: "Jsonnet" },
     ];
 
     // Filter infrastructure files
     const infrastructureFiles = allFiles.filter((file: any) => {
       if (file.type !== "blob") return false;
 
-      return infrastructurePatterns.some(({ pattern }) =>
+      const matches = infrastructurePatterns.some(({ pattern }) =>
         pattern.test(file.path),
       );
+
+      if (matches) {
+        console.log(`✅ Infrastructure file found: ${file.path}`);
+      }
+
+      return matches;
     });
 
+    console.log(
+      `📋 All files in ${repoName}:`,
+      allFiles
+        .slice(0, 10)
+        .map((f: any) => f.path)
+        .join(", "),
+    );
     console.log(
       `🏗️ Found ${infrastructureFiles.length} infrastructure files in ${repoName}`,
     );
@@ -159,8 +236,8 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Cache the results
-    infrastructureCache.set(cacheKey, {
+    // Cache the results with manager-specific key
+    infrastructureCacheByManager.set(cacheKey, {
       data: transformedFiles,
       timestamp: Date.now(),
     });
@@ -178,7 +255,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function getAllInfrastructure(authHeaders: any) {
+async function getAllInfrastructure(
+  authHeaders: any,
+  managerDeviceUUID: string,
+) {
+  console.log(
+    `🔍 Getting all infrastructure for manager: ${managerDeviceUUID}`,
+  );
   try {
     console.log(
       "🏗️ Fetching infrastructure from manager-specific repositories...",

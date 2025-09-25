@@ -89,6 +89,7 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [managerUUID, setManagerUUID] = useState<string>("");
+  const [chatDataGenerated, setChatDataGenerated] = useState<boolean>(false);
 
   // Fetch manager UUID from session
   useEffect(() => {
@@ -139,6 +140,35 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
 
     fetchAnalytics();
   }, [managerUUID]);
+
+  // Generate chat data after dashboard loads successfully
+  useEffect(() => {
+    const generateChatData = async () => {
+      if (!managerUUID || !analyticsData || chatDataGenerated) return;
+
+      try {
+        console.log("Generating chat data in background...");
+        const response = await fetch("/api/chat/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ managerUUID }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log("Chat data generation result:", result);
+          setChatDataGenerated(true);
+        }
+      } catch (error) {
+        console.error("Error generating chat data:", error);
+        // Fail silently - this is a background operation
+      }
+    };
+
+    generateChatData();
+  }, [managerUUID, analyticsData, chatDataGenerated]);
 
   if (loading) {
     return (
@@ -434,6 +464,14 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
         beginAtZero: true,
         // allow automatic upper scaling and give a 10% grace above max
         grace: "10%",
+        ticks: {
+          stepSize: 1,
+          callback: function (value: number | string) {
+            const n = typeof value === "string" ? Number(value) : value;
+            // Only show integer values
+            return Number.isInteger(n) ? n : "";
+          },
+        },
       },
     },
   };
@@ -449,7 +487,8 @@ const DataVisualizationDashboard: React.FC<DataVisualizationDashboardProps> = ({
           stepSize: 1,
           callback: function (value: number | string) {
             const n = typeof value === "string" ? Number(value) : value;
-            return Number.isFinite(n) ? Math.round(n) : value;
+            // Only return integer values, hide decimals
+            return Number.isInteger(n) ? Math.round(n) : "";
           },
         },
       },

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getNotifications, queryManagerNotifications } from "@/lib/dynamodb";
 
+// Force Node.js runtime for AWS SDK compatibility
+export const runtime = "nodejs";
+
 export async function GET(request: NextRequest) {
   try {
     const actorType = request.headers.get("x-actor-type");

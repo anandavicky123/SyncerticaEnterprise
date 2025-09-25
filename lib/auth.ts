@@ -56,6 +56,7 @@ export async function createOrGetManager(
         const mockDataResult = await generateMockData(deviceUUID, {
           verbose: false, // Set to false to reduce console output in production
           prisma: prisma, // Pass the existing prisma instance
+          skipChats: true, // Skip chat generation for faster login
         });
 
         if (mockDataResult.success) {

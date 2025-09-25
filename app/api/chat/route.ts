@@ -4,6 +4,9 @@ import crypto from "crypto";
 import { putNotification, getNotifications } from "@/lib/dynamodb";
 import { createWorkerMessageNotification } from "@/lib/notifications";
 
+// Force Node.js runtime for AWS SDK compatibility
+export const runtime = "nodejs";
+
 // GET /api/chat?receiverId=...  - returns chats between current user and receiver
 // POST /api/chat - create a chat message { receiverId, content }
 

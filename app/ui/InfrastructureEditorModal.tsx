@@ -23,7 +23,11 @@ const InfrastructureEditorModal: React.FC<Props> = ({
   item,
   onSaved,
 }) => {
-  const { repositories = [], loading: reposLoading } = useRepositories();
+  const {
+    repositories = [],
+    loading: reposLoading,
+    refetch: refetchRepositories,
+  } = useRepositories();
   const [content, setContent] = useState<string>(
     item?.content ||
       `# Infrastructure Configuration
@@ -99,6 +103,26 @@ const InfrastructureEditorModal: React.FC<Props> = ({
       })();
     }
   }, [isOpen, item]);
+
+  // Listen for GitHub connection changes and refresh repositories
+  useEffect(() => {
+    const handleGitHubConnection = () => {
+      console.log(
+        "GitHub connection established in InfrastructureEditorModal, refreshing repositories...",
+      );
+      refetchRepositories();
+    };
+
+    window.addEventListener(
+      "github-connection-established",
+      handleGitHubConnection,
+    );
+    return () =>
+      window.removeEventListener(
+        "github-connection-established",
+        handleGitHubConnection,
+      );
+  }, [refetchRepositories]);
 
   if (!isOpen) return null;
 

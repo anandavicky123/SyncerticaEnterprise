@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getManagerGitHubAuthHeaders } from "@/lib/github-manager-auth";
+import {
+  getManagerGitHubAuthHeaders,
+  getCurrentManagerInstallation,
+} from "@/lib/github-manager-auth";
+import { getSession } from "@/lib/dynamodb";
 
-// Simple in-memory cache to avoid hitting GitHub API too frequently
-const workflowCache: Map<
+// Manager-specific cache to avoid hitting GitHub API too frequently
+// Key: `${managerDeviceUUID}-${repo}`, Value: cache data
+const workflowCacheByManager: Map<
   string,
   {
     data: any[];
@@ -15,10 +20,43 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export async function GET(request: NextRequest) {
   try {
+    // Get the current session and manager first
+    const cookieStore = await cookies();
+    const sessionId = cookieStore.get("session-id")?.value;
+
+    if (!sessionId) {
+      console.log("❌ No session ID found");
+      return NextResponse.json(
+        { error: "Not authenticated", workflows: [] },
+        { status: 401 },
+      );
+    }
+
+    const session = await getSession(sessionId);
+    if (!session || session.actorType !== "manager") {
+      console.log("❌ No valid manager session found");
+      return NextResponse.json(
+        { error: "Not authenticated as manager", workflows: [] },
+        { status: 401 },
+      );
+    }
+
+    const managerDeviceUUID = session.actorId;
+    console.log(`✅ Authenticated as manager: ${managerDeviceUUID}`);
+
+    // Verify manager's GitHub App installation
+    const installation = await getCurrentManagerInstallation();
+    if (!installation) {
+      console.log("❌ No GitHub App installation found for manager");
+      return NextResponse.json(
+        { error: "GitHub App not installed for this manager", workflows: [] },
+        { status: 401 },
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const repo = searchParams.get("repo");
 
-    const cookieStore = await cookies();
     const accessToken = cookieStore.get("github_access_token")?.value;
 
     // Try OAuth first, then GitHub App
@@ -28,9 +66,11 @@ export async function GET(request: NextRequest) {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/vnd.github.v3+json",
       };
+      console.log("🔑 Using OAuth token for authentication");
     } else {
       // Use manager-specific GitHub App authentication
       authHeaders = await getManagerGitHubAuthHeaders();
+      console.log("🔑 Using GitHub App installation token for authentication");
     }
 
     if (!authHeaders) {
@@ -44,12 +84,12 @@ export async function GET(request: NextRequest) {
 
     // If no specific repo, get workflows from all repos (manager-specific)
     if (!repo) {
-      return await getAllWorkflows(authHeaders);
+      return await getAllWorkflows(authHeaders, managerDeviceUUID);
     }
 
-    // Check cache first
-    const cacheKey = repo;
-    const cachedData = workflowCache.get(cacheKey);
+    // Check manager-specific cache first
+    const cacheKey = `${managerDeviceUUID}-${repo}`;
+    const cachedData = workflowCacheByManager.get(cacheKey);
     if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
       console.log("⚙️ Returning cached workflow data for", repo);
       return NextResponse.json({
@@ -165,12 +205,11 @@ export async function GET(request: NextRequest) {
 
     const allWorkflows = [...transformedWorkflows, ...additionalWorkflows];
 
-    // Cache the results
-    workflowCache.set(cacheKey, {
-      data: allWorkflows,
+    // Cache the results with manager-specific key
+    workflowCacheByManager.set(cacheKey, {
+      data: transformedWorkflows,
       timestamp: Date.now(),
     });
-
     console.log(
       `✅ Workflow fetch complete. Found ${allWorkflows.length} workflows for ${repo}`,
     );
@@ -184,7 +223,7 @@ export async function GET(request: NextRequest) {
 
     // If we have cached data, return it on error
     const cacheKey = request.nextUrl.searchParams.get("repo") || "all";
-    const cachedData = workflowCache.get(cacheKey);
+    const cachedData = workflowCacheByManager.get(cacheKey);
     if (cachedData) {
       console.log("🔄 API error, returning cached workflow data");
       return NextResponse.json({
@@ -202,9 +241,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function getAllWorkflows(authHeaders: any) {
+async function getAllWorkflows(authHeaders: any, managerDeviceUUID: string) {
   try {
-    console.log("⚙️ Fetching workflows from manager-specific repositories...");
+    console.log(
+      `⚙️ Fetching workflows from manager-specific repositories for: ${managerDeviceUUID}`,
+    );
 
     // Get repositories for this manager's installation only
     const reposResponse = await fetch(

@@ -28,6 +28,7 @@ export interface Workflow {
   repository: string;
   updated_at: string;
   workflow_id?: string | number;
+  content?: string;
 }
 
 export interface Infrastructure {
@@ -178,7 +179,7 @@ export const useGitHubData = () => {
               async (repo: Repository) => {
                 try {
                   const infraResponse = await fetch(
-                    `/api/infrastructure/github_infrastructure?repo=${repo.full_name}`,
+                    `/api/infrastructure/github_infrastructure?repo=${repo.full_name}&force=${force}`,
                   );
                   if (infraResponse.ok) {
                     const infraData = await infraResponse.json();

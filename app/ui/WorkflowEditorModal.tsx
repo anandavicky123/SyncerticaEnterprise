@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Save, FileText, ChevronDown } from "lucide-react";
 import { useRepositories } from "../hooks/useRepositories";
 
@@ -12,6 +12,7 @@ interface WorkflowEditorModalProps {
     filename: string;
     repository: string;
     content?: string;
+    path?: string;
   } | null;
   mode: "create" | "edit";
   onSave: (content: string, filename?: string, repository?: string) => void;
@@ -24,9 +25,60 @@ const WorkflowEditorModal: React.FC<WorkflowEditorModalProps> = ({
   mode,
   onSave,
 }) => {
-  const [content, setContent] = useState(
-    workflow?.content ||
-      `name: CI/CD Pipeline
+  const [content, setContent] = useState("");
+  const [filename, setFilename] = useState(
+    workflow?.filename || "ci-cd-pipeline.yml",
+  );
+  const [repository, setRepository] = useState(workflow?.repository || "");
+  const [saving, setSaving] = useState(false);
+  const [loadingContent, setLoadingContent] = useState(false);
+
+  // Initialize content based on mode and workflow
+  const fetchWorkflowContent = React.useCallback(async () => {
+    if (!workflow || !workflow.repository) return;
+
+    setLoadingContent(true);
+    try {
+      // Use workflow.path if available, otherwise construct from filename
+      const path = workflow.path || `.github/workflows/${workflow.filename}`;
+
+      const response = await fetch(
+        `/api/github/contents?repo=${encodeURIComponent(workflow.repository)}&path=${encodeURIComponent(path)}`,
+      );
+
+      if (response.ok) {
+        const contentData = await response.json();
+        if (contentData.content) {
+          try {
+            const actualContent = atob(contentData.content);
+            setContent(actualContent);
+          } catch (error) {
+            console.error("Error decoding base64 content:", error);
+            setContent(
+              "# Error: Could not decode file content\n# Please paste your workflow content here",
+            );
+          }
+        }
+      } else {
+        console.error("Failed to fetch workflow content:", response.status);
+        setContent(
+          "# Failed to load original content\n# Please paste your workflow content here",
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching workflow content:", error);
+      setContent(
+        "# Failed to load original content\n# Please paste your workflow content here",
+      );
+    } finally {
+      setLoadingContent(false);
+    }
+  }, [workflow]);
+
+  useEffect(() => {
+    if (mode === "create") {
+      // Use default template for new workflows
+      setContent(`name: CI/CD Pipeline
 
 on:
   push:
@@ -66,21 +118,45 @@ jobs:
     
     - name: Deploy to production
       run: echo "Deploying to production..."
-`,
-  );
-
-  const [filename, setFilename] = useState(
-    workflow?.filename || "ci-cd-pipeline.yml",
-  );
-  const [repository, setRepository] = useState(workflow?.repository || "");
-  const [saving, setSaving] = useState(false);
+`);
+    } else if (mode === "edit" && workflow) {
+      // For edit mode, use provided content or fetch it
+      if (workflow.content) {
+        setContent(workflow.content);
+      } else {
+        // If no content provided, fetch it from GitHub
+        fetchWorkflowContent();
+      }
+    }
+  }, [workflow, mode, fetchWorkflowContent]);
 
   // Fetch repositories for dropdown
   const {
     repositories,
     loading: repositoriesLoading,
     error: repositoriesError,
+    refetch: refetchRepositories,
   } = useRepositories();
+
+  // Listen for GitHub connection changes and refresh repositories
+  useEffect(() => {
+    const handleGitHubConnection = () => {
+      console.log(
+        "GitHub connection established in WorkflowEditorModal, refreshing repositories...",
+      );
+      refetchRepositories();
+    };
+
+    window.addEventListener(
+      "github-connection-established",
+      handleGitHubConnection,
+    );
+    return () =>
+      window.removeEventListener(
+        "github-connection-established",
+        handleGitHubConnection,
+      );
+  }, [refetchRepositories]);
 
   if (!isOpen) return null;
 
@@ -199,12 +275,18 @@ jobs:
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Workflow Content (YAML)
           </label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full h-80 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm resize-none overflow-y-auto"
-            placeholder="Enter your GitHub Actions workflow YAML here..."
-          />
+          {loadingContent ? (
+            <div className="w-full h-80 border border-gray-300 rounded-lg flex items-center justify-center">
+              <div className="text-gray-500">Loading workflow content...</div>
+            </div>
+          ) : (
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="w-full h-80 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm resize-none overflow-y-auto"
+              placeholder="Enter your GitHub Actions workflow YAML here..."
+            />
+          )}
         </div>
       </div>
     </div>

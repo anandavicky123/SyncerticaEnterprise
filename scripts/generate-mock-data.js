@@ -391,7 +391,7 @@ function generateChats(managerUUID, workers, verbose = true) {
 
     if (i < 3) {
       // Manager to worker messages
-      senderId = `manager:${managerUUID}`;
+      senderId = `manager:${managerUUID}`; // Prefix manager UUID with "manager:"
       receiverId = workers[i % workers.length].id;
       if (verbose)
         console.log(
@@ -400,7 +400,7 @@ function generateChats(managerUUID, workers, verbose = true) {
     } else if (i < 6) {
       // Worker to manager messages
       senderId = workers[(i - 3) % workers.length].id;
-      receiverId = `manager:${managerUUID}`;
+      receiverId = `manager:${managerUUID}`; // Prefix manager UUID with "manager:"
       if (verbose)
         console.log(
           `   → ${workers[(i - 3) % workers.length].name.split(" ")[0]} → Manager: "${message.substring(0, 50)}..."`,
@@ -439,7 +439,10 @@ function generateChats(managerUUID, workers, verbose = true) {
  * Main function to generate all mock data
  * Can be called directly or as a module
  */
-async function generateMockData(managerUUID, options = { verbose: true }) {
+async function generateMockData(
+  managerUUID,
+  options = { verbose: true, skipChats: false },
+) {
   let prismaInstance = null;
   try {
     // Use provided prisma instance or create new one
@@ -504,7 +507,14 @@ async function generateMockData(managerUUID, options = { verbose: true }) {
       projects,
       options.verbose,
     );
-    const chats = generateChats(managerUUID, workers, options.verbose);
+
+    // Only generate chats if not skipping them
+    let chats = [];
+    if (!options.skipChats) {
+      chats = generateChats(managerUUID, workers, options.verbose);
+    } else if (options.verbose) {
+      console.log("⏩ Skipping chat generation as requested");
+    }
 
     if (options.verbose) console.log("\n💾 Inserting data into database...");
 
@@ -528,12 +538,14 @@ async function generateMockData(managerUUID, options = { verbose: true }) {
     }
     if (options.verbose) console.log(`   ✅ Inserted ${tasks.length} tasks`);
 
-    // Insert chats
-    for (const chat of chats) {
-      await prismaInstance.chats.create({ data: chat });
+    // Insert chats only if we generated them
+    if (chats.length > 0) {
+      for (const chat of chats) {
+        await prismaInstance.chats.create({ data: chat });
+      }
+      if (options.verbose)
+        console.log(`   ✅ Inserted ${chats.length} chat messages`);
     }
-    if (options.verbose)
-      console.log(`   ✅ Inserted ${chats.length} chat messages`);
 
     if (options.verbose) {
       console.log("\n🎉 Mock data generation completed successfully!");

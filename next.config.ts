@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
   eslint: {
     // Don't fail the production build on ESLint errors.
     // We still run `npm run type-check` to keep TS strictness.
@@ -20,7 +19,7 @@ const nextConfig: NextConfig = {
     config.infrastructureLogging = {
       ...(config.infrastructureLogging || {}),
       level: "error",
-    } as any;
+    };
     return config;
   },
 };

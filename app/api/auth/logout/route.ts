@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { deleteSession } from "../../../../lib/dynamodb";
 
+// Force Node.js runtime for AWS SDK compatibility
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   try {
     const cookieHeader = request.headers.get("cookie") || "";

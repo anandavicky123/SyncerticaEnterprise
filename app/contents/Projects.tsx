@@ -95,6 +95,40 @@ const Projects: React.FC<{
   );
   const checkAppInstallationRef = useRef<(() => Promise<void>) | null>(null);
 
+  // Individual refresh functions for each list
+  const refreshWorkflows = useCallback(async () => {
+    setWorkflowsLoading(true);
+    try {
+      if (refreshGitHubData) {
+        await refreshGitHubData(true);
+      }
+    } finally {
+      setWorkflowsLoading(false);
+    }
+  }, [refreshGitHubData]);
+
+  const refreshInfrastructure = useCallback(async () => {
+    setInfrastructureLoading(true);
+    try {
+      if (refreshGitHubData) {
+        await refreshGitHubData(true);
+      }
+    } finally {
+      setInfrastructureLoading(false);
+    }
+  }, [refreshGitHubData]);
+
+  const refreshContainers = useCallback(async () => {
+    setContainersLoading(true);
+    try {
+      if (refreshGitHubData) {
+        await refreshGitHubData(true);
+      }
+    } finally {
+      setContainersLoading(false);
+    }
+  }, [refreshGitHubData]);
+
   // Optimistic update listener: when other parts of the app create files,
   // they dispatch `syncertica:github-item-created` with minimal detail.
   useEffect(() => {
@@ -133,6 +167,8 @@ const Projects: React.FC<{
             if (exists) return prev;
             return [newWorkflow, ...prev];
           });
+          // Also refresh GitHub data to get the actual file from the server
+          setTimeout(() => refreshWorkflows(), 1000); // Brief delay to allow server to process
         }
 
         if (t === "infrastructure") {
@@ -153,6 +189,8 @@ const Projects: React.FC<{
             if (exists) return prev;
             return [newInfra, ...prev];
           });
+          // Also refresh GitHub data to get the actual file from the server
+          setTimeout(() => refreshInfrastructure(), 1000); // Brief delay to allow server to process
         }
 
         if (t === "container") {
@@ -173,6 +211,8 @@ const Projects: React.FC<{
             if (exists) return prev;
             return [newContainer, ...prev];
           });
+          // Also refresh GitHub data to get the actual file from the server
+          setTimeout(() => refreshContainers(), 1000); // Brief delay to allow server to process
         }
       } catch (err) {
         console.error(
@@ -191,7 +231,39 @@ const Projects: React.FC<{
         "syncertica:github-item-created",
         handler as EventListener,
       );
-  }, []);
+  }, [
+    refreshWorkflows,
+    refreshInfrastructure,
+    refreshContainers,
+    refreshGitHubData,
+  ]);
+
+  // Monitor GitHub connection status and refresh data when newly connected
+  useEffect(() => {
+    // Store the previous connection status to detect changes
+    const prevStatus = sessionStorage.getItem("github-connection-status");
+    const currentStatus = connectionStatus.connected
+      ? "connected"
+      : "not-connected";
+
+    if (prevStatus === "not-connected" && currentStatus === "connected") {
+      console.log("GitHub connection established, refreshing data...");
+      // Instead of reloading the page, just refresh the GitHub data
+      if (refreshGitHubData) {
+        refreshGitHubData(true); // Force refresh
+      }
+
+      // Dispatch event to notify modals about the connection change
+      window.dispatchEvent(
+        new CustomEvent("github-connection-established", {
+          detail: { connectionStatus },
+        }),
+      );
+    }
+
+    // Update stored status
+    sessionStorage.setItem("github-connection-status", currentStatus);
+  }, [connectionStatus, refreshGitHubData]);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>("projects");
@@ -205,9 +277,14 @@ const Projects: React.FC<{
   const [repository, setRepository] = useState("");
   const [statusId, setStatusId] = useState(5); // Default to active (5)
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [checkingInstallation, setCheckingInstallation] =
     useState<boolean>(false);
+
+  // Individual loading states for each list
+  const [workflowsLoading, setWorkflowsLoading] = useState(false);
+  const [infrastructureLoading, setInfrastructureLoading] = useState(false);
+  const [containersLoading, setContainersLoading] = useState(false);
+  const [editingWorkflow, setEditingWorkflow] = useState<string | null>(null);
 
   // Status mapping helper
   const getStatusName = (statusId: number): string => {
@@ -404,8 +481,71 @@ const Projects: React.FC<{
     }
   };
 
-  const handleEditWorkflow = (workflow: Workflow) => {
-    setShowWorkflowEditor({ open: true, workflow });
+  const handleEditWorkflow = async (workflow: Workflow) => {
+    try {
+      setEditingWorkflow(workflow.id);
+      // Fetch the actual workflow content from GitHub before opening editor
+      console.log(
+        `Fetching content for workflow: ${workflow.path} from ${workflow.repository}`,
+      );
+
+      const response = await fetch(
+        `/api/github/contents?repo=${encodeURIComponent(workflow.repository)}&path=${encodeURIComponent(workflow.path)}`,
+      );
+
+      if (response.ok) {
+        const contentData = await response.json();
+        let actualContent = "";
+
+        if (contentData.content) {
+          // GitHub API returns base64 encoded content
+          try {
+            actualContent = atob(contentData.content);
+          } catch (error) {
+            console.error("Error decoding base64 content:", error);
+            actualContent = "# Error: Could not decode file content";
+          }
+        }
+
+        // Open editor with actual content
+        setShowWorkflowEditor({
+          open: true,
+          workflow: {
+            ...workflow,
+            content: actualContent,
+          },
+        });
+      } else {
+        console.error("Failed to fetch workflow content:", response.status);
+        // Fallback: open editor with empty content and let user know
+        alert(
+          `Failed to load workflow content (${response.status}). Editor will open with empty content.`,
+        );
+        setShowWorkflowEditor({
+          open: true,
+          workflow: {
+            ...workflow,
+            content:
+              "# Failed to load original content\n# Please paste your workflow content here\n",
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching workflow content:", error);
+      alert(
+        "Error loading workflow content. Editor will open with empty content.",
+      );
+      setShowWorkflowEditor({
+        open: true,
+        workflow: {
+          ...workflow,
+          content:
+            "# Failed to load original content\n# Please paste your workflow content here\n",
+        },
+      });
+    } finally {
+      setEditingWorkflow(null);
+    }
   };
 
   const handleViewContent = (
@@ -425,7 +565,6 @@ const Projects: React.FC<{
 
   const fetchProjects = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const res = await fetch("/api/projects");
       if (!res.ok) throw new Error(await res.text());
@@ -433,7 +572,8 @@ const Projects: React.FC<{
       setProjectsList(Array.isArray(data) ? data : []);
     } catch (err: unknown) {
       console.error("Failed to fetch projects", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch projects");
+      // Don't display error in UI - log it only
+      setProjectsList([]); // Set empty array instead of showing error
     } finally {
       setLoading(false);
     }
@@ -880,6 +1020,15 @@ const Projects: React.FC<{
 
   return (
     <div className={`space-y-6 ${className}`}>
+      {/* Floating loading overlay when fetching workflow content */}
+      {editingWorkflow && !showWorkflowEditor?.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center shadow-lg">
+            <Loader2 className="w-10 h-10 animate-spin text-gray-600" />
+            <p className="mt-3 text-gray-700">Loading workflow...</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <div className="flex items-center justify-between">
@@ -949,12 +1098,6 @@ const Projects: React.FC<{
             </div>
           </div>
         </div>
-
-        {error && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-800 text-sm">{error}</p>
-          </div>
-        )}
       </div>
 
       {/* Tabs */}
@@ -1190,16 +1333,33 @@ const Projects: React.FC<{
               <h3 className="text-lg font-semibold text-gray-900">
                 Workflow Files ({workflows.length})
               </h3>
-              <button
-                onClick={() => onOpenWorkflowEditor && onOpenWorkflowEditor()}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add Workflow
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => refreshWorkflows()}
+                  disabled={workflowsLoading}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+                  title="Refresh workflows"
+                >
+                  <RefreshCw
+                    className={`w-4 h-4 ${workflowsLoading ? "animate-spin" : ""}`}
+                  />
+                </button>
+                <button
+                  onClick={() => onOpenWorkflowEditor && onOpenWorkflowEditor()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Workflow
+                </button>
+              </div>
             </div>
 
-            {workflows.length === 0 ? (
+            {workflowsLoading ? (
+              <div className="text-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Loading workflows...</p>
+              </div>
+            ) : workflows.length === 0 ? (
               <div className="text-center py-12">
                 <GitBranch className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
@@ -1210,22 +1370,17 @@ const Projects: React.FC<{
               </div>
             ) : (
               <div className="space-y-4">
-                {workflows.map((workflow: Workflow) => {
-                  // Debug log each workflow
-                  console.log("Workflow data:", {
-                    id: workflow.id,
-                    name: workflow.name,
-                    filename: workflow.filename,
-                    workflow_id: workflow.workflow_id,
-                    path: workflow.path,
-                  });
+                {workflows.map((workflow: Workflow, index: number) => {
+                  // Create a unique key using multiple fallbacks
+                  const uniqueKey =
+                    workflow.id ||
+                    workflow.path ||
+                    `${workflow.repository || "unknown"}/${workflow.filename || "unknown"}` ||
+                    `workflow-${index}`;
 
                   return (
                     <div
-                      key={String(
-                        workflow.id ??
-                          `${workflow.repository}/${workflow.path}`,
-                      )}
+                      key={uniqueKey}
                       className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center justify-between">
@@ -1274,9 +1429,10 @@ const Projects: React.FC<{
                             )}
                           </button>
                           <button
-                            className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded"
+                            className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded disabled:opacity-50"
                             title="Edit Workflow"
                             onClick={() => handleEditWorkflow(workflow)}
+                            disabled={editingWorkflow === workflow.id}
                           >
                             <Edit className="w-4 h-4" />
                           </button>
@@ -1297,19 +1453,37 @@ const Projects: React.FC<{
               <h3 className="text-lg font-semibold text-gray-900">
                 Infrastructure Files ({infrastructure.length})
               </h3>
-              <button
-                onClick={() => {
-                  if (onOpenInfrastructureEditor) onOpenInfrastructureEditor();
-                  else setShowInfraEditor({ open: true });
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add Infrastructure
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => refreshInfrastructure()}
+                  disabled={infrastructureLoading}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+                  title="Refresh infrastructure"
+                >
+                  <RefreshCw
+                    className={`w-4 h-4 ${infrastructureLoading ? "animate-spin" : ""}`}
+                  />
+                </button>
+                <button
+                  onClick={() => {
+                    if (onOpenInfrastructureEditor)
+                      onOpenInfrastructureEditor();
+                    else setShowInfraEditor({ open: true });
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Infrastructure
+                </button>
+              </div>
             </div>
 
-            {infrastructure.length === 0 ? (
+            {infrastructureLoading ? (
+              <div className="text-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Loading infrastructure files...</p>
+              </div>
+            ) : infrastructure.length === 0 ? (
               <div className="text-center py-12">
                 <Cloud className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
@@ -1320,11 +1494,9 @@ const Projects: React.FC<{
               </div>
             ) : (
               <div className="space-y-4">
-                {infrastructure.map((infra: Infrastructure) => (
+                {infrastructure.map((infra: Infrastructure, index: number) => (
                   <div
-                    key={String(
-                      infra.id ?? `${infra.repository}/${infra.path}`,
-                    )}
+                    key={infra.id || infra.path || `infra-${index}`}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
@@ -1375,19 +1547,36 @@ const Projects: React.FC<{
               <h3 className="text-lg font-semibold text-gray-900">
                 Container Files ({containers.length})
               </h3>
-              <button
-                onClick={() => {
-                  if (onOpenContainerEditor) onOpenContainerEditor();
-                  else setShowContainerEditor({ open: true });
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add Container
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => refreshContainers()}
+                  disabled={containersLoading}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+                  title="Refresh containers"
+                >
+                  <RefreshCw
+                    className={`w-4 h-4 ${containersLoading ? "animate-spin" : ""}`}
+                  />
+                </button>
+                <button
+                  onClick={() => {
+                    if (onOpenContainerEditor) onOpenContainerEditor();
+                    else setShowContainerEditor({ open: true });
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Container
+                </button>
+              </div>
             </div>
 
-            {containers.length === 0 ? (
+            {containersLoading ? (
+              <div className="text-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Loading container files...</p>
+              </div>
+            ) : containers.length === 0 ? (
               <div className="text-center py-12">
                 <ContainerIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
@@ -1398,12 +1587,9 @@ const Projects: React.FC<{
               </div>
             ) : (
               <div className="space-y-4">
-                {containers.map((container: Container) => (
+                {containers.map((container: Container, index: number) => (
                   <div
-                    key={String(
-                      container.id ??
-                        `${container.repository}/${container.path}`,
-                    )}
+                    key={container.id || container.path || `container-${index}`}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
