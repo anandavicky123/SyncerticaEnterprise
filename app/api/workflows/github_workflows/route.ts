@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const repo = searchParams.get("repo");
+    const force = searchParams.get("force") === "true"; // Support force refresh
 
     const accessToken = cookieStore.get("github_access_token")?.value;
 
@@ -87,16 +88,24 @@ export async function GET(request: NextRequest) {
       return await getAllWorkflows(authHeaders, managerDeviceUUID);
     }
 
-    // Check manager-specific cache first
+    // Check manager-specific cache first (skip if force refresh requested)
     const cacheKey = `${managerDeviceUUID}-${repo}`;
     const cachedData = workflowCacheByManager.get(cacheKey);
-    if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
+    if (
+      !force &&
+      cachedData &&
+      Date.now() - cachedData.timestamp < CACHE_DURATION
+    ) {
       console.log("⚙️ Returning cached workflow data for", repo);
       return NextResponse.json({
         workflows: cachedData.data,
         total: cachedData.data.length,
         cached: true,
       });
+    }
+
+    if (force) {
+      console.log("🔄 Force refresh requested, bypassing cache for", repo);
     }
 
     console.log("⚙️ Fetching workflow files for:", repo);

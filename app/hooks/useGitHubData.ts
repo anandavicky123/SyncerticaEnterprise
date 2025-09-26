@@ -154,7 +154,7 @@ export const useGitHubData = () => {
               async (repo: Repository) => {
                 try {
                   const workflowResponse = await fetch(
-                    `/api/workflows/github_workflows?repo=${repo.full_name}`,
+                    `/api/workflows/github_workflows?repo=${repo.full_name}${force ? "&force=true" : ""}`,
                   );
                   if (workflowResponse.ok) {
                     const workflowData = await workflowResponse.json();

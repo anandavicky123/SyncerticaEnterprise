@@ -32,6 +32,7 @@ const WorkflowEditorModal: React.FC<WorkflowEditorModalProps> = ({
   const [repository, setRepository] = useState(workflow?.repository || "");
   const [saving, setSaving] = useState(false);
   const [loadingContent, setLoadingContent] = useState(false);
+  const [contentInitialized, setContentInitialized] = useState(false);
 
   // Initialize content based on mode and workflow
   const fetchWorkflowContent = React.useCallback(async () => {
@@ -76,6 +77,16 @@ const WorkflowEditorModal: React.FC<WorkflowEditorModalProps> = ({
   }, [workflow]);
 
   useEffect(() => {
+    // Reset content initialization when modal opens or workflow changes
+    if (isOpen && workflow?.id !== undefined) {
+      setContentInitialized(false);
+    }
+  }, [isOpen, workflow?.id]);
+
+  useEffect(() => {
+    // Only initialize content once per workflow
+    if (contentInitialized) return;
+
     if (mode === "create") {
       // Use default template for new workflows
       setContent(`name: CI/CD Pipeline
@@ -119,16 +130,18 @@ jobs:
     - name: Deploy to production
       run: echo "Deploying to production..."
 `);
+      setContentInitialized(true);
     } else if (mode === "edit" && workflow) {
       // For edit mode, use provided content or fetch it
       if (workflow.content) {
         setContent(workflow.content);
+        setContentInitialized(true);
       } else {
-        // If no content provided, fetch it from GitHub
-        fetchWorkflowContent();
+        // If no content provided, fetch it from GitHub only once
+        fetchWorkflowContent().then(() => setContentInitialized(true));
       }
     }
-  }, [workflow, mode, fetchWorkflowContent]);
+  }, [mode, workflow, contentInitialized, fetchWorkflowContent]);
 
   // Fetch repositories for dropdown
   const {
@@ -178,10 +191,15 @@ jobs:
 
     setSaving(true);
     try {
+      console.log("💾 Starting workflow save process...");
       await onSave(content, filename, repository);
+      console.log("✅ Workflow save completed successfully");
       onClose();
     } catch (error) {
-      console.error("Error in handleSave:", error);
+      console.error("❌ Error in handleSave:", error);
+      alert(
+        `Failed to save workflow: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     } finally {
       setSaving(false);
     }

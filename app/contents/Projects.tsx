@@ -100,7 +100,7 @@ const Projects: React.FC<{
     setWorkflowsLoading(true);
     try {
       if (refreshGitHubData) {
-        await refreshGitHubData(true);
+        await refreshGitHubData(true); // Force refresh to bypass cache
       }
     } finally {
       setWorkflowsLoading(false);
@@ -885,7 +885,7 @@ const Projects: React.FC<{
     try {
       await fetchProjects();
       if (refreshGitHubData) {
-        await refreshGitHubData();
+        await refreshGitHubData(true); // Force refresh to bypass cache and fetch latest data
       }
       // Also refresh GitHub App installation status
       await checkAppInstallation();
@@ -1175,9 +1175,9 @@ const Projects: React.FC<{
               </div>
             ) : (
               <div className="space-y-4">
-                {projectsList.map((project) => (
+                {projectsList.map((project, index) => (
                   <div
-                    key={project.id}
+                    key={`project-${project.id}-${index}`}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
@@ -1274,9 +1274,9 @@ const Projects: React.FC<{
               </div>
             ) : (
               <div className="space-y-4">
-                {repositories.map((repo: Repository) => (
+                {repositories.map((repo: Repository, index) => (
                   <div
-                    key={repo.id}
+                    key={`repo-${repo.id}-${index}`}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
@@ -1371,16 +1371,9 @@ const Projects: React.FC<{
             ) : (
               <div className="space-y-4">
                 {workflows.map((workflow: Workflow, index: number) => {
-                  // Create a unique key using multiple fallbacks
-                  const uniqueKey =
-                    workflow.id ||
-                    workflow.path ||
-                    `${workflow.repository || "unknown"}/${workflow.filename || "unknown"}` ||
-                    `workflow-${index}`;
-
                   return (
                     <div
-                      key={uniqueKey}
+                      key={`workflow-${workflow.id || workflow.path}-${index}`}
                       className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center justify-between">
@@ -1496,7 +1489,7 @@ const Projects: React.FC<{
               <div className="space-y-4">
                 {infrastructure.map((infra: Infrastructure, index: number) => (
                   <div
-                    key={infra.id || infra.path || `infra-${index}`}
+                    key={`infra-${infra.id || infra.path}-${index}`}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
@@ -1589,7 +1582,7 @@ const Projects: React.FC<{
               <div className="space-y-4">
                 {containers.map((container: Container, index: number) => (
                   <div
-                    key={container.id || container.path || `container-${index}`}
+                    key={`container-${container.id || container.path}-${index}`}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
@@ -1695,8 +1688,11 @@ const Projects: React.FC<{
                         onChange={(e) => setRepository(e.target.value)}
                       >
                         <option value="">Select a repository (optional)</option>
-                        {repositories.map((repo: Repository) => (
-                          <option key={repo.id} value={repo.html_url}>
+                        {repositories.map((repo: Repository, index) => (
+                          <option
+                            key={`repo-option-${repo.id}-${index}`}
+                            value={repo.html_url}
+                          >
                             {repo.full_name}
                           </option>
                         ))}
@@ -1836,9 +1832,9 @@ const Projects: React.FC<{
                     </div>
 
                     <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {workers.map((worker) => (
+                      {workers.map((worker, index) => (
                         <div
-                          key={worker.id}
+                          key={`worker-${worker.id}-${index}`}
                           className={`p-2 border rounded cursor-pointer transition-colors ${
                             selectedWorker?.id === worker.id
                               ? "bg-blue-50 border-blue-200"
@@ -1976,9 +1972,13 @@ const Projects: React.FC<{
                     </div>
                   ) : (
                     <div className="divide-y">
-                      {collaborators.map((c) => (
+                      {collaborators.map((c, index) => (
                         <div
-                          key={c.id}
+                          key={
+                            c.id
+                              ? `collaborator-${c.id}`
+                              : `collaborator-${c.login}-${index}`
+                          }
                           className="flex items-center justify-between p-3 hover:bg-gray-50"
                         >
                           <div className="flex items-center gap-3">
@@ -2005,9 +2005,9 @@ const Projects: React.FC<{
                         </div>
                       ))}
 
-                      {invitations.map((i) => (
+                      {invitations.map((i, index) => (
                         <div
-                          key={i.id}
+                          key={`invitation-${i.id}-${index}`}
                           className="flex items-center justify-between p-3 bg-amber-50"
                         >
                           <div className="flex items-center gap-3">
@@ -2158,27 +2158,54 @@ const Projects: React.FC<{
                 ? showWorkflowEditor.workflow
                 : null;
             if (!wf) return;
-            // Fetch sha first
-            const infoRes = await fetch(
-              `/api/github/contents?repo=${encodeURIComponent(
-                repository!,
-              )}&path=${encodeURIComponent(wf.path)}`,
-            );
-            const info = infoRes.ok ? await infoRes.json() : {};
-            const sha = info.sha;
-            const res = await fetch("/api/github/contents", {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                repo: repository,
-                path: wf.path,
-                content: btoa(content),
-                sha,
-                message: `chore(workflow): update ${filename}`,
-              }),
-            });
-            if (!res.ok) alert("Failed to save workflow");
-            await refreshData();
+
+            try {
+              // Optimize: Fetch sha and save in one streamlined process
+              console.log("📝 Saving workflow:", wf.path);
+
+              // First, try to get current file info to get SHA (for existing files)
+              const infoRes = await fetch(
+                `/api/github/contents?repo=${encodeURIComponent(
+                  repository!,
+                )}&path=${encodeURIComponent(wf.path)}`,
+              );
+              const info = infoRes.ok ? await infoRes.json() : {};
+              const sha = info.sha;
+
+              // Now save the file
+              const res = await fetch("/api/github/contents", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  repo: repository,
+                  path: wf.path,
+                  content: btoa(content),
+                  sha, // GitHub handles missing SHA gracefully for new files
+                  message: `chore(workflow): update ${filename}`,
+                }),
+              });
+
+              if (!res.ok) {
+                const errorText = await res.text();
+                console.error(
+                  "Failed to save workflow:",
+                  res.status,
+                  errorText,
+                );
+                alert(`Failed to save workflow: ${res.status} - ${errorText}`);
+                return;
+              }
+
+              console.log("✅ Workflow saved successfully");
+
+              // Force refresh to get updated data immediately
+              await refreshData();
+            } catch (error) {
+              console.error("Error saving workflow:", error);
+              alert(
+                `Failed to save workflow: ${error instanceof Error ? error.message : "Unknown error"}`,
+              );
+            }
           }}
         />
       )}
