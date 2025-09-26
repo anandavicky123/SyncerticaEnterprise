@@ -136,8 +136,8 @@ export default function LandingPage() {
             </div>
             <div class="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
               <div class="inline-flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>99.95% uptime</div>
-              <div class="inline-flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-brand-500"></span>ISO 27001 ready</div>
-              <div class="inline-flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-indigo-500"></span>SSO / SAML / SCIM</div>
+              <div class="inline-flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-brand-500"></span>Secure AWS database support</div>
+              <div class="inline-flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-indigo-500"></span>Real-time task notifications</div>
             </div>
           </div>
 
@@ -159,12 +159,13 @@ export default function LandingPage() {
                     <li class="text-slate-600 dark:text-slate-300">Pipelines</li>
                     <li class="text-slate-600 dark:text-slate-300">Infra</li>
                     <li class="text-slate-600 dark:text-slate-300">Repos</li>
+                    <li class="text-slate-600 dark:text-slate-300">Container</li>
                     <li class="pt-2 font-semibold text-slate-900 dark:text-slate-100">Chat</li>
-                    <li class="text-slate-600 dark:text-slate-300">Channels</li>
-                    <li class="text-slate-600 dark:text-slate-300">DMs</li>
+                    <li class="text-slate-600 dark:text-slate-300">Notifications</li>
+                    <li class="text-slate-600 dark:text-slate-300">Chats</li>
                     <li class="pt-2 font-semibold text-slate-900 dark:text-slate-100">Tasks</li>
                     <li class="text-slate-600 dark:text-slate-300">Boards</li>
-                    <li class="text-slate-600 dark:text-slate-300">Reports</li>
+                    <li class="text-slate-600 dark:text-slate-300">Statistics</li>
                   </ul>
                 </div>
                 <div class="md:col-span-2 p-4">
@@ -239,11 +240,11 @@ export default function LandingPage() {
             </svg>
           </div>
           <h3 class="text-xl font-semibold">DevOps</h3>
-          <p class="mt-2 text-slate-600 dark:text-slate-300">Infra as code, CI/CD pipelines, observability dashboards, and repo insights—integrated out of the box.</p>
+          <p class="mt-2 text-slate-600 dark:text-slate-300">Infrastructure as code, automated pipelines, and cloud-native workflows. Ready to go!</p>
           <ul class="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <li>• GitHub Actions & AWS-first templates</li>
-            <li>• Canary deploys & rollbacks</li>
-            <li>• Audit trails & policy guardrails</li>
+            <li>• GitHub Actions & AWS</li>
+            <li>• Terraform provisioning</li>
+            <li>• Dockerized environments</li>
           </ul>
         </article>
 
@@ -254,12 +255,12 @@ export default function LandingPage() {
               <path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
             </svg>
           </div>
-          <h3 class="text-xl font-semibold">Team Chat</h3>
-          <p class="mt-2 text-slate-600 dark:text-slate-300">Channels, threads, mentions, and files with powerful search and message actions.</p>
+          <h3 class="text-xl font-semibold">Direct Messaging & Notifications</h3>
+          <p class="mt-2 text-slate-600 dark:text-slate-300">Stay in sync with conversations that turn into action.</p>
           <ul class="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <li>• Incident rooms & runbooks</li>
-            <li>• Voice notes & huddles</li>
-            <li>• Compliance retention policies</li>
+            <li>• Convert messages into tasks for follow-through</li>
+            <li>• Person-to-person messaging</li>
+            <li>• Lightweight, always-on communication</li>
           </ul>
         </article>
 
@@ -272,9 +273,9 @@ export default function LandingPage() {
             </svg>
           </div>
           <h3 class="text-xl font-semibold">Task Manager</h3>
-          <p class="mt-2 text-slate-600 dark:text-slate-300">Boards, lists, and reports built for field operations and engineering execution.</p>
+          <p class="mt-2 text-slate-600 dark:text-slate-300">Boards and lists built for field operations and engineering execution.</p>
           <ul class="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <li>• SLA timers & checklists</li>
+            <li>• Boards, lists, and real-time charts</li>
             <li>• Role-based approvals</li>
             <li>• Mobile-friendly worker flows</li>
           </ul>
@@ -288,22 +289,23 @@ export default function LandingPage() {
         <div class="grid gap-8 md:grid-cols-3">
           <div class="reveal">
             <h4 class="text-sm font-semibold text-brand-700 dark:text-brand-300">01 • Connect</h4>
-            <h3 class="text-2xl font-bold">Plug into your stack</h3>
-            <p class="mt-2 text-slate-600 dark:text-slate-300">Connect AWS, GitHub, Jira, Slack alternatives, and SSO. Import repos and users in minutes.</p>
+            <h3 class="text-2xl font-bold">Integrate with your tools</h3>
+            <p class="mt-2 text-slate-600 dark:text-slate-300">Work seamlessly with AWS databases (RDS, DynamoDB), GitHub Actions, Terraform, and Docker.</p>
           </div>
           <div class="reveal">
             <h4 class="text-sm font-semibold text-brand-700 dark:text-brand-300">02 • Automate</h4>
-            <h3 class="text-2xl font-bold">Ship on autopilot</h3>
-            <p class="mt-2 text-slate-600 dark:text-slate-300">Use battle-tested CI/CD templates, policy guardrails, and environment promotions.</p>
+            <h3 class="text-2xl font-bold">Automate workflows</h3>
+            <p class="mt-2 text-slate-600 dark:text-slate-300">Run pipelines with GitHub Actions, manage infrastructure with Terraform, and ship consistently with Dockerized environments.</p>
           </div>
           <div class="reveal">
             <h4 class="text-sm font-semibold text-brand-700 dark:text-brand-300">03 • Execute</h4>
-            <h3 class="text-2xl font-bold">Align teams & work</h3>
-            <p class="mt-2 text-slate-600 dark:text-slate-300">Chat in context, convert messages to tasks, and track outcomes with dashboards.</p>
+            <h3 class="text-2xl font-bold">Collaborate & track</h3>
+            <p class="mt-2 text-slate-600 dark:text-slate-300">Chat in context, use sticky notes to capture ideas, and stay aligned with real-time dashboards and charts.</p>
           </div>
         </div>
       </div>
     </section>
+
 
     <!-- ===== PRICING ===== -->
     <section id="pricing" class="container py-16 md:py-24">
@@ -319,11 +321,11 @@ export default function LandingPage() {
           <p class="mt-1 text-slate-600 dark:text-slate-300">For small teams testing the waters</p>
           <div class="mt-4 text-3xl font-extrabold">$0<span class="text-base font-medium text-slate-500">/user</span></div>
           <ul class="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-            <li>• 5 users</li>
+            <li>• 7 users</li>
             <li>• Basic CI/CD templates</li>
             <li>• Team chat & boards</li>
           </ul>
-          <a href="#cta" class="mt-6 inline-block rounded-xl bg-slate-900 px-4 py-2 text-white dark:bg-white dark:text-slate-900 font-semibold">Get started</a>
+          <a href="login" class="mt-6 inline-block rounded-xl bg-slate-900 px-4 py-2 text-white dark:bg-white dark:text-slate-900 font-semibold">Get started</a>
         </div>
         <!-- Pro -->
         <div class="reveal rounded-2xl border-2 border-brand-500 bg-white dark:bg-slate-950 p-6 shadow-soft">
@@ -333,8 +335,9 @@ export default function LandingPage() {
           <div class="mt-4 text-3xl font-extrabold">$12<span class="text-base font-medium text-slate-500">/user</span></div>
           <ul class="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
             <li>• Unlimited users</li>
-            <li>• Advanced pipelines & canary</li>
-            <li>• SSO, roles & audit logs</li>
+            <li>• Advanced performance</li>
+            <li>• Prioritized customer service</li>
+            <li>• Database migration</li>
           </ul>
           <a href="#cta" class="mt-6 inline-block rounded-xl bg-brand-600 px-4 py-2 text-white font-semibold hover:bg-brand-700">Start free trial</a>
         </div>
@@ -346,7 +349,8 @@ export default function LandingPage() {
           <ul class="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-300">
             <li>• SAML/SCIM, SOC2, ISO</li>
             <li>• Dedicated VPC & SLAs</li>
-            <li>• Concierge onboarding</li>
+            <li>• Custom server</li>
+            <li>• Additional repositories</li>
           </ul>
           <a href="#cta" class="mt-6 inline-block rounded-xl border border-slate-300 px-4 py-2 font-semibold dark:border-slate-700">Contact sales</a>
         </div>
@@ -362,11 +366,11 @@ export default function LandingPage() {
       <div class="mt-10 grid gap-4 md:grid-cols-2">
         <details class="reveal group rounded-xl border border-slate-200/70 dark:border-slate-800/70 bg-white dark:bg-slate-950 p-5 shadow-soft">
           <summary class="cursor-pointer list-none font-semibold">Do you support AWS/GCP/Azure?</summary>
-          <p class="mt-2 text-slate-600 dark:text-slate-300">Yes. Our pipeline templates target AWS first, with portable steps for GCP and Azure. Bring your own runners or use our hosted agents.</p>
+          <p class="mt-2 text-slate-600 dark:text-slate-300">We currently support AWS on both Free and Premium plans. Customers on the Enterprise plan may request support for additional cloud providers, including Azure and GCP, as well as multiple cloud servers.</p>
         </details>
         <details class="reveal group rounded-xl border border-slate-200/70 dark:border-slate-800/70 bg-white dark:bg-slate-950 p-5 shadow-soft">
           <summary class="cursor-pointer list-none font-semibold">Can we migrate from Slack/Jira?</summary>
-          <p class="mt-2 text-slate-600 dark:text-slate-300">We provide importers for channels, users, and issues—plus data retention mappings and audit logs for compliance.</p>
+          <p class="mt-2 text-slate-600 dark:text-slate-300">Yes, migration from Slack and Jira is available for customers on the Premium plan.</p>
         </details>
         <details class="reveal group rounded-xl border border-slate-200/70 dark:border-slate-800/70 bg-white dark:bg-slate-950 p-5 shadow-soft">
           <summary class="cursor-pointer list-none font-semibold">Is there on‑prem or private cloud?</summary>
