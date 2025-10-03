@@ -1,488 +1,215 @@
-# 🚀 Syncertica Enterprise - Next.js AWS Cloud Platform
+# 🚀 Syncertica Enterprise
 
-A comprehensive enterprise-grade web application built with **Next.js 15**, **AWS Aurora DSQL**, **Terraform**, and **Docker**. Features complete DevOps automation, real-time analytics, and scalable cloud infrastructure.
+> A comprehensive project management and collaboration platform designed for modern development teams.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Next.js](https://img.shields.io/badge/Next.js-15.3.5-black)
-![AWS](https://img.shields.io/badge/AWS-Cloud-orange)
-![Terraform](https://img.shields.io/badge/Terraform-1.6.0-purple)
-![Docker](https://img.shields.io/badge/Docker-Containerized-blue)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![AWS](https://img.shields.io/badge/AWS-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
+
+## 📋 Overview
+
+**Syncertica Enterprise** is a powerful enterprise-grade project management solution that bridges the gap between managers and development teams. With integrated DevOps capabilities, real-time collaboration tools, and comprehensive task tracking, Syncertica Enterprise streamlines your entire development workflow from planning to deployment.
 
 ## ✨ Features
 
-### 🏗️ **Infrastructure & DevOps**
+### 👔 Manager Dashboard
 
-- **AWS Aurora DSQL** - PostgreSQL-compatible serverless database
-- **Terraform Infrastructure as Code** - Complete AWS infrastructure automation
-- **Docker Multi-Stage Builds** - Optimized containerization
-- **GitHub Actions CI/CD** - Real-time workflow monitoring, automated testing, security scanning, and AWS deployment
-- **CloudWatch Monitoring** - Comprehensive metrics, logs, and alerting
-- **Auto Scaling** - ECS Fargate with intelligent scaling policies
+The Manager Dashboard provides comprehensive oversight and control over projects, teams, and infrastructure:
 
-### 🔒 **Security & Authentication**
+- **👥 Team Management** - Add and manage workers with role-based access control
+- **🔗 GitHub Integration** - Seamlessly connect GitHub repositories for version control
+- **⚙️ Infrastructure as Code** - Add and manage Terraform configurations directly from the dashboard
+- **🐳 Container Management** - Upload and manage Docker files for containerized deployments
+- **🔄 Workflow Automation** - Configure and monitor GitHub Actions workflows
+- **📊 Project Organization** - Create and manage multiple projects with customizable settings
+- **✅ Task Assignment** - Assign tasks to workers with priorities and deadlines
+- **📈 Analytics & Insights** - Visualize project progress and team performance with interactive charts
 
-- **AWS Cognito** - Enterprise-grade user authentication
-- **IAM Roles & Policies** - Least privilege access control
-- **AWS WAF** - Web application firewall protection
-- **SSL/TLS Encryption** - End-to-end security
-- **Security Scanning** - Automated vulnerability detection
+### 👷 Worker Dashboard
 
-### 📊 **Analytics & Data**
+The Worker Dashboard empowers team members to manage their workload efficiently:
 
-- **Hybrid Database Architecture** - [See DATABASE.md](docs/DATABASE.md)
-  - PostgreSQL RDS - Primary business data storage
-  - DynamoDB - Session management and audit logging
-- **Lambda Functions** - Serverless data processing
-- **API Gateway** - RESTful API with rate limiting
-- **CloudWatch Dashboards** - Business intelligence metrics
-- **Data Insights** - Custom analytics reporting
+- **📋 Task Overview** - View all assigned tasks in an organized interface
+- **🔄 Progress Tracking** - Update task status with three states:
+  - 🟡 In Process
+  - ✅ Done
+  - 🔴 Blocked/Cancelled
+- **📅 Deadline Management** - Stay on top of upcoming deadlines
+- **🎯 Priority Visualization** - Quickly identify high-priority tasks
 
-### 🔄 **DevOps Integration**
+### 🛠️ Additional Features
 
-- **Real-time GitHub Actions Monitoring** - Live workflow status and pipeline tracking
-- **AWS Deployment Status** - ECR, ECS, and Terraform integration monitoring
-- **Interactive Pipeline Management** - Trigger workflows, view logs, download artifacts
-- **Pipeline Analytics** - Success rates, build times, and performance metrics
-- **GitHub API Integration** - No mocking, real-time data from GitHub Actions
+Enhance collaboration and productivity with built-in tools:
 
-### ⚡ **Performance & Scalability**
+- **💬 Real-time Chat** - Communicate with team members instantly
+- **📝 Sticky Notes** - Create quick reminders and notes
+- **📅 Integrated Calendar** - Schedule meetings and track important dates
+- **🔔 Smart Notifications** - Stay updated on task assignments, mentions, and project changes
 
-- **CloudFront CDN** - Global content delivery
-- **ElastiCache Redis** - High-performance caching
-- **Load Balancing** - Application Load Balancer with health checks
-- **Edge Computing** - Lambda@Edge for optimal performance
-- **Multi-AZ Deployment** - High availability architecture
+## 🏗️ Tech Stack
 
-## 🏛️ Architecture Overview
+### Frontend
+- **React (Next.js)** - Server-side rendering and modern React framework
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first CSS framework for responsive design
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   CloudFront    │────│  Application     │────│    Aurora       │
-│      CDN        │    │  Load Balancer   │    │     DSQL        │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
-         │              ┌────────────────┐              │
-         │              │  ECS Fargate   │              │
-         │              │   Containers   │              │
-         │              └────────────────┘              │
-         │                       │                       │
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   API Gateway   │────│     Lambda       │────│    DynamoDB     │
-│   + WAF         │    │   Functions      │    │   Analytics     │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   CloudWatch    │────│   EventBridge    │────│      SNS        │
-│   Monitoring    │    │     Rules        │    │    Alerts       │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-```
+### Backend
+- **Node.js** - High-performance JavaScript runtime
+- **PostgreSQL** - Robust relational database for structured data
+- **AWS DynamoDB** - NoSQL database for flexible data storage
+- **AWS RDS** - Managed relational database service
 
-## 🚀 Quick Start
+### DevOps & Infrastructure
+- **Docker** - Containerization platform
+- **Terraform** - Infrastructure as Code (IaC) tool
+- **GitHub Actions** - CI/CD automation
+- **GitHub Repository** - Version control and collaboration
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- **Node.js 18+** and **npm**
-- **Docker** and **Docker Compose**
-- **AWS CLI** configured with appropriate credentials
-- **Terraform 1.6+** installed
+Ensure you have the following installed on your system:
 
-### 1. Clone and Install
+- Node.js (v18 or higher)
+- Docker & Docker Compose
+- PostgreSQL (v14 or higher)
+- Terraform (v1.0 or higher)
+- AWS CLI configured with appropriate credentials
 
+### Installation
+
+1. **Clone the repository**
 ```bash
-git clone https://github.com/anandavicky123/syncerticaenterprise.git
-cd syncerticaenterprise
+git clone https://github.com/yourusername/syncertica-enterprise.git
+cd syncertica-enterprise
+```
+
+2. **Install dependencies**
+```bash
 npm install
 ```
 
-### 2. Environment Setup
-
+3. **Set up environment variables**
 ```bash
-# Copy environment template
-cp .env.example .env.local
-
-# Configure your environment variables
-# Edit .env.local with your database and AWS settings
+cp .env.example .env
 ```
 
-### 3. Database Setup
-
-```bash
-# Generate Prisma client
-npm run db:generate
-
-# Run database migrations
-npm run db:migrate
-
-# Seed the database
-npm run db:seed
-```
-
-### 4. Development Server
-
-```bash
-# Start development server
-npm run dev
-
-# Or use Docker for full stack
-npm run docker:run
-```
-
-Visit [http://localhost:3000](http://localhost:3000) to see the application.
-
-## 🐳 Docker Deployment
-
-### Development Environment
-
-```bash
-# Build and start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-```
-
-### Production Build
-
-```bash
-# Build optimized image
-docker build -t syncertica-enterprise:latest .
-
-# Run with production settings
-docker run -p 3000:3000 --env-file .env.production syncertica-enterprise:latest
-```
-
-## ☁️ AWS Infrastructure Deployment
-
-### Prerequisites
-
-1. **AWS Account** with appropriate permissions
-2. **Terraform** installed locally
-3. **AWS CLI** configured
-
-### Infrastructure Setup
-
-```bash
-# Initialize Terraform
-npm run aws:init
-
-# Plan infrastructure changes
-npm run aws:plan:staging
-
-# Deploy to staging
-npm run aws:apply:staging
-
-# Deploy to production
-npm run aws:apply:prod
-```
-
-### Environment-Specific Deployments
-
-```bash
-# Staging environment
-terraform apply -var-file="environments/staging.tfvars"
-
-# Production environment
-terraform apply -var-file="environments/production.tfvars"
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Create `.env.local` for development:
-
+Edit `.env` with your configuration:
 ```env
-GITHUB_TOKEN="your-github-token"
-DATABASE_URL="postgresql://user:password@localhost:5432/db"
+DATABASE_URL=postgresql://user:password@localhost:5432/syncertica
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+GITHUB_TOKEN=your_github_token
+NEXT_PUBLIC_API_URL=http://localhost:3000/api
 ```
 
-### Terraform Variables
-
-Configure `terraform/environments/staging.tfvars`:
-
-```hcl
-project_name = "syncertica-enterprise"
-environment  = "staging"
-aws_region   = "us-east-1"
-db_password  = "SecurePassword123!"
+4. **Run database migrations**
+```bash
+npm run migrate
 ```
 
-## 🧪 Testing
+5. **Start the development server**
+```bash
+npm run dev
+```
 
-### Unit Tests
+The application will be available at `http://localhost:3000`
+
+### Docker Deployment
+
+Build and run with Docker Compose:
 
 ```bash
-# Run unit tests
-npm run test
-
-# Run with coverage
-npm run test:coverage
-
-# Watch mode
-npm run test:watch
+docker-compose up -d
 ```
-
-### End-to-End Tests
-
-```bash
-# Run E2E tests
-npm run test:e2e
-
-# Run with UI
-npm run test:e2e:ui
-```
-
-### Infrastructure Testing
-
-```bash
-# Validate Terraform configuration
-npm run aws:validate
-
-# Format Terraform files
-npm run aws:fmt
-
-# Security audit
-npm run security:audit
-```
-
-## 📊 Monitoring & Analytics
-
-### CloudWatch Dashboards
-
-- **Application Metrics**: ECS, Lambda, API Gateway
-- **Database Performance**: Aurora DSQL metrics
-- **CDN Analytics**: CloudFront request patterns
-- **Business KPIs**: User registrations, API usage
-
-### Alerting
-
-- **High CPU/Memory Usage**: Auto-scaling triggers
-- **Error Rate Monitoring**: 5XX errors, Lambda failures
-- **Performance Degradation**: Latency thresholds
-- **Security Events**: Failed login attempts, suspicious activity
-
-### Log Analysis
-
-```bash
-# Query Lambda logs
-aws logs filter-log-events --log-group-name /aws/lambda/syncertica-data-processor
-
-# API Gateway access logs
-aws logs filter-log-events --log-group-name /aws/apigateway/syncertica-enterprise
-```
-
-## 🔄 CI/CD Pipeline
-
-### GitHub Actions Workflow
-
-1. **Code Quality**: ESLint, Prettier, TypeScript checks
-2. **Security Scanning**: npm audit, Snyk, CodeQL
-3. **Testing**: Unit tests, E2E tests, coverage reports
-4. **Infrastructure**: Terraform validation and planning
-5. **Build**: Docker image creation and push to ECR
-6. **Deploy**: Blue-green deployment to ECS Fargate
-7. **Monitor**: Post-deployment health checks
-
-### Deployment Stages
-
-- **Development**: Feature branches, PR validation
-- **Staging**: Develop branch, full integration testing
-- **Production**: Main branch, blue-green deployment
 
 ## 📁 Project Structure
 
 ```
-syncerticaenterprise/
-├── 📁 app/                    # Next.js 15 app directory
-│   ├── 📁 contents/           # Business logic components
-│   ├── 📁 shared/             # Shared utilities and types
-│   └── 📁 ui/                 # Reusable UI components
-├── 📁 terraform/              # Infrastructure as Code
-│   ├── 📁 environments/       # Environment-specific configs
-│   ├── 📁 lambda/             # Lambda function code
-│   ├── main.tf                # Core infrastructure
-│   ├── variables.tf           # Variable definitions
-│   └── outputs.tf             # Output values
-├── 📁 .github/                # GitHub Actions workflows
-│   └── 📁 workflows/          # CI/CD pipeline definitions
-├── 📁 docker/                 # Docker configuration
-├── 📁 prisma/                 # Database schema and migrations
-├── 📁 tests/                  # Test suites
-├── docker-compose.yml         # Local development stack
-├── Dockerfile                 # Production container build
-└── package.json               # Dependencies and scripts
+syncertica-enterprise/
+├── src/
+│   ├── app/              # Next.js app directory
+│   ├── components/       # React components
+│   ├── lib/             # Utility functions and configs
+│   ├── hooks/           # Custom React hooks
+│   └── types/           # TypeScript type definitions
+├── public/              # Static assets
+├── terraform/           # Infrastructure as Code
+├── .github/
+│   └── workflows/       # GitHub Actions workflows
+├── docker-compose.yml   # Docker composition
+├── Dockerfile          # Docker image definition
+└── package.json        # Project dependencies
 ```
+
+## 🔧 Configuration
+
+### GitHub Integration
+
+1. Generate a GitHub Personal Access Token with `repo` and `workflow` scopes
+2. Add the token to your environment variables
+3. Navigate to Manager Dashboard → GitHub Integration
+4. Connect your repositories
+
+### AWS Setup
+
+Configure AWS services using Terraform:
+
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+## 📊 Usage
+
+### For Managers
+
+1. **Add Team Members** - Navigate to Team Management and invite workers
+2. **Create Projects** - Set up projects with descriptions and timelines
+3. **Assign Tasks** - Break down projects into manageable tasks
+4. **Monitor Progress** - Use analytics dashboard to track team performance
+
+### For Workers
+
+1. **Check Tasks** - View your assigned tasks on the dashboard
+2. **Update Progress** - Mark tasks as In Process, Done, or Blocked
+3. **Communicate** - Use chat and sticky notes for collaboration
+4. **Meet Deadlines** - Track due dates with the integrated calendar
 
 ## 🤝 Contributing
 
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Commit changes**: `git commit -m 'Add amazing feature'`
-4. **Push to branch**: `git push origin feature/amazing-feature`
-5. **Open a Pull Request**
+We welcome contributions! Please follow these steps:
 
-### Development Guidelines
-
-- Follow **TypeScript strict mode**
-- Use **Conventional Commits** format
-- Ensure **100% test coverage** for new features
-- Update **documentation** for API changes
-- Run **security audits** before submitting
-
-## 📋 Available Scripts
-
-| Script                      | Description                             |
-| --------------------------- | --------------------------------------- |
-| `npm run dev`               | Start development server with Turbopack |
-| `npm run build`             | Build production application            |
-| `npm run test`              | Run unit tests with Jest                |
-| `npm run test:e2e`          | Run end-to-end tests with Playwright    |
-| `npm run lint`              | Check code quality with ESLint          |
-| `npm run type-check`        | Validate TypeScript types               |
-| `npm run docker:run`        | Start Docker development stack          |
-| `npm run aws:apply:staging` | Deploy to AWS staging environment       |
-| `npm run aws:apply:prod`    | Deploy to AWS production environment    |
-| `npm run ci`                | Run complete CI pipeline locally        |
-
-## 📈 Performance Benchmarks
-
-### Core Web Vitals
-
-- **First Contentful Paint**: < 1.2s
-- **Largest Contentful Paint**: < 2.5s
-- **Cumulative Layout Shift**: < 0.1
-- **First Input Delay**: < 100ms
-
-### Infrastructure Metrics
-
-- **API Response Time**: < 200ms (p95)
-- **Database Query Time**: < 50ms (p95)
-- **CDN Cache Hit Rate**: > 90%
-- **Uptime SLA**: 99.9%
-
-## 🛡️ Security Features
-
-### Authentication & Authorization
-
-- **Multi-factor Authentication** via AWS Cognito
-- **JWT Token Management** with automatic refresh
-- **Role-based Access Control** (RBAC)
-- **Session Management** with secure cookies
-
-### Infrastructure Security
-
-- **VPC Isolation** with private subnets
-- **Security Groups** with least privilege
-- **WAF Rules** for common attack patterns
-- **Encryption at Rest** for all data stores
-- **Encryption in Transit** with TLS 1.3
-
-### Code Security
-
-- **Dependency Scanning** with Snyk
-- **SAST Analysis** with CodeQL
-- **Container Scanning** with Trivy
-- **Secret Management** with AWS Secrets Manager
-
-## 🌍 Environment Management
-
-### Development
-
-- Local Docker stack with PostgreSQL, Redis
-- Hot reloading with Turbopack
-- Debug-friendly configurations
-
-### Staging
-
-- AWS Aurora Serverless v2 (0.5 ACU)
-- Single AZ deployment
-- Reduced monitoring retention
-
-### Production
-
-- Multi-AZ Aurora cluster
-- Auto-scaling ECS services
-- Full monitoring and alerting
-- 30-day log retention
-
-## 📚 Documentation
-
-- **[API Documentation](./docs/api.md)** - REST API endpoints
-- **[Database Schema](./docs/database.md)** - Prisma models and relationships
-- **[Infrastructure Guide](./docs/infrastructure.md)** - AWS architecture deep dive
-- **[Security Policies](./docs/security.md)** - Security implementation details
-- **[Monitoring Guide](./docs/monitoring.md)** - CloudWatch setup and alerting
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Database Connection Issues**
-
-```bash
-# Check database status
-docker-compose ps postgres
-
-# Reset database
-docker-compose down -v
-docker-compose up -d postgres
-npm run db:migrate
-```
-
-**AWS Deployment Failures**
-
-```bash
-# Check Terraform state
-terraform show
-
-# Refresh state
-terraform refresh
-
-# Import existing resources
-terraform import aws_instance.example i-1234567890abcdef0
-```
-
-**Build Errors**
-
-```bash
-# Clear Next.js cache
-rm -rf .next
-
-# Clear node modules
-rm -rf node_modules package-lock.json
-npm install
-
-# Type checking
-npm run type-check
-```
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📄 License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👨‍💻 Author
+## 🆘 Support
 
-**Ananda Vicky**
+Need help? We're here for you:
 
-- GitHub: [@anandavicky123](https://github.com/anandavicky123)
-- LinkedIn: [Ananda Vicky](https://linkedin.com/in/anandavicky123)
+- 📧 Email: support@syncertica.com
+- 💬 Discord: [Join our community](https://discord.gg/syncertica)
+- 📖 Documentation: [docs.syncertica.com](https://docs.syncertica.com)
+- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/syncertica-enterprise/issues)
 
 ## 🙏 Acknowledgments
 
-- **Next.js Team** for the amazing React framework
-- **AWS** for comprehensive cloud services
-- **Terraform** for infrastructure automation
-- **Open Source Community** for incredible tools and libraries
+- Thanks to all contributors who have helped shape Syncertica Enterprise
+- Built with ❤️ by the Syncertica team
 
 ---
 
-<div align="center">
-
-**🚀 Built with passion for enterprise-grade applications**
-
-[⭐ Star this repo](https://github.com/anandavicky123/syncerticaenterprise) | [🐛 Report Bug](https://github.com/anandavicky123/syncerticaenterprise/issues) | [✨ Request Feature](https://github.com/anandavicky123/syncerticaenterprise/issues)
-
-</div>
+Made with 💼 for enterprise teams | © 2025 Syncertica Enterprise
