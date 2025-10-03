@@ -1,0 +1,615 @@
+Syncertica Source Available License (Syncertica-SAL) v1.0
+SPDX-License-Identifier: LicenseRef-Syncertica-SAL-1.0
+
+Copyright (c) 2025 Ananda Vicky (Syncertica)
+All Rights Reserved.
+
+IMPORTANT: THIS IS NOT AN OPEN SOURCE LICENSE. This license permits internal 
+evaluation, testing, and learning only. Commercial use, distribution, and use 
+of the Software's identities are prohibited.
+
+================================================================================
+
+1. DEFINITIONS
+
+1.1 "Software" means the source code, object code, executable binaries, 
+documentation, configuration files, data files, and any associated materials 
+included in this repository or distribution, in original or modified form.
+
+1.2 "Licensor" means Ananda Vicky, also known as Syncertica, the copyright 
+holder of this Software.
+
+1.3 "You" or "Your" means any individual person or legal entity (including its 
+employees, contractors, and agents acting on its behalf) that exercises 
+permissions under this License by downloading, copying, installing, modifying, 
+or otherwise using the Software.
+
+1.4 "Identities" means all application names, brand names, logos, trademarks, 
+service marks, trade dress, product names, domain names, and any other source 
+identifiers or distinctive branding associated with the Software, including but 
+not limited to the developer name "Syncertica" and any application-specific 
+names, icons, or visual branding elements.
+
+1.5 "Modify" or "Modification" means to copy from, adapt, alter, transform, or 
+create derivative works based on all or part of the Software in a fashion 
+requiring copyright permission.
+
+1.6 "Internal Evaluation" means use of the Software solely for Your own 
+personal learning, testing, experimentation, educational purposes, security 
+research, or portfolio assessment, and in the case of a legal entity, use by 
+employees or contractors acting on Your behalf for internal evaluation purposes 
+only, with no provision of services or products to third parties.
+
+1.7 "Non-Commercial" means not primarily intended for or directed toward 
+commercial advantage, monetary compensation, or revenue generation. Non-
+Commercial use excludes deployment in production environments, incorporation 
+into commercial products or services, or use to provide services to third 
+parties for compensation.
+
+1.8 "Controlled Environment" means computing devices, virtual machines, 
+containers, cloud instances, or development environments that are directly 
+owned, leased, or controlled by You, including personal devices, company-owned 
+hardware, private cloud resources, continuous integration systems, and 
+ephemeral test environments, but excluding public-facing production systems or 
+third-party infrastructure where You provide services to others.
+
+1.9 "Patent Claims" means any patent claim(s), now owned or hereafter acquired, 
+including without limitation, method, process, and apparatus claims, in any 
+patent Licensable by Licensor.
+
+================================================================================
+
+2. ACCEPTANCE AND SCOPE
+
+2.1 LICENSE GRANT TRIGGER: This License becomes effective and You accept its 
+terms when You download, copy, install, modify, or otherwise use the Software 
+in any manner. Merely viewing the Software in a public repository (e.g., GitHub) 
+without downloading or copying does not constitute acceptance.
+
+2.2 TRANSIENT COPIES: You may make transient, incidental copies of the Software 
+as technically necessary to evaluate it (e.g., RAM caching, temporary files 
+during compilation or execution). Such copies are subject to all terms of this 
+License.
+
+2.3 REPOSITORY LINKING: You may share hyperlinks to the Licensor's official 
+public repository and may include screenshots or descriptions of the Software's 
+functionality for factual discussion, portfolio presentation, or educational 
+purposes, provided You do not distribute the Software's source code or binaries 
+and clearly attribute the Software to the Licensor.
+
+================================================================================
+
+3. GRANT OF RIGHTS
+
+Subject to the terms and conditions of this License, the Licensor hereby grants 
+You a limited, non-exclusive, non-transferable, non-sublicensable, revocable, 
+worldwide, royalty-free right to:
+
+3.1 DOWNLOAD AND INSTALL the Software in Your Controlled Environment solely for 
+Internal Evaluation and Non-Commercial purposes.
+
+3.2 VIEW AND STUDY the source code of the Software for educational purposes, 
+personal learning, security research, or portfolio assessment.
+
+3.3 MODIFY the Software solely for Your own Internal Evaluation, testing, 
+experimentation, and learning in Your Controlled Environment.
+
+3.4 TEST AND EXECUTE the Software and any Modifications You create in Your 
+Controlled Environment for Internal Evaluation and Non-Commercial purposes only.
+
+3.5 FOR LEGAL ENTITIES: Employees, contractors, or agents may exercise the 
+above rights on Your behalf, provided such use remains within Your Controlled 
+Environment for Internal Evaluation only and such individuals are bound by 
+confidentiality obligations or this License.
+
+NO OTHER RIGHTS ARE GRANTED. Specifically, no rights are granted under any 
+Patent Claims, trademarks, or trade secrets except as expressly set forth 
+herein.
+
+================================================================================
+
+4. RESTRICTIONS AND PROHIBITIONS
+
+You are expressly prohibited from, and do NOT have permission to:
+
+4.1 DISTRIBUTION AND SHARING: Distribute, publish, make available, transfer, 
+sublicense, sell, rent, lease, loan, or otherwise provide the Software or any 
+Modifications, in whole or in part, in source or binary form, to any third 
+party through any means, including but not limited to public or private 
+repositories, file sharing services, app stores (Google Play, Apple App Store, 
+etc.), package managers, websites, physical media, or any other distribution 
+channel.
+
+4.2 COMMERCIAL USE: Use the Software or any Modifications for any Commercial 
+purpose, including but not limited to:
+   - Incorporating the Software into commercial products, applications, or 
+     services offered to third parties
+   - Using the Software to provide services, hosting, SaaS, or APIs to third 
+     parties, whether for compensation or not
+   - Deploying the Software in production environments serving end users or 
+     customers
+   - Using the Software in any revenue-generating activity or business operation
+   - Using the Software to train machine learning models for commercial purposes
+
+4.3 IDENTITIES AND TRADEMARKS:
+   (a) Use, reproduce, display, or register the Identities in any manner that 
+       suggests sponsorship, endorsement, or affiliation with the Licensor, or 
+       that creates a likelihood of confusion about the source or origin of any 
+       product or service.
+   (b) Use the Identities as or as part of Your own product names, service 
+       names, trademarks, domain names, social media handles, or branding.
+   (c) Apply for trademark, domain name, or other registrations incorporating 
+       the Identities.
+   (d) PERMITTED NOMINATIVE FAIR USE: You may make factual references to the 
+       Software using the Identities solely to accurately identify the Software 
+       in discussions, documentation, academic papers, or portfolio materials, 
+       provided such use:
+       - Is necessary to identify the Software
+       - Does not suggest sponsorship or endorsement by the Licensor
+       - Is accompanied by a disclaimer that the Software is created by the 
+         Licensor
+       Example: "This analysis compares performance of [Your Software] against 
+       Syncertica's [App Name]" is permitted; "Syncertica Pro Edition" or 
+       "[App Name] Enhanced by [You]" is prohibited.
+
+4.4 DERIVATIVE DISTRIBUTION: Create or distribute derivative works, forks, or 
+Modifications intended for distribution, public release, or use by third parties.
+
+4.5 SUBLICENSING AND TRANSFER: Sublicense, assign, transfer, pledge, or 
+otherwise convey any rights granted under this License to any third party.
+
+4.6 NOTICE REMOVAL: Remove, alter, obscure, or modify any copyright notices, 
+license notices, trademark notices, attribution, patent notices, disclaimers, 
+or proprietary legends contained in or provided with the Software.
+
+4.7 REVERSE ENGINEERING: Reverse engineer, decompile, or disassemble any 
+compiled, obfuscated, or binary portions of the Software, except and only to 
+the extent that such activity is expressly permitted by applicable law 
+notwithstanding this limitation, and provided You notify the Licensor in 
+writing of such activity and its purpose.
+
+4.8 INTELLECTUAL PROPERTY CLAIMS: Register, claim, file for, or assert any 
+intellectual property rights (including patents, trademarks, copyrights, or 
+design rights) related to, derived from, or based on the Software or its 
+Identities.
+
+4.9 PATENT ASSERTION: Assert, threaten, or initiate any patent infringement 
+claim or action against the Licensor or any contributor to the Software based 
+on the Software or any use permitted by this License.
+
+4.10 LEGAL VIOLATIONS: Use the Software in any manner that violates any 
+applicable local, state, provincial, national, or international law, regulation, 
+or treaty, including without limitation export control laws, sanctions 
+regulations, or data protection laws.
+
+4.11 MALICIOUS USE: Use the Software to create, distribute, or facilitate 
+malware, ransomware, spyware, viruses, or any malicious or harmful code or 
+activity.
+
+4.12 CIRCUMVENTION: Attempt to circumvent, disable, or interfere with any 
+technical protection measures, licensing mechanisms, or security features in 
+the Software.
+
+4.13 UNAUTHORIZED ACTIONS: Perform any action not explicitly permitted in 
+Section 3 of this License without obtaining prior written permission from the 
+Licensor.
+
+================================================================================
+
+5. INTELLECTUAL PROPERTY RIGHTS
+
+5.1 RETENTION OF RIGHTS: The Licensor retains all right, title, and interest 
+in and to the Software and all Identities, including all copyrights, moral 
+rights, patents, trade secrets, trademarks, and other intellectual property 
+rights, whether registered or unregistered, and all goodwill associated 
+therewith.
+
+5.2 NO PATENT GRANT: Except as expressly stated in Section 3, no license or 
+other rights are granted under any Patent Claims owned or controlled by 
+Licensor, whether by implication, estoppel, or otherwise. This License does not 
+grant You any patent license.
+
+5.3 LIMITED SCOPE: The license granted in Section 3 is limited to the copyright 
+and, if applicable, patent rights necessary solely for the permitted Internal 
+Evaluation uses. No other intellectual property rights are granted.
+
+5.4 OWNERSHIP OF MODIFICATIONS: Any Modifications You create are derivative 
+works of the Software and are subject to this License. You do not acquire any 
+ownership rights in the original Software, its Identities, or any intellectual 
+property rights therein by creating Modifications.
+
+5.5 RESERVATION: All rights not expressly granted in this License are reserved 
+by the Licensor.
+
+================================================================================
+
+6. ATTRIBUTION AND NOTICES
+
+6.1 RETENTION OF NOTICES: You must retain, in the source code and documentation 
+of any Modifications You create:
+   - All copyright, patent, trademark, and attribution notices from the 
+     Software
+   - All license and disclaimer notices from the Software
+   - A clear and prominent notice that the Software is created by Ananda Vicky 
+     (Syncertica)
+
+6.2 MODIFICATION NOTICE: If You Modify the Software, You must include a 
+prominent notice stating:
+   - That the work is a Modification of the original Software
+   - The date of Modification
+   - A description of the Modifications made (if technically feasible)
+   - That the original Software is created by Ananda Vicky (Syncertica) and is 
+     subject to this License
+
+6.3 NO IMPLIED ENDORSEMENT: You may not use the Licensor's name, Identities, or 
+any contributor's name for publicity, endorsement, or promotion of Modifications 
+or related activities without specific prior written permission.
+
+================================================================================
+
+7. THIRD-PARTY DEPENDENCIES
+
+7.1 SEPARATE LICENSES: This Software may incorporate or depend upon third-party 
+libraries, frameworks, tools, services, or other software components 
+("Dependencies"), each of which is subject to its own separate and independent 
+license terms.
+
+7.2 DEPENDENCY RESPONSIBILITY: Each Dependency retains its original license, 
+and Your use of those Dependencies is governed exclusively by their respective 
+license terms. You are solely responsible for complying with all license terms 
+and conditions of any Dependencies.
+
+7.3 NO REPRESENTATIONS: The Licensor makes no representations or warranties 
+regarding Dependencies and assumes no liability for Your use of Dependencies or 
+any conflicts between this License and Dependency licenses.
+
+7.4 DEPENDENCY IDENTIFICATION: A list of Dependencies and their licenses can be 
+found in the Software's configuration or dependency files (e.g., package.json, 
+build.gradle, pom.xml, requirements.txt, go.mod, Cargo.toml, or similar files).
+
+7.5 NO OVERRIDE: Nothing in this License overrides, modifies, or affects the 
+terms of any third-party Dependency license. In the event of any conflict 
+between this License and a Dependency license with respect to that Dependency, 
+the Dependency's license governs.
+
+7.6 DISTRIBUTION COMPATIBILITY: If You are granted explicit written permission 
+to distribute the Software or Modifications (which is prohibited by default 
+under Section 4.1), You must ensure such distribution complies with all 
+applicable third-party Dependency licenses, including any copyleft, attribution, 
+or notice requirements. The Licensor is not responsible for ensuring such 
+compatibility.
+
+================================================================================
+
+8. FEEDBACK AND CONTRIBUTIONS
+
+8.1 FEEDBACK LICENSE: If You provide any feedback, suggestions, bug reports, 
+ideas, improvements, or other communications regarding the Software to the 
+Licensor ("Feedback"), You hereby grant the Licensor a perpetual, irrevocable, 
+worldwide, royalty-free, non-exclusive, fully sublicensable, transferable 
+license to use, reproduce, modify, create derivative works from, distribute, 
+publicly display, publicly perform, and otherwise exploit such Feedback for any 
+purpose, including incorporation into the Software or other products, without 
+any obligation to You.
+
+8.2 NO OBLIGATION: The Licensor has no obligation to use, respond to, or 
+incorporate any Feedback.
+
+8.3 NO CONTRIBUTIONS: This License does not grant You the right to contribute 
+code or other materials to the Software's official repository. All contributions 
+must be submitted under a separate contribution agreement.
+
+================================================================================
+
+9. REQUESTING ADDITIONAL PERMISSIONS
+
+9.1 PERMISSION REQUIRED: Any use of the Software beyond the limited rights 
+explicitly granted in Section 3 requires prior express written permission from 
+the Licensor. This includes, but is not limited to, requests to:
+   - Distribute or publicly release the Software or Modifications
+   - Use the Software for commercial purposes
+   - Use the Identities in a manner not permitted under Section 4.3(d)
+   - Sublicense any rights
+
+9.2 REQUEST PROCESS: To request additional permissions, You must contact the 
+Licensor in writing at:
+   Email: anandavikisns@gmail.com
+   Subject Line: "License Permission Request - [Software/App Name]"
+   Include: Detailed description of intended use and requested permissions
+
+9.3 LICENSOR'S DISCRETION: The Licensor has sole and absolute discretion to 
+grant, deny, or grant with conditions any permission request. The Licensor has 
+no obligation to respond to or grant any request.
+
+9.4 WRITTEN AGREEMENT: Any permissions granted will be documented in a separate 
+written agreement signed by the Licensor, specifying the scope, duration, 
+conditions, and any fees or royalties for the additional rights granted. Oral 
+or informal permissions are not valid.
+
+================================================================================
+
+10. TERM AND TERMINATION
+
+10.1 EFFECTIVE DATE: This License is effective from the date You first accept 
+its terms (as described in Section 2.1) and continues until terminated.
+
+10.2 TERMINATION FOR BREACH: Your rights under this License will terminate 
+automatically and immediately, without notice from the Licensor, if You fail to 
+comply with any term or condition of this License. Upon termination for breach, 
+You lose all rights to use the Software under this License.
+
+10.3 TERMINATION BY LICENSOR: The Licensor may terminate this License at any 
+time, for any reason or no reason, by providing written notice to You (if 
+contact information is available) or by public announcement. Termination becomes 
+effective upon the date specified in the notice or announcement.
+
+10.4 EFFECT OF TERMINATION: Upon any termination of this License, You must 
+immediately:
+   - Cease all use of the Software and all Modifications
+   - Delete and destroy all copies of the Software and Modifications in Your 
+     possession, custody, or control, including copies on backup media and in 
+     archived repositories
+   - Certify in writing to the Licensor, if requested, that You have complied 
+     with these requirements
+
+10.5 SURVIVAL: The following Sections shall survive any termination or 
+expiration of this License: 1 (Definitions), 4 (Restrictions), 5 (Intellectual 
+Property Rights), 6.1 (Retention of Notices), 8 (Feedback), 10.4 (Effect of 
+Termination), 10.5 (Survival), 11 (Disclaimer of Warranty), 12 (Limitation of 
+Liability), 13 (Indemnification), 14.4 (Governing Law), and 14.5 (Assignment).
+
+10.6 RIGHTS TO SPECIFIC VERSION: Notwithstanding Sections 10.2 and 10.3, if 
+You have obtained a specific version of the Software and are in full compliance 
+with this License, Your rights to that specific version may continue unless 
+terminated for Your breach. However, Licensor retains the right to terminate 
+all rights, including to previously obtained versions, for material breach or 
+for patent assertion under Section 4.9.
+
+================================================================================
+
+11. DISCLAIMER OF WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITH ALL FAULTS AND WITHOUT 
+WARRANTY OF ANY KIND, EITHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE.
+
+THE LICENSOR EXPRESSLY DISCLAIMS ALL WARRANTIES, INCLUDING BUT NOT LIMITED TO:
+- IMPLIED WARRANTIES OF MERCHANTABILITY
+- IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR PURPOSE
+- IMPLIED WARRANTIES OF TITLE
+- IMPLIED WARRANTIES OF NON-INFRINGEMENT
+- IMPLIED WARRANTIES ARISING FROM COURSE OF DEALING OR USAGE OF TRADE
+- ANY WARRANTIES THAT THE SOFTWARE IS FREE OF DEFECTS, ERRORS, OR VIRUSES
+- ANY WARRANTIES THAT THE SOFTWARE WILL MEET YOUR REQUIREMENTS OR EXPECTATIONS
+- ANY WARRANTIES OF UNINTERRUPTED, TIMELY, SECURE, OR ERROR-FREE OPERATION
+
+THE LICENSOR DOES NOT WARRANT THAT:
+- The Software will meet Your requirements or expectations
+- The Software will be uninterrupted, timely, secure, or error-free
+- Any errors, defects, or vulnerabilities in the Software will be corrected
+- The results obtained from use of the Software will be accurate, reliable, or 
+  complete
+- The Software is compatible with any particular hardware, software, or system
+- The Software is free from viruses, malware, or other harmful components
+
+YOU ASSUME ALL RESPONSIBILITY AND RISK FOR YOUR USE OF THE SOFTWARE, INCLUDING 
+BUT NOT LIMITED TO RISKS OF PROGRAM ERRORS, DAMAGE TO OR LOSS OF DATA, 
+PROGRAMS, OR EQUIPMENT, AND UNAVAILABILITY OR INTERRUPTION OF OPERATIONS.
+
+SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OF IMPLIED WARRANTIES, SO SOME 
+OF THE ABOVE EXCLUSIONS MAY NOT APPLY TO YOU. IN SUCH JURISDICTIONS, THE 
+LICENSOR'S LIABILITY IS LIMITED TO THE GREATEST EXTENT PERMITTED BY LAW.
+
+================================================================================
+
+12. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE 
+LICENSOR, ITS AFFILIATES, OFFICERS, DIRECTORS, EMPLOYEES, AGENTS, OR 
+CONTRIBUTORS BE LIABLE TO YOU OR ANY THIRD PARTY FOR ANY DIRECT, INDIRECT, 
+INCIDENTAL, SPECIAL, EXEMPLARY, CONSEQUENTIAL, PUNITIVE, OR OTHER DAMAGES OF 
+ANY KIND, HOWEVER CAUSED AND UNDER ANY THEORY OF LIABILITY (WHETHER IN 
+CONTRACT, STRICT LIABILITY, TORT (INCLUDING NEGLIGENCE), WARRANTY, OR 
+OTHERWISE), ARISING OUT OF OR RELATED TO:
+
+- Your use of or inability to use the Software
+- Any Modifications You make to the Software
+- Any reliance on the Software or its output
+- Any third-party Dependencies or services used by or with the Software
+- Any breach or alleged breach of this License
+- Any loss or corruption of data
+- Any interruption of business or loss of profits, revenue, or business 
+  opportunities
+- Any failure of security or privacy of the Software
+- Any unauthorized access to or alteration of Your data or systems
+- Any cost of procurement of substitute goods or services
+- Any other matter relating to the Software
+
+EVEN IF THE LICENSOR HAS BEEN ADVISED, KNEW, OR SHOULD HAVE KNOWN OF THE 
+POSSIBILITY OF SUCH DAMAGES.
+
+IN NO EVENT SHALL THE LICENSOR'S TOTAL AGGREGATE LIABILITY TO YOU FOR ALL 
+DAMAGES, LOSSES, AND CAUSES OF ACTION (WHETHER IN CONTRACT, TORT, INCLUDING 
+NEGLIGENCE, STRICT LIABILITY, WARRANTY, OR OTHERWISE) EXCEED ZERO DOLLARS 
+($0.00).
+
+THIS LIMITATION OF LIABILITY IS CUMULATIVE AND NOT PER INCIDENT.
+
+SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OR LIMITATION OF INCIDENTAL OR 
+CONSEQUENTIAL DAMAGES, SO THE ABOVE LIMITATIONS OR EXCLUSIONS MAY NOT APPLY TO 
+YOU. IN SUCH JURISDICTIONS, THE LICENSOR'S LIABILITY SHALL BE LIMITED TO THE 
+GREATEST EXTENT PERMITTED BY LAW.
+
+THE LIMITATIONS IN THIS SECTION APPLY EVEN IF ANY REMEDY FAILS OF ITS ESSENTIAL 
+PURPOSE.
+
+================================================================================
+
+13. INDEMNIFICATION
+
+You agree to indemnify, defend (at the Licensor's option), and hold harmless 
+the Licensor, its affiliates, and their respective officers, directors, 
+employees, agents, successors, and assigns from and against any and all claims, 
+liabilities, damages, losses, costs, expenses, or fees (including reasonable 
+attorneys' fees and court costs) arising out of or relating to:
+
+- Your use, misuse, or inability to use the Software
+- Any Modifications You create or distribute
+- Your violation of any term or condition of this License
+- Your violation of any applicable law, regulation, or third-party right, 
+  including without limitation any copyright, trademark, patent, trade secret, 
+  privacy, publicity, or other intellectual property or proprietary right
+- Any claim that Your use or Modifications caused harm to a third party
+- Any breach of Your representations or obligations under this License
+
+You will cooperate fully in the defense of any claim. The Licensor reserves the 
+right, at its own expense, to assume the exclusive defense and control of any 
+matter subject to indemnification by You, and You shall not settle any such 
+claim without the Licensor's prior written consent.
+
+================================================================================
+
+14. GENERAL PROVISIONS
+
+14.1 ENTIRE AGREEMENT: This License constitutes the entire agreement between 
+You and the Licensor concerning the Software and supersedes all prior or 
+contemporaneous oral or written agreements, proposals, representations, 
+understandings, and communications between the parties concerning the Software.
+
+14.2 SEVERABILITY: If any provision of this License is held to be invalid, 
+illegal, or unenforceable by a court of competent jurisdiction, such provision 
+shall be limited, modified, or eliminated to the minimum extent necessary so 
+that this License shall otherwise remain in full force and effect and 
+enforceable. The invalidity or unenforceability of any provision shall not 
+affect the validity or enforceability of any other provision.
+
+14.3 NO WAIVER: No failure or delay by the Licensor in exercising any right, 
+power, or privilege under this License shall operate as a waiver thereof, nor 
+shall any single or partial exercise preclude any other or further exercise or 
+the exercise of any other right, power, or privilege. Any waiver must be in 
+writing and signed by the Licensor to be effective.
+
+14.4 GOVERNING LAW AND JURISDICTION: This License shall be governed by and 
+construed in accordance with the laws of the Republic of Indonesia, without 
+regard to its conflict of law principles. Any legal action or proceeding arising 
+out of or relating to this License shall be brought exclusively in the courts 
+located in Pekanbaru, Riau, Indonesia, and You hereby consent to the personal 
+jurisdiction and venue of such courts.
+
+14.5 ASSIGNMENT: You may not assign, transfer, delegate, or sublicense this 
+License or any rights or obligations hereunder, in whole or in part, whether 
+voluntarily, by operation of law, or otherwise, without the prior written 
+consent of the Licensor. Any attempted assignment, transfer, or delegation in 
+violation of this Section shall be null and void. The Licensor may freely 
+assign this License. Subject to the foregoing, this License shall be binding 
+upon and inure to the benefit of the parties and their respective successors 
+and permitted assigns.
+
+14.6 MODIFICATIONS TO LICENSE (PROSPECTIVE ONLY): The Licensor reserves the 
+right to publish revised or new versions of this License from time to time. 
+Each version will be given a distinguishing version number (e.g., v1.0, v1.1, 
+v2.0).
+
+IMPORTANT: Any revised or new version of this License applies ONLY to versions 
+of the Software released under that new license version. Your rights to use any 
+specific version of the Software You have already obtained are governed by the 
+license version under which that version was released, unless You choose to 
+accept a newer license version or Your rights are terminated for breach.
+
+The Licensor will not retroactively change the license terms for versions of 
+the Software You have already lawfully obtained and are using in compliance 
+with this License.
+
+If You continue to use or obtain new versions of the Software after a license 
+revision is published, You agree to be bound by the revised license for those 
+new versions.
+
+14.7 EXPORT CONTROL AND SANCTIONS COMPLIANCE: The Software may be subject to 
+export control laws and regulations of the United States, the European Union, 
+and other countries, including the Export Administration Regulations (EAR) 
+maintained by the U.S. Department of Commerce and regulations administered by 
+the U.S. Department of Treasury's Office of Foreign Assets Control (OFAC).
+
+You represent and warrant that:
+- You are not located in, under the control of, or a national or resident of 
+  any country or region subject to comprehensive U.S. or EU sanctions (including 
+  but not limited to Cuba, Iran, North Korea, Syria, and the Crimea region)
+- You are not identified on any government restricted party list, including the 
+  U.S. Treasury Department's Specially Designated Nationals List, the U.S. 
+  Commerce Department's Denied Persons List, Entity List, or Unverified List, 
+  or any similar lists maintained by other governments
+- You will not use the Software for any purposes prohibited by applicable export 
+  control or sanctions laws, including but not limited to development, design, 
+  manufacture, or production of nuclear, chemical, or biological weapons or 
+  missile technology
+- You will comply with all applicable export control and sanctions laws and 
+  regulations
+
+14.8 U.S. GOVERNMENT RIGHTS: If You are a U.S. Government entity or the 
+Software is being acquired by or on behalf of the U.S. Government, the Software 
+is provided with RESTRICTED RIGHTS. Use, duplication, or disclosure by the U.S. 
+Government is subject to restrictions as set forth in this License and as 
+provided in DFARS 227.7202-1(a), DFARS 252.227-7015, FAR 12.212, FAR 52.227-19, 
+or other applicable regulations.
+
+14.9 INDEPENDENT CONTRACTORS: The parties are independent contractors. This 
+License does not create any agency, partnership, joint venture, employment, or 
+franchise relationship between You and the Licensor.
+
+14.10 FORCE MAJEURE: The Licensor shall not be liable for any failure or delay 
+in performance under this License due to causes beyond its reasonable control, 
+including but not limited to acts of God, war, terrorism, labor disputes, 
+governmental actions, or internet or telecommunications failures.
+
+14.11 CONTACT INFORMATION: For questions about this License, to request 
+permissions, or to provide notices, contact:
+
+   Name: Ananda Vicky (Syncertica)
+   Email: anandavikisns@gmail.com
+   Location: Pekanbaru, Riau, Indonesia
+
+14.12 LANGUAGE: This License is written in English. Any translation is provided 
+for convenience only. In the event of any conflict between the English version 
+and any translation, the English version shall control.
+
+14.13 INTERPRETATION: Headings and section titles are for convenience only and 
+shall not affect the interpretation of this License. The words "including," 
+"includes," "such as," and similar terms shall be deemed to be followed by 
+"without limitation." The terms "herein," "hereof," "hereunder," and similar 
+terms refer to this License as a whole.
+
+================================================================================
+
+15. ACCEPTANCE AND ACKNOWLEDGMENT
+
+BY DOWNLOADING, COPYING, INSTALLING, MODIFYING, ACCESSING, OR OTHERWISE USING 
+THE SOFTWARE IN ANY MANNER, YOU EXPRESSLY ACKNOWLEDGE THAT:
+
+1. You have read and understand this License in its entirety;
+
+2. You agree to be legally bound by all of its terms and conditions;
+
+3. You understand that this License grants You very limited rights and imposes 
+   significant restrictions on Your use of the Software;
+
+4. You understand that this is NOT an open source license and does NOT permit 
+   distribution, commercial use, or use of the Identities;
+
+5. You understand that the Software is provided WITHOUT ANY WARRANTY and that 
+   the Licensor has NO LIABILITY for any damages arising from Your use;
+
+6. You have the legal capacity and authority to enter into this License on 
+   behalf of Yourself or the entity You represent.
+
+IF YOU DO NOT AGREE TO ALL THE TERMS AND CONDITIONS OF THIS LICENSE, YOU ARE 
+NOT AUTHORIZED TO AND MUST NOT DOWNLOAD, COPY, INSTALL, MODIFY, ACCESS, OR USE 
+THE SOFTWARE IN ANY MANNER.
+
+Your use of the Software signifies Your acceptance of this License.
+
+================================================================================
+
+END OF LICENSE
+
+Version: 1.0
+Effective Date: 2025
+License Identifier: LicenseRef-Syncertica-SAL-1.0
